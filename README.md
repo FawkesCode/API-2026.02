@@ -75,7 +75,7 @@ Nesse contexto, o desafio é construir uma plataforma unificada de tickets com i
     </tr>
     <tr>
       <td>Marcos Alexandre</td>
-      <td>Scrum Master</td>
+      <td>Desenvolvedor</td>
       <td><a href="https://github.com/MarcosAlexandre-txt"><img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white"/></a></td>
       <td><a href="https://www.linkedin.com/in/marcos-alexandre-cs/"><img src="https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white"/></a></td>
     </tr>
