@@ -1,4 +1,5 @@
 import Image from "next/image";
+import TesteUser from "../components/teste-prisma";
 
 export default function Home() {
   return (
@@ -62,6 +63,8 @@ export default function Home() {
           >
             Documentation
           </a>
+
+          <TesteUser />
         </div>
       </main>
     </div>
