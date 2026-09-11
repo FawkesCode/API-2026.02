@@ -1,5 +1,5 @@
 import Image from "next/image";
-import TesteUser from "./api/teste/teste-prisma";
+import TesteUser from "../components/teste-prisma";
 
 export default function Home() {
   return (
