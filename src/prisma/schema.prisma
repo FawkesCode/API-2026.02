@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client"
   output   = "../lib/generated/prisma"
@@ -10,8 +7,173 @@ datasource db {
   provider = "mysql"
 }
 
+enum Cargo {
+  TECNICO
+  GESTOR
+  SUPORTE
+  COMERCIAL
+}
 
-model Teste {
-  id Int @id
-  nome String @unique
+enum StatusTicket {
+  ABERTO
+  EM_ANDAMENTO
+  ENCERRADO
+}
+
+enum Prioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum Categoria {
+  MANUTENCAO
+  INSTALACAO
+}
+
+model Usuario {
+  id              String   @id @default(uuid()) @db.Char(36)
+  nome            String   @db.VarChar(120)
+  email           String   @unique(map: "uq_usuarios_email") @db.VarChar(254)
+  senhaHash       String   @map("senha_hash") @db.VarChar(255)
+  cargo           Cargo
+  ativo           Boolean  @default(true)
+  senhaProvisoria Boolean  @default(true) @map("senha_provisoria")
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+  atualizadoEm    DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
+
+  // O usuario pode ficar temporariamente sem equipe, conforme a US7.
+  equipeId String? @map("equipe_id") @db.Char(36)
+  equipe   Equipe? @relation(fields: [equipeId], references: [id], onDelete: SetNull)
+
+  projetosGerenciados Projeto[]         @relation("ProjetosGerenciados")
+  ticketsAbertos      Ticket[]          @relation("TicketsAbertos")
+  ticketsResponsaveis Ticket[]          @relation("TicketsResponsaveis")
+  relatorios          Relatorio[]
+  eventosHistorico    HistoricoTicket[]
+
+  @@index([equipeId], map: "ix_usuarios_equipe")
+  @@map("usuarios")
+}
+
+model Equipe {
+  id           String   @id @default(uuid()) @db.Char(36)
+  nome         String   @unique(map: "uq_equipes_nome") @db.VarChar(100)
+  descricao    String?  @db.VarChar(255)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
+
+  usuarios Usuario[]
+  projetos Projeto[]
+
+  @@map("equipes")
+}
+
+model Cliente {
+  id           String   @id @default(uuid()) @db.Char(36)
+  nome         String   @unique(map: "uq_clientes_nome") @db.VarChar(150)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
+
+  projetos Projeto[]
+
+  @@map("clientes")
+}
+
+model Projeto {
+  id              String   @id @default(uuid()) @db.Char(36)
+  nome            String   @db.VarChar(150)
+  localInstalacao String   @map("local_instalacao") @db.VarChar(255)
+  ativo           Boolean  @default(true)
+  criadoEm        DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+  atualizadoEm    DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
+
+  clienteId String  @map("cliente_id") @db.Char(36)
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  // Cada projeto possui uma unica equipe responsavel no MVP.
+  equipeId String @map("equipe_id") @db.Char(36)
+  equipe   Equipe @relation(fields: [equipeId], references: [id], onDelete: Restrict)
+
+  gestorId String  @map("gestor_id") @db.Char(36)
+  gestor   Usuario @relation("ProjetosGerenciados", fields: [gestorId], references: [id], onDelete: Restrict)
+
+  // A equipe dos tickets e herdada do projeto.
+  tickets Ticket[]
+
+  @@unique([clienteId, nome], map: "uq_projetos_cliente_nome")
+  @@index([equipeId], map: "ix_projetos_equipe")
+  @@index([gestorId], map: "ix_projetos_gestor")
+  @@map("projetos")
+}
+
+model Ticket {
+  id           String       @id @default(uuid()) @db.Char(36)
+  titulo       String       @db.VarChar(180)
+  descricao    String       @db.Text
+  categoria    Categoria
+  prioridade   Prioridade   @default(MEDIA)
+  status       StatusTicket @default(ABERTO)
+  slaEm        DateTime     @map("sla_em") @db.DateTime(3)
+  encerradoEm  DateTime?    @map("encerrado_em") @db.DateTime(3)
+  criadoEm     DateTime     @default(now()) @map("criado_em") @db.DateTime(3)
+  atualizadoEm DateTime     @updatedAt @map("atualizado_em") @db.DateTime(3)
+
+  projetoId String  @map("projeto_id") @db.Char(36)
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Restrict)
+
+  abertoPorId String  @map("aberto_por_id") @db.Char(36)
+  abertoPor   Usuario @relation("TicketsAbertos", fields: [abertoPorId], references: [id], onDelete: Restrict)
+
+  responsavelId String?  @map("responsavel_id") @db.Char(36)
+  responsavel   Usuario? @relation("TicketsResponsaveis", fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  relatorios Relatorio[]
+  historico  HistoricoTicket[]
+
+  @@index([projetoId, status, prioridade, criadoEm], map: "ix_tickets_fila")
+  @@index([status, slaEm], map: "ix_tickets_sla")
+  @@index([abertoPorId], map: "ix_tickets_aberto_por")
+  @@index([responsavelId], map: "ix_tickets_responsavel")
+  @@map("tickets")
+}
+
+model Relatorio {
+  id                  String   @id @default(uuid()) @db.Char(36)
+  trabalhoRealizado   String   @map("trabalho_realizado") @db.Text
+  materiaisUtilizados String   @map("materiais_utilizados") @db.Text
+  outrosDetalhes      String   @map("outros_detalhes") @db.Text
+  criadoEm            DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+  atualizadoEm        DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
+
+  ticketId String @map("ticket_id") @db.Char(36)
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  autorId String  @map("autor_id") @db.Char(36)
+  autor   Usuario @relation(fields: [autorId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, criadoEm], map: "ix_relatorios_ticket")
+  @@index([autorId], map: "ix_relatorios_autor")
+  @@map("relatorios")
+}
+
+model HistoricoTicket {
+  id        String   @id @default(uuid()) @db.Char(36)
+  evento    String   @db.VarChar(50)
+  descricao String   @db.Text
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+
+  ticketId String @map("ticket_id") @db.Char(36)
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+
+  // Eventos automaticos do sistema podem nao possuir um usuario autor.
+  usuarioId String?  @map("usuario_id") @db.Char(36)
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, criadoEm], map: "ix_historico_ticket_data")
+  @@index([usuarioId], map: "ix_historico_usuario")
+  @@map("historico_ticket")
 }
