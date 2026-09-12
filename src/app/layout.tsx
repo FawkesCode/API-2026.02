@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,9 +27,31 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={cn(
+        "h-full",
+        "antialiased",
+        geistSans.variable,
+        geistMono.variable,
+        "font-sans",
+        inter.variable,
+      )}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full h-screen flex flex-col bg-zinc-50">
+        <SidebarProvider>
+          <AppSidebar />
+          <main className="flex flex-col w-full overflow-auto">
+            <SidebarTrigger />
+            {/* PROVISORY HEADER */}
+            <div className="h-full pl-10 pr-10 pt-5 flex flex-col">
+              <div className="border-b-2 border-blue-900 pb-2">
+                <h1 className="text-3xl mb-2 font-bold">Welcome Back, User!</h1>
+                <h2 className="text-gray-500">This is your Dashboard Page</h2>
+              </div>
+              <TooltipProvider>{children}</TooltipProvider>
+            </div>
+          </main>
+        </SidebarProvider>
+      </body>
     </html>
   );
 }
