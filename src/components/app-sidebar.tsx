@@ -13,9 +13,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LucideIcon, Settings, Ticket, Users } from "lucide-react";
+import { LogOut, LucideIcon, Settings, Ticket, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import UserSidebar from "./user-sidebar";
+import LogoSidebar from "./logo-sidebar";
 
 interface NavItem {
   title: string;
@@ -47,17 +49,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar variant="sidebar" collapsible="icon" className="">
-      <SidebarHeader>
+      <SidebarHeader className="flex flex-col gap-6 pt-4">
+        <LogoSidebar />
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-blue-900 text-white">
-                A
-              </div>
-              <span className="text-xl text-blue-900 font-semibold">
-                Altave
-              </span>
-            </SidebarMenuButton>
+          <SidebarMenuItem className=" *:p-0 ">
+            <UserSidebar />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -88,20 +84,21 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="pl-0 pr-0">
         <SidebarMenuItem>
-          <SidebarMenuButton className=" justify-center ">
-            <span>SAIR &gt;&gt;</span>
+          <SidebarMenuButton className="flex cursor-pointer justify-center ml-2 w-[93%]">
+            <LogOut />
+            <span>SAIR</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
         <div className="sidebar-divider"></div>
         <div className=" p-5 text-center flex flex-col gap-2">
-          <small>
+          <p className="text-xs">
             {state == "collapsed"
               ? "FawkesCode"
               : "Desenvolvido por FawkesCode para Altave"}
-          </small>
-          <small>
+          </p>
+          <p className="text-xs">
             <i>{state == "collapsed" ? "2º DSM" : "2º Semestre DSM"}</i>
-          </small>
+          </p>
         </div>
       </SidebarFooter>
     </Sidebar>
