@@ -11,6 +11,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { LogOut, LucideIcon, Settings, Ticket, Users } from "lucide-react";
@@ -18,6 +19,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import UserSidebar from "./user-sidebar";
 import LogoSidebar from "./logo-sidebar";
+import { cn } from "cn";
+import LogoFawkes from "./logo-fawkes";
 
 interface NavItem {
   title: string;
@@ -32,7 +35,7 @@ export function AppSidebar() {
   const items: NavItem[] = [
     {
       title: "Projetos",
-      url: "/about",
+      url: "/projetos",
       icon: Settings,
     },
     {
@@ -42,20 +45,16 @@ export function AppSidebar() {
     },
     {
       title: "Minha Equipe",
-      url: "/team",
+      url: "/equipe",
       icon: Users,
     },
   ];
 
   return (
-    <Sidebar variant="sidebar" collapsible="icon" className="">
-      <SidebarHeader className="flex flex-col gap-6 pt-4">
+    <Sidebar variant="sidebar" collapsible="icon">
+      <SidebarHeader className="flex flex-col gap-8 pt-4 pb-4">
         <LogoSidebar />
-        <SidebarMenu>
-          <SidebarMenuItem className=" *:p-0 ">
-            <UserSidebar />
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <UserSidebar />
       </SidebarHeader>
       <div className="sidebar-divider"></div>
       <SidebarContent>
@@ -82,19 +81,28 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="pl-0 pr-0">
+      <SidebarFooter>
         <SidebarMenuItem>
-          <SidebarMenuButton className="flex cursor-pointer justify-center ml-2 w-[93%]">
-            <LogOut />
+          <SidebarMenuButton
+            tooltip="Sair"
+            className="flex cursor-pointer justify-center"
+          >
+            <LogOut className="ml-1" />
             <span>SAIR</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
-        <div className="sidebar-divider"></div>
-        <div className=" p-5 text-center flex flex-col gap-2">
+
+        <div
+          className={cn(" p-5 text-center flex flex-col gap-2", {
+            "p-0 pb-5": state === "collapsed",
+          })}
+        >
           <p className="text-xs">
-            {state == "collapsed"
-              ? "FawkesCode"
-              : "Desenvolvido por FawkesCode para Altave"}
+            {state == "collapsed" ? (
+              <LogoFawkes />
+            ) : (
+              "Desenvolvido por FawkesCode para Altave"
+            )}
           </p>
           <p className="text-xs">
             <i>{state == "collapsed" ? "2º DSM" : "2º Semestre DSM"}</i>

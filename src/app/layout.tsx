@@ -40,8 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SidebarProvider>
           <AppSidebar />
           <main className="flex flex-col w-full overflow-auto">
-            <SidebarTrigger />
-            {/* PROVISORY HEADER */}
+            <SidebarTrigger className="cursor-pointer" />
             <div className="h-full pl-10 pr-10 pt-5 flex flex-col">
               <div className="border-b-2 border-blue-900 pb-2">
                 <h1 className="text-3xl mb-2 font-bold">Welcome Back, User!</h1>
