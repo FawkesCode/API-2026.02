@@ -8,6 +8,7 @@
   --background: oklch(1 0 0);
   --foreground: oklch(0.36 0 0);
   --card: oklch(1 0 0);
+
   --card-foreground: oklch(0.3155 0.0657 246.9602);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.36 0 0);
@@ -174,5 +175,9 @@
   }
   html {
     @apply font-sans;
+  }
+
+  .sidebar-divider {
+    @apply border-b border-blue-700;
   }
 }

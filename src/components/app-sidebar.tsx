@@ -52,7 +52,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
-      <SidebarHeader className="flex flex-col gap-8 pt-4 pb-4">
+      <SidebarHeader className="flex flex-col gap-6 pt-4 pb-4">
         <LogoSidebar />
         <UserSidebar />
       </SidebarHeader>

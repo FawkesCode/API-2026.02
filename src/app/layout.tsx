@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import PageHeader from "@/components/page-header";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -41,11 +42,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppSidebar />
           <main className="flex flex-col w-full overflow-auto">
             <SidebarTrigger className="cursor-pointer" />
-            <div className="h-full pl-10 pr-10 pt-5 flex flex-col">
-              <div className="border-b-2 border-blue-900 pb-2">
-                <h1 className="text-3xl mb-2 font-bold">Welcome Back, User!</h1>
-                <h2 className="text-gray-500">This is your Dashboard Page</h2>
-              </div>
+            <div className="h-full pl-10 pr-10  flex flex-col">
+              <PageHeader />
               <TooltipProvider>{children}</TooltipProvider>
             </div>
           </main>
