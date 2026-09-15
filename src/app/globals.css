@@ -71,6 +71,8 @@
 }
 
 @theme inline {
+  --color-gray-100: #e2e4f2;
+
   --color-blue-200: #d0eeff;
   --color-cyan-400: #328aba;
   --color-blue-500: #3a4aff;
