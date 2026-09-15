@@ -107,3 +107,5 @@ Nesse contexto, o desafio é construir uma plataforma unificada de tickets com i
 // Testando review Gemini 3.8 Flash High no PR
 // Disparo oficial final do review autonomo
 // Testando review executado com modelo OpenAI gpt-5
+
+<!-- teste de revisao automatica com gpt-5.6-luna -->
