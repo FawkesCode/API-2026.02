@@ -6,7 +6,8 @@
 
 
 | **Meta da Sprint:** | **User Stories de rank 1,7,9,10,11,13,14,15**|
-| Previsão da Sprint (extras, sem compromisso de entrega): | User Story de rank 5 (13 Story Points) |
+
+---
 
 | Rank | Prioridade | User Story | Estimativa | Sprint |
 |:----:|:----------:|------------|:----------:|:------:|
