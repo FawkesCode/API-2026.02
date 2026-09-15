@@ -2,13 +2,12 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
-    <input
-      type={type}
-      data-slot="input"
+    <textarea
+      data-slot="textarea"
       className={cn(
-        "flex h-10 w-full rounded-2xl border border-input bg-background px-3.5 py-2 text-sm text-foreground",
+        "flex min-h-24 w-full resize-none rounded-2xl border border-input bg-background px-3.5 py-2.5 text-sm text-foreground",
         "placeholder:text-muted-foreground",
         "transition-colors duration-150",
         "hover:border-cyan-300",
@@ -22,4 +21,4 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   )
 }
 
-export { Input }
+export { Textarea }
