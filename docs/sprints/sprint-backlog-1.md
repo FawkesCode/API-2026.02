@@ -19,4 +19,3 @@
 |  14  |    Baixa   | Como GESTOR, quero que os tickets de maior prioridade apareçam no topo da fila, para que minha priorização de demandas seja mais rápida e precisa.| 8 | 1 |
 |  15  |    Baixa   | Como ANALISTA DE SUPORTE EXTERNO,  quero poder criar tickets de manutenção e atribuir estes tickets a um determinado projeto, para que o time responsável possa atuar.| 8 | 1 |
 
-Documentação em andamento 🚧
