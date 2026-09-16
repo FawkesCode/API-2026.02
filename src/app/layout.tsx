@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={cn("h-full", "antialiased", "font-sans")}>
-      <body className="min-h-full h-screen flex flex-col bg-zinc-50">
+      <body className="min-h-full h-screen flex flex-col">
         <SidebarProvider>
           <AppSidebar />
           <main className="flex flex-col w-full overflow-auto">
