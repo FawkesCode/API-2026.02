@@ -43,12 +43,22 @@ export default function Projects() {
       ticketCount: 5,
       createdBy: "Rodrigo",
     },
+    {
+      id: 15,
+      title: "Acesso Biométrico",
+      client: "Nova FinTech",
+      location: "São Paulo, SP",
+      description:
+        "Instalação de sensores térmicos IoT, atuadores automáticos e integração com o sistema central BMS.",
+      ticketCount: 5,
+      createdBy: "Rodrigo",
+    },
   ];
 
   return (
     <>
       <PageHeader title="Projetos" />
-      <section className="grid grid-cols-4  gap-4">
+      <section className="grid grid-cols-4  gap-4 pb-8">
         {data.length !== 0 ? (
           data.map((project) => (
             <ProjectCard

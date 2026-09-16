@@ -21,7 +21,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppSidebar />
           <main className="flex flex-col w-full overflow-auto">
             <SidebarTrigger className="cursor-pointer" />
-            <div className="h-full pl-10 pr-10 flex flex-col">
+            <div className="h-full pl-15 pr-15 flex flex-col">
               <TooltipProvider>{children}</TooltipProvider>
             </div>
           </main>

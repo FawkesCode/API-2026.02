@@ -1,5 +1,6 @@
 import PageHeader from "@/components/page-header";
 import TicketCard from "@/components/ticket-card";
+import TicketFilter from "@/components/ticket-filter";
 
 interface PageProps {
   params: Promise<{ id: number }>;
@@ -83,7 +84,9 @@ async function page({ params, searchParams }: PageProps) {
   return (
     <>
       <PageHeader title={`Projeto ${title} : COD ${id} > Tickets`} />
-      <section className="flex flex-col gap-4">
+
+      <section className="flex flex-col gap-4 pb-8">
+        <TicketFilter />
         {data.length !== 0 ? (
           data.map((ticket) => (
             <TicketCard
