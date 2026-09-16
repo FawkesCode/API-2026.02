@@ -3,14 +3,15 @@ import TicketCard from "@/components/ticket-card";
 import TicketFilter from "@/components/ticket-filter";
 
 interface PageProps {
-  params: Promise<{ id: number }>;
-  searchParams: Promise<{ title?: string }>;
+  params: Promise<{ id: string }>;
 }
 
-async function page({ params, searchParams }: PageProps) {
+async function page({ params }: PageProps) {
   const { id } = await params;
-  const { title } = await searchParams; // Acho que vale mais a pena pegar o title por meio de get ao invés de passar ele como query param. N página de ticket, ignorei o title, justamente para focar em tentar essa alternativa depois
 
+  // TODO: Validação da url a partir dos ids disponíveis no banco
+
+  // Mock temporário apenas para testar visibilidade dos componentes | TODO: Substituir para os dados verdadeiros quando os endpoints estiverem concluídos
   const data = [
     {
       id: 101,
@@ -83,30 +84,17 @@ async function page({ params, searchParams }: PageProps) {
 
   return (
     <>
-      <PageHeader title={`Projeto ${title} : COD ${id} > Tickets`} />
+      <PageHeader title={`Projeto COD ${id} > Tickets`} />
 
       <section className="flex flex-col gap-4 pb-8">
         <TicketFilter />
         {data.length !== 0 ? (
           data.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              projectId={id}
-              title={ticket.title}
-              id={ticket.id}
-              type={ticket.type}
-              openedAt={ticket.openedAt}
-              createdBy={ticket.createdBy}
-              teams={ticket.teams}
-              status={ticket.status}
-              priority={ticket.priority}
-              description={ticket.description}
-              recentLogs={ticket.recentLogs}
-            />
+            <TicketCard key={ticket.id} ticket={ticket} projectId={id} />
           ))
         ) : (
           <p className="col-span-full text-sm text-muted-foreground">
-            Nenhum ticket cadastrado para o projeto {title} ainda!
+            Nenhum ticket cadastrado para o projeto #{id} ainda!
           </p>
         )}
       </section>

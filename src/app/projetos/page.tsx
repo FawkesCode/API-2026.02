@@ -12,6 +12,7 @@ interface ProjectInfo {
 }
 
 export default function Projects() {
+  // Mock temporário apenas para testar visibilidade dos componentes | TODO: Substituir para os dados verdadeiros quando os endpoints estiverem concluídos
   const data: Array<ProjectInfo> = [
     {
       id: 10,
@@ -24,7 +25,7 @@ export default function Projects() {
       createdBy: "Lucas",
     },
     {
-      id: 12,
+      id: 11,
       title: "Modernização HVAC",
       client: "Hospital Santa Clara",
       location: "Belo Horizonte, MG",
@@ -34,7 +35,7 @@ export default function Projects() {
       createdBy: "Mariana",
     },
     {
-      id: 11,
+      id: 12,
       title: "Acesso Biométrico",
       client: "Nova FinTech",
       location: "São Paulo, SP",
@@ -44,7 +45,7 @@ export default function Projects() {
       createdBy: "Rodrigo",
     },
     {
-      id: 15,
+      id: 13,
       title: "Acesso Biométrico",
       client: "Nova FinTech",
       location: "São Paulo, SP",
@@ -58,19 +59,10 @@ export default function Projects() {
   return (
     <>
       <PageHeader title="Projetos" />
-      <section className="grid grid-cols-4  gap-4 pb-8">
+      <section className="grid grid-cols-1 md:grid-cols-2  xl:grid-cols-4  gap-4 pb-8">
         {data.length !== 0 ? (
           data.map((project) => (
-            <ProjectCard
-              key={project.id}
-              id={project.id}
-              title={project.title}
-              client={project.title}
-              location={project.location}
-              description={project.description}
-              ticketCount={project.ticketCount}
-              createdBy={project.createdBy}
-            />
+            <ProjectCard key={project.id} project={project} />
           ))
         ) : (
           <p className="col-span-full text-sm text-muted-foreground">
