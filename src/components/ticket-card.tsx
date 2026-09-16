@@ -18,6 +18,7 @@ interface Ticket {
   title: string;
   type: string;
   openedAt: string;
+  timeRemaining: string;
   createdBy: string;
   teams: Array<string>;
   status: string;
@@ -46,20 +47,22 @@ function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
     >
       <Card className="border border-transparent transition-all duration-100 ease-in-out min-h-min h-full justify-between">
         <CardHeader>
-          <CardTitle className="text-xl font-bold">
+          <CardTitle className="text-xl flex gap-2 font-bold">
+            <span className="flex items-center gap-1 text-lg">
+              <Ticket aria-hidden={true} size="20" /> {ticket.id} :
+            </span>
             {ticket.title} | {ticket.type}
           </CardTitle>
           <CardDescription className="border-b pb-4 text-foreground font-medium flex flex-col gap-2">
             <div className="flex flex-col sm:flex-row items-start md:items-center gap-3">
-              <span>Aberto em {ticket.openedAt}</span>
-              <span className="hidden sm:flex">•</span>
-              <span className="flex items-center gap-1">
-                <Ticket aria-hidden={true} size="15" /> #{ticket.id}
+              <span className="text-accent">
+                Tempo restante: {ticket.timeRemaining} dias
               </span>
-              <span className="hidden sm:flex">•</span>
-              <span>
-                Aberto por <i>{ticket.createdBy}</i>
-              </span>
+
+              <p className="text-foreground font-normal">
+                Aberto em {ticket.openedAt} por
+                <span className=" italic"> {ticket.createdBy}</span>
+              </p>
             </div>
             <div className="flex flex-col gap-2 sm:gap-0 sm:flex-row  justify-between">
               <div className="flex flex-wrap md:flex-nowrap gap-2">
