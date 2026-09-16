@@ -7,11 +7,12 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { ChevronLeft, ChevronsLeft, Ticket } from "lucide-react";
+import { ChevronsLeft, Ticket } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { PriorityBadge } from "./priority-badge";
 import { Button } from "./ui/button";
 import { ReactNode } from "react";
+import { cn } from "cn";
 
 interface TeamLog {
   title: string;
@@ -31,6 +32,7 @@ interface TicketCardProps {
   priority: string;
   description: string;
   recentLogs: Array<TeamLog>;
+  woLogs?: boolean;
 }
 
 function TicketCard({
@@ -45,6 +47,7 @@ function TicketCard({
   priority,
   description,
   recentLogs,
+  woLogs,
 }: TicketCardProps) {
   return (
     <Link
@@ -87,7 +90,12 @@ function TicketCard({
           <p>{description}</p>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <div className="bg-background w-full p-3 rounded-xl flex flex-col log-view">
+          <div
+            className={cn(
+              "bg-background w-full p-3 rounded-xl flex flex-col log-view",
+              { hidden: woLogs },
+            )}
+          >
             <h4 className="text-card-foreground font-bold text-md mb-3">
               LOGS Recentes
             </h4>
