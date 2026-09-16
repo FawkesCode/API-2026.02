@@ -1,3 +1,10 @@
+import PageHeader from "@/components/page-header";
+
 export default function Projects() {
-  return <h2>Página de Projetos</h2>;
+  return (
+    <>
+      <PageHeader>Projetos</PageHeader>
+      <h2>Página de Projetos</h2>
+    </>
+  );
 }

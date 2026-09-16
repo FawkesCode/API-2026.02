@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import PageHeader from "@/components/page-header";
 
 export const metadata: Metadata = {
   title: "Controle de Tickets Altave",
@@ -22,7 +21,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <main className="flex flex-col w-full overflow-auto">
             <SidebarTrigger className="cursor-pointer" />
             <div className="h-full pl-10 pr-10 flex flex-col">
-              <PageHeader />
               <TooltipProvider>{children}</TooltipProvider>
             </div>
           </main>
