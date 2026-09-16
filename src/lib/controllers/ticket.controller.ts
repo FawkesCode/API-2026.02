@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
-import { servicoTicket } from "@/lib/services/ticket.service";
-import {criarTicketSchema,atualizarPrioridadeTicketSchema} from "@/schemas/ticket.schema";
+import { ErroConflitoPrioridade, servicoTicket } from "@/lib/services/ticket.service";
+import {
+  atualizarPrioridadeTicketSchema,
+  criarTicketSchema,
+} from "@/schemas/ticket.schema";
 
 async function extrairJson(requisicao: Request) {
   try {
@@ -18,12 +21,43 @@ async function extrairJson(requisicao: Request) {
   }
 }
 
+function validarCorpo<T>(schema: z.ZodType<T>, corpo: unknown) {
+  const resultado = schema.safeParse(corpo);
+  if (!resultado.success) {
+    return {
+      dados: null,
+      erro: NextResponse.json(
+        { erro: "Dados inválidos.", detalhes: z.flattenError(resultado.error).fieldErrors },
+        { status: 400 },
+      ),
+    };
+  }
+  return { dados: resultado.data, erro: null };
+}
+
 function tratarErroInesperado(erro: unknown) {
-  if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2003") {
-    return NextResponse.json(
-      { erro: "Referência inválida: projetoId, abertoPorId ou responsavelId não existem." },
-      { status: 400 },
-    );
+  if (erro instanceof ErroConflitoPrioridade) {
+    return NextResponse.json({ erro: erro.message }, { status: 409 });
+  }
+
+  if (erro instanceof Prisma.PrismaClientKnownRequestError) {
+    if (erro.code === "P2003") {
+      return NextResponse.json(
+        { erro: "Referência inválida: projetoId, abertoPorId ou responsavelId não existem." },
+        { status: 400 },
+      );
+    }
+
+    if (erro.code === "P2025") {
+      return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+    }
+
+    if (erro.code === "P2002") {
+      return NextResponse.json(
+        { erro: "Já existe um registro com esses dados." },
+        { status: 409 },
+      );
+    }
   }
 
   console.error(erro);
@@ -35,16 +69,11 @@ export class ControladorTicket {
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
-    const resultado = criarTicketSchema.safeParse(corpo);
-    if (!resultado.success) {
-      return NextResponse.json(
-        { erro: "Dados inválidos.", detalhes: z.flattenError(resultado.error).fieldErrors },
-        { status: 400 },
-      );
-    }
+    const { dados, erro: erroDeValidacao } = validarCorpo(criarTicketSchema, corpo);
+    if (erroDeValidacao) return erroDeValidacao;
 
     try {
-      const ticket = await servicoTicket.criar(resultado.data);
+      const ticket = await servicoTicket.criar(dados);
       return NextResponse.json(ticket, { status: 201 });
     } catch (erro) {
       return tratarErroInesperado(erro);
@@ -52,19 +81,19 @@ export class ControladorTicket {
   }
 
   async atualizarPrioridade(requisicao: Request, ticketId: string) {
+    const idValidado = z.uuid().safeParse(ticketId);
+    if (!idValidado.success) {
+      return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
+    }
+
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
-    const resultado = atualizarPrioridadeTicketSchema.safeParse(corpo);
-    if (!resultado.success) {
-      return NextResponse.json(
-        { erro: "Dados inválidos.", detalhes: z.flattenError(resultado.error).fieldErrors },
-        { status: 400 },
-      );
-    }
+    const { dados, erro: erroDeValidacao } = validarCorpo(atualizarPrioridadeTicketSchema, corpo);
+    if (erroDeValidacao) return erroDeValidacao;
 
     try {
-      const ticket = await servicoTicket.atualizarPrioridade(ticketId, resultado.data);
+      const ticket = await servicoTicket.atualizarPrioridade(idValidado.data, dados);
       if (!ticket) {
         return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
       }

@@ -5,6 +5,13 @@ import type {
   AtualizarPrioridadeTicketSchema,
 } from "@/schemas/ticket.schema";
 
+export class ErroConflitoPrioridade extends Error {
+  constructor() {
+    super("A prioridade do ticket foi alterada por outra requisição enquanto esta era processada.");
+    this.name = "ErroConflitoPrioridade";
+  }
+}
+
 export class ServicoTicket {
   async criar(dados: CriarTicketSchema) {
     return prisma.ticket.create({
@@ -22,18 +29,24 @@ export class ServicoTicket {
   }
 
   async atualizarPrioridade(ticketId: string, dados: AtualizarPrioridadeTicketSchema) {
-    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
-    if (!ticket) return null;
-
-    if (ticket.prioridade === dados.prioridade) {
-      return ticket;
-    }
-
     return prisma.$transaction(async (tx) => {
-      const atualizado = await tx.ticket.update({
-        where: { id: ticketId },
+      const ticket = await tx.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) return null;
+
+      if (ticket.prioridade === dados.prioridade) {
+        return ticket;
+      }
+
+      const { count } = await tx.ticket.updateMany({
+        where: { id: ticketId, prioridade: ticket.prioridade },
         data: { prioridade: dados.prioridade },
       });
+
+      if (count === 0) {
+        throw new ErroConflitoPrioridade();
+      }
+
+      const atualizado = await tx.ticket.findUniqueOrThrow({ where: { id: ticketId } });
 
       await tx.historicoTicket.create({
         data: {
