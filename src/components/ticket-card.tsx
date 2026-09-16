@@ -93,7 +93,7 @@ function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
             <div className="flex flex-col gap-2 mask-[linear-gradient(to_top,transparent,black_2.5rem)]">
               {ticket.recentLogs.map((log) => (
                 <TeamLog
-                  key={log.title}
+                  key={`${log.title}-${log.sentAt}`}
                   title={log.title}
                   sentBy={log.sentBy}
                   sentAt={log.sentAt}

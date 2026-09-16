@@ -67,11 +67,11 @@ function FilterInput({
   const renderInput = () => {
     switch (type) {
       case "date":
-        return <DatePicker id={id} />;
+        return <DatePicker />;
       case "select":
         return (
           <Select items={items}>
-            <SelectTrigger className="rounded-xl p-3  min-h-11 h-auto">
+            <SelectTrigger className="rounded-xl p-3  min-h-11 h-auto" id={id}>
               <SelectValue placeholder="Selecione uma opção" />
             </SelectTrigger>
             <SelectContent alignItemWithTrigger={false} className="rounded-xl">

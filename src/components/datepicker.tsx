@@ -15,7 +15,7 @@ import { FieldLabel } from "./ui/field";
 import { useState } from "react";
 import { ptBR } from "date-fns/locale";
 
-export default function DatePicker({ id }: { id: string }) {
+export default function DatePicker() {
   const [date, setDate] = useState<Date>();
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
@@ -24,7 +24,6 @@ export default function DatePicker({ id }: { id: string }) {
       <PopoverTrigger
         render={
           <Button
-            id={id}
             variant="outline"
             data-empty={!date}
             className={cn(
@@ -36,7 +35,6 @@ export default function DatePicker({ id }: { id: string }) {
       >
         <CalendarIcon aria-hidden={true} />
         <FieldLabel
-          htmlFor={id}
           className={cn(
             "text-sm left-7 font-normal text-muted-foreground top-3 bg-transparent absolute max-w-min pl-2 pr-2  transition-all peer-focus:text-muted peer-focus:top-[-8] peer-focus:bg-white peer-focus:text-xs peer-focus:font-medium",
             {

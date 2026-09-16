@@ -1,10 +1,6 @@
-"use client";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function NotFound() {
-  const router = useRouter();
-
   return (
     <section className="flex flex-col  items-center mt-20 gap-3 h-full w-full">
       <h1 className="text-8xl text-card-foreground">404</h1>
@@ -13,12 +9,12 @@ export default function NotFound() {
         <p className="text-muted-foreground">
           Ops... Parece que não encontramos o caminho que você busca.
         </p>
-        <Button
-          className="rounded-xl max-w-min pl-5 pr-5 cursor-pointer"
-          onClick={() => router.back()}
+        <Link
+          className="rounded-xl text-sm bg-primary text-primary-foreground p-3 pl-5 pr-5 cursor-pointer"
+          href="/projetos"
         >
-          Voltar
-        </Button>
+          Voltar para projetos
+        </Link>
       </div>
     </section>
   );
