@@ -15,12 +15,15 @@ export default function ProjectsPage() {
   const [projects, setProjects] = React.useState<Project[]>([])
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  // Contador monotônico: não volta atrás se um projeto for removido.
+  // TODO: o código definitivo deve ser gerado pelo backend.
+  const nextCode = React.useRef(1)
 
   function handleCreateProject(data: ProjectFormValues) {
     // TODO: substituir por chamada ao endpoint (POST /projetos) quando disponível.
     const newProject: Project = {
       id: crypto.randomUUID(),
-      codigo: `PRJ-${String(projects.length + 1).padStart(3, "0")}`,
+      codigo: `PRJ-${String(nextCode.current++).padStart(3, "0")}`,
       ...data,
     }
     setProjects((prev) => [newProject, ...prev])

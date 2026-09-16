@@ -89,7 +89,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-xl font-bold text-accent", className)}
+      className={cn("text-xl font-bold text-cyan-300", className)}
       {...props}
     />
   )
@@ -100,7 +100,7 @@ function DialogDivider({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-divider"
-      className={cn("my-3 h-px w-full  bg-accent ", className)}
+      className={cn("my-3 h-px w-full bg-gradient-to-r from-cyan-300 to-cyan-300/10", className)}
       {...props}
     />
   )

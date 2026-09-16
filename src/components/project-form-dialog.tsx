@@ -24,15 +24,23 @@ export interface ProjectFormValues {
   descricao: string
 }
 
-interface ProjectFormDialogProps {
+/** Regra compartilhada: rejeita string vazia ou só com espaços. */
+function required(message: string) {
+  return (value: string) => value.trim().length > 0 || message
+}
+
+interface ProjectFormDialogBaseProps {
   /** Chamado com os dados validados quando o formulário é enviado com sucesso. */
   onSubmitProject?: (data: ProjectFormValues) => Promise<void> | void
-  /** Controle externo (opcional) do dialog. Se omitido, o componente controla seu próprio estado. */
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
   /** Esconde o botão de gatilho interno quando o dialog é aberto de fora. */
   hideTrigger?: boolean
 }
+
+// Se `open` for passado, `onOpenChange` passa a ser obrigatório — evita a
+// configuração inválida de fornecer open sem forma de fechar o dialog.
+type ProjectFormDialogProps =
+  | (ProjectFormDialogBaseProps & { open: boolean; onOpenChange: (open: boolean) => void })
+  | (ProjectFormDialogBaseProps & { open?: undefined; onOpenChange?: undefined })
 
 export function ProjectFormDialog({
   onSubmitProject,
@@ -43,6 +51,8 @@ export function ProjectFormDialog({
   const [internalOpen, setInternalOpen] = React.useState(false)
   const isControlled = open !== undefined
   const dialogOpen = isControlled ? open : internalOpen
+
+  const [submitError, setSubmitError] = React.useState<string | null>(null)
 
   function setDialogOpen(value: boolean) {
     if (isControlled) {
@@ -67,11 +77,16 @@ export function ProjectFormDialog({
   })
 
   async function onSubmit(data: ProjectFormValues) {
-    // Endpoint ainda não integrado: por enquanto só repassa os dados
-    // validados pra quem estiver escutando (ex.: adicionar à lista local).
-    await onSubmitProject?.(data)
-    reset()
-    setDialogOpen(false)
+    setSubmitError(null)
+    try {
+      // Endpoint ainda não integrado: por enquanto só repassa os dados
+      // validados pra quem estiver escutando (ex.: adicionar à lista local).
+      await onSubmitProject?.(data)
+      reset()
+      setDialogOpen(false)
+    } catch {
+      setSubmitError("Não foi possível cadastrar o projeto. Tente novamente.")
+    }
   }
 
   return (
@@ -79,7 +94,10 @@ export function ProjectFormDialog({
       open={dialogOpen}
       onOpenChange={(value) => {
         setDialogOpen(value)
-        if (!value) reset()
+        if (!value) {
+          reset()
+          setSubmitError(null)
+        }
       }}
     >
       {!hideTrigger && (
@@ -107,10 +125,12 @@ export function ProjectFormDialog({
               error={errors.nomeProjeto?.message}
               {...register("nomeProjeto", {
                 required: "Informe o nome do projeto.",
+                maxLength: { value: 150, message: "Máximo de 150 caracteres." },
+                validate: required("Informe o nome do projeto."),
               })}
             />
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 ">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <FormInput
                 label="Cliente:"
                 placeholder="Digite o que o input pede..."
@@ -118,6 +138,8 @@ export function ProjectFormDialog({
                 error={errors.cliente?.message}
                 {...register("cliente", {
                   required: "Informe o cliente.",
+                  maxLength: { value: 150, message: "Máximo de 150 caracteres." },
+                  validate: required("Informe o cliente."),
                 })}
               />
               <FormInput
@@ -127,6 +149,8 @@ export function ProjectFormDialog({
                 error={errors.localInstalacao?.message}
                 {...register("localInstalacao", {
                   required: "Informe o local de instalação.",
+                  maxLength: { value: 150, message: "Máximo de 150 caracteres." },
+                  validate: required("Informe o local de instalação."),
                 })}
               />
             </div>
@@ -138,9 +162,17 @@ export function ProjectFormDialog({
               error={errors.descricao?.message}
               {...register("descricao", {
                 required: "Informe uma descrição.",
+                maxLength: { value: 1000, message: "Máximo de 1000 caracteres." },
+                validate: required("Informe uma descrição."),
               })}
             />
           </DialogBody>
+
+          {submitError && (
+            <p role="alert" className="mt-3 text-sm font-medium text-destructive">
+              {submitError}
+            </p>
+          )}
 
           <DialogFooter>
             <Button
