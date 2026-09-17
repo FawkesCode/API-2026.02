@@ -71,7 +71,7 @@ export function AppSidebar() {
                       tooltip={item.title}
                       render={<Link href={item.url} />}
                     >
-                      <item.icon />
+                      <item.icon aria-hidden={true} />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -87,7 +87,7 @@ export function AppSidebar() {
             tooltip="Sair"
             className="flex cursor-pointer justify-center"
           >
-            <LogOut className="ml-1" />
+            <LogOut aria-hidden={true} className="ml-1" />
             <span>SAIR</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
