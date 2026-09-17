@@ -1,5 +1,11 @@
+"use client";
+import { useState } from "react";
 import PageHeader from "@/components/page-header";
 import ProjectCard from "@/components/project-card";
+import {
+  ProjectFormDialog,
+  type ProjectFormValues,
+} from "@/components/project-form-dialog";
 
 interface ProjectInfo {
   id: number;
@@ -13,7 +19,7 @@ interface ProjectInfo {
 
 export default function Projects() {
   // Mock temporário apenas para testar visibilidade dos componentes | TODO: Substituir para os dados verdadeiros quando os endpoints estiverem concluídos
-  const data: Array<ProjectInfo> = [
+  const mock: Array<ProjectInfo> = [
     {
       id: 10,
       title: "Expansão Solar",
@@ -56,12 +62,32 @@ export default function Projects() {
     },
   ];
 
+  const [projects, setProjects] = useState<Array<ProjectInfo>>(mock);
+
+  function handleCreateProject(data: ProjectFormValues) {
+    setProjects((prev) => [
+      {
+        id: Math.max(0, ...prev.map((p) => p.id)) + 1,
+        title: data.nomeProjeto,
+        client: data.cliente,
+        location: data.localInstalacao,
+        description: data.descricao,
+        ticketCount: 0,
+        createdBy: "—",
+      },
+      ...prev,
+    ]);
+  }
+
   return (
     <>
-      <PageHeader title="Projetos" />
+      <PageHeader>Projetos</PageHeader>
+      <div className="flex justify-end pb-4">
+        <ProjectFormDialog onSubmitProject={handleCreateProject} />
+      </div>
       <section className="grid grid-cols-1 md:grid-cols-2  xl:grid-cols-4  gap-4 pb-8">
-        {data.length !== 0 ? (
-          data.map((project) => (
+        {projects.length !== 0 ? (
+          projects.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))
         ) : (
@@ -73,74 +99,4 @@ export default function Projects() {
       </section>
     </>
   );
-}
-
-export default function ProjectsPage() {
-  const [projects, setProjects] = React.useState<Project[]>([])
-  const [selectedId, setSelectedId] = React.useState<string | null>(null)
-  const [dialogOpen, setDialogOpen] = React.useState(false)
-  // Contador monotônico: não volta atrás se um projeto for removido.
-  // TODO: o código definitivo deve ser gerado pelo backend.
-  const nextCode = React.useRef(1)
-
-  function handleCreateProject(data: ProjectFormValues) {
-    // TODO: substituir por chamada ao endpoint (POST /projetos) quando disponível.
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      codigo: `PRJ-${String(nextCode.current++).padStart(3, "0")}`,
-      ...data,
-    }
-    setProjects((prev) => [newProject, ...prev])
-  }
-
-  return (
-    <div className="flex flex-col gap-6 p-8">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading text-2xl font-bold text-blue-950 italic">
-            Todos os projetos
-          </h2>
-          <Button
-            variant="default"
-            className="bg-accent text-white hover:bg-cyan-400 rounded-xl"
-            onClick={() => setDialogOpen(true)}
-          >
-            <Plus />
-            Criar Novo
-          </Button>
-        </div>
-        <div className="h-px w-full bg-gradient-to-r from-cyan-300 to-cyan-300/10" />
-      </div>
-
-      <ProjectFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        hideTrigger
-        onSubmitProject={handleCreateProject}
-      />
-
-      {projects.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Nenhum projeto cadastrado ainda. Clique em &quot;Criar Novo&quot; para começar.
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              codigo={project.codigo}
-              nome={project.nomeProjeto}
-              cliente={project.cliente}
-              localInstalacao={project.localInstalacao}
-              descricao={project.descricao}
-              selected={project.id === selectedId}
-              onClick={() =>
-                setSelectedId((prev) => (prev === project.id ? null : project.id))
-              }
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  )
 }
