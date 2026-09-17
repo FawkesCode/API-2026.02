@@ -1,6 +1,9 @@
+import PageHeader from "@/components/page-header";
+
 export default function Home() {
   return (
     <>
+      <PageHeader>Home</PageHeader>
       <h1 className="text-primary font-bold">COR PRIMÁRIA</h1>
       <h1 className="text-accent font-bold">COR DE DESTAQUE</h1>
 
