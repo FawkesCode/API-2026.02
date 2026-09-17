@@ -1,0 +1,233 @@
+"use client";
+
+import { useState } from "react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import TextAlign from "@tiptap/extension-text-align";
+import Image from "@tiptap/extension-image";
+import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
+import {
+  AlignLeft,
+  Bold,
+  Image as ImageIcon,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  RemoveFormatting,
+  Underline,
+} from "lucide-react";
+import { cn } from "cn";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+interface LogEditorProps {
+  onEnviar?: (log: { titulo: string; conteudo: string }) => void;
+  className?: string;
+}
+
+function LogEditor({ onEnviar, className }: LogEditorProps) {
+  const [titulo, setTitulo] = useState("");
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      TextStyle,
+      FontFamily,
+      Image,
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+    ],
+    immediatelyRender: false,
+    shouldRerenderOnTransaction: true,
+    editorProps: {
+      attributes: {
+        class: "min-h-32 w-full px-3 py-2 outline-none",
+      },
+    },
+  });
+
+  function enviar() {
+    if (!editor || editor.isEmpty) return;
+    onEnviar?.({ titulo, conteudo: editor.getHTML() });
+    setTitulo("");
+    editor.commands.clearContent();
+  }
+
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      <label className="text-sm text-muted-foreground" htmlFor="log-titulo">
+        Nome do log:
+      </label>
+      <Input
+        id="log-titulo"
+        value={titulo}
+        onChange={(event) => setTitulo(event.target.value)}
+        placeholder="Título do log"
+      />
+
+      <div className="rounded-md border border-gray-200 bg-white">
+        {editor ? <Toolbar editor={editor} /> : null}
+        <EditorContent editor={editor} className="min-h-32" />
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          onClick={enviar}
+          disabled={!editor || editor.isEmpty}
+          className="bg-cyan-400 text-white hover:bg-cyan-500"
+        >
+          Enviar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function Toolbar({ editor }: { editor: Editor }) {
+  const blocoAtivo = editor.isActive("heading", { level: 1 })
+    ? "h1"
+    : editor.isActive("heading", { level: 2 })
+      ? "h2"
+      : "p";
+
+  return (
+    <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 px-2 py-1">
+      <select
+        aria-label="Estilo do texto"
+        value={blocoAtivo}
+        onChange={(event) => {
+          const valor = event.target.value;
+          if (valor === "p") editor.chain().focus().setParagraph().run();
+          else if (valor === "h1")
+            editor.chain().focus().setHeading({ level: 1 }).run();
+          else editor.chain().focus().setHeading({ level: 2 }).run();
+        }}
+        className="rounded px-1 py-0.5 text-sm text-muted-foreground"
+      >
+        <option value="p">Normal</option>
+        <option value="h1">Título 1</option>
+        <option value="h2">Título 2</option>
+      </select>
+
+      <select
+        aria-label="Fonte"
+        value={editor.getAttributes("textStyle").fontFamily ?? ""}
+        onChange={(event) => {
+          const fonte = event.target.value;
+          if (fonte) editor.chain().focus().setFontFamily(fonte).run();
+          else editor.chain().focus().unsetFontFamily().run();
+        }}
+        className="rounded px-1 py-0.5 text-sm text-muted-foreground"
+      >
+        <option value="">Sans Serif</option>
+        <option value="serif">Serif</option>
+        <option value="monospace">Monospace</option>
+      </select>
+
+      <ToolbarButton
+        label="Negrito"
+        ativo={editor.isActive("bold")}
+        onClick={() => editor.chain().focus().toggleBold().run()}
+      >
+        <Bold className="h-4 w-4" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        label="Itálico"
+        ativo={editor.isActive("italic")}
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+      >
+        <Italic className="h-4 w-4" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        label="Sublinhado"
+        ativo={editor.isActive("underline")}
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+      >
+        <Underline className="h-4 w-4" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        label="Lista numerada"
+        ativo={editor.isActive("orderedList")}
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+      >
+        <ListOrdered className="h-4 w-4" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        label="Lista com marcadores"
+        ativo={editor.isActive("bulletList")}
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+      >
+        <List className="h-4 w-4" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        label="Centralizar"
+        ativo={editor.isActive({ textAlign: "center" })}
+        onClick={() => editor.chain().focus().setTextAlign("center").run()}
+      >
+        <AlignLeft className="h-4 w-4" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        label="Link"
+        ativo={editor.isActive("link")}
+        onClick={() => {
+          const url = window.prompt("URL do link:");
+          if (url) editor.chain().focus().setLink({ href: url }).run();
+          else editor.chain().focus().unsetLink().run();
+        }}
+      >
+        <LinkIcon className="h-4 w-4" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        label="Imagem"
+        onClick={() => {
+          const url = window.prompt("URL da imagem:");
+          if (url) editor.chain().focus().setImage({ src: url }).run();
+        }}
+      >
+        <ImageIcon className="h-4 w-4" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        label="Limpar formatação"
+        onClick={() =>
+          editor.chain().focus().clearNodes().unsetAllMarks().run()
+        }
+      >
+        <RemoveFormatting className="h-4 w-4" />
+      </ToolbarButton>
+    </div>
+  );
+}
+
+function ToolbarButton({
+  label,
+  ativo,
+  children,
+  ...props
+}: React.ComponentProps<"button"> & { label: string; ativo?: boolean }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-pressed={ativo}
+      className={cn(
+        "rounded p-1.5 text-muted-foreground transition-colors hover:bg-gray-100",
+        ativo && "bg-gray-200 text-foreground"
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+export { LogEditor };

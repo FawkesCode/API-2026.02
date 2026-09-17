@@ -91,4 +91,4 @@ function LogState({
   );
 }
 
-export { LogState, logStateVariants };
+export { LogState, logStateVariants, type LogStatus };
