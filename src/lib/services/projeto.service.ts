@@ -70,6 +70,33 @@ export class ServicoProjeto {
 
     return { projeto, ticketInstalacao };
   }
+
+
+  async buscarDetalhePorId(projetoId: string) {
+    return prisma.projeto.findUnique({
+      where: { id: projetoId },
+      include: {
+        cliente: { select: { id: true, nome: true } },
+        equipe: { select: { id: true, nome: true } },
+        gestor: { select: { id: true, nome: true, email: true } },
+        _count: { select: { tickets: true } },
+      },
+    });
+  }
+  
+
+  async listarAtivos() {
+    return prisma.projeto.findMany({
+      where: { ativo: true },
+      orderBy: { criadoEm: "desc" },
+      include: {
+        cliente: { select: { id: true, nome: true } },
+        equipe: { select: { id: true, nome: true } },
+        gestor: { select: { id: true, nome: true } },
+        _count: { select: { tickets: true } },
+      },
+    });
+  }
 }
 
 export const servicoProjeto = new ServicoProjeto();

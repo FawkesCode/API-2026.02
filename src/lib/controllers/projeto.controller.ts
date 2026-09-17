@@ -31,6 +31,17 @@ function tratarErroInesperado(erro: unknown) {
 }
 
 export class ControladorProjeto {
+  // GET /api/projetos 
+  async listar(_requisicao: Request) {
+    try {
+      const projetos = await servicoProjeto.listarAtivos();
+      return NextResponse.json(projetos, { status: 200 });
+    } catch (erro) {
+      console.error(erro);
+      return NextResponse.json({ erro: "Erro interno ao listar projetos." }, { status: 500 });
+    }
+  }
+
   // [BACK #2] Rota de post para criação de projetos na plataforma.
   async criar(requisicao: Request) {
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
@@ -79,6 +90,22 @@ export class ControladorProjeto {
         { erro: "Erro interno ao buscar o ticket de instalação." },
         { status: 500 },
       );
+    }
+  }
+
+  // GET /api/projetos/[id] 
+  async buscarDetalhe(_requisicao: Request, projetoId: string) {
+    try {
+      const projeto = await servicoProjeto.buscarDetalhePorId(projetoId);
+
+      if (!projeto) {
+        return NextResponse.json({ erro: "Projeto não encontrado." }, { status: 404 });
+      }
+
+      return NextResponse.json(projeto, { status: 200 });
+    } catch (erro) {
+      console.error(erro);
+      return NextResponse.json({ erro: "Erro interno ao buscar o projeto." }, { status: 500 });
     }
   }
 }
