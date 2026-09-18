@@ -37,6 +37,35 @@ echo "✅ Encontrados ${#TICKETS[@]} tickets."
 
 echo "=========================================="
 echo "Iniciando as requisições para $API_URL"
+echo "TESTES DE ERRO (Rejeições Esperadas)"
+echo "=========================================="
+
+echo "-> [ERRO ESPERADO 400] Testando JSON Inválido..."
+curl -s -k -X POST "$API_URL" \
+     -H "Content-Type: application/json" \
+     -d "{\"managerId\": \"$MANAGER_ID\", \"ticketId\":"
+echo -e "\n------------------------------------------"
+
+echo "-> [ERRO ESPERADO 400] Testando Erro de Zod (Faltando ticketId)..."
+curl -s -k -X POST "$API_URL" \
+     -H "Content-Type: application/json" \
+     -d "{\"managerId\": \"$MANAGER_ID\"}"
+echo -e "\n------------------------------------------"
+
+echo "-> [ERRO ESPERADO 404] Testando Perfil Inativo ou Não Encontrado (ID Fake)..."
+curl -s -k -X POST "$API_URL" \
+     -H "Content-Type: application/json" \
+     -d "{\"managerId\": \"00000000-0000-0000-0000-000000000000\", \"ticketId\": \"${TICKETS[0]}\"}"
+echo -e "\n------------------------------------------"
+
+echo "-> [ERRO ESPERADO 404] Testando Ticket Não Encontrado (ID Fake)..."
+curl -s -k -X POST "$API_URL" \
+     -H "Content-Type: application/json" \
+     -d "{\"managerId\": \"$MANAGER_ID\", \"ticketId\": \"00000000-0000-0000-0000-000000000000\"}"
+echo -e "\n------------------------------------------"
+
+echo "=========================================="
+echo "Iniciando as requisições de SUCESSO para $API_URL"
 echo "=========================================="
 
 for TICKET_ID in "${TICKETS[@]}"; do

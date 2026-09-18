@@ -56,6 +56,11 @@ export default class EmailManagerService{
                     categoria: true,
                     prioridade: true,
                     status: true,
+                    projeto: {
+                        select: {
+                            nome: true
+                        }
+                    }
                 },
             });
 
@@ -71,6 +76,7 @@ Um novo ticket foi atribuído ao seu time. Confira os detalhes abaixo:
 
 --------------------------------------------------
 Título:     ${ticketInfo.titulo}
+Projeto:    ${ticketInfo.projeto.nome}
 Categoria:  ${ticketInfo.categoria}
 Prioridade: ${ticketInfo.prioridade}
 Status:     ${ticketInfo.status}
@@ -110,17 +116,21 @@ Acesse o sistema para mais detalhes.`;
               <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 500;">${ticketInfo.titulo}</td>
             </tr>
             <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Projeto</td>
+              <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${ticketInfo.projeto.nome}</td>
+            </tr>
+            <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Categoria</td>
               <td style="padding: 12px 16px; font-size: 14px; color: #334155;">${ticketInfo.categoria}</td>
             </tr><tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Prioridade</td>
               <td style="padding: 12px 16px; font-size: 14px; color: #334155;">${ticketInfo.prioridade}</td>
             </tr>
-            <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
+            <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Status</td>
               <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${ticketInfo.status}</td>
             </tr>
-            <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+            <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Atribuído em</td>
               <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${dataAtribuicao}</td>
             </tr>
