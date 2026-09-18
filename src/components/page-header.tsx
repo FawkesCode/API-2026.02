@@ -1,19 +1,13 @@
-"use client";
-import { usePathname } from "next/navigation";
+import { ReactNode } from "react";
 
-const ROTAS_SEM_TITULO_AUTOMATICO = ["/projetos"];
+function PageHeader({children}:{children:ReactNode}) {
+  
 
-function PageHeader() {
-  const pathname = usePathname();
-
-  if (ROTAS_SEM_TITULO_AUTOMATICO.includes(pathname)) {
-    return null;
-  }
 
   return (
     <div className="border-b-2 border-blue-900 pb-2 mb-13">
       <h1 className="text-2xl text-card-foreground font-semibold italic capitalize">
-        {title}
+        {children}
       </h1>
     </div>
   );
