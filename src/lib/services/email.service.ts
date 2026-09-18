@@ -2,24 +2,33 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { prisma } from '../prisma';
 
-dotenv.config()
+import path from 'path';
+
+dotenv.config({ path: path.resolve(process.cwd(), 'src', '.env') });
+// Cria o transporter fora da classe (Singleton) para reutilizar conexões entre chamadas
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, 
+    pool: true,    
+    maxConnections: 3, 
+    maxMessages: 2,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+    family: 4,
+    connectionTimeout: 5000,
+} as any);
+
 export default class EmailManagerService{
     private managerId: string
     private ticketId: string
-    private transporter: any
 
     constructor(managerId: string, ticketId: string){
         this.managerId= managerId
         this.ticketId=ticketId
-        this.transporter = nodemailer.createTransport({
-                    service: 'gmail', 
-                    port:587,
-                    auth: {
-                    user: process.env.EMAIL_USER,
-                    pass: process.env.EMAIL_PASS,
-                            },
-                                                });
-                                                }
+    }
        
         public async sendMail(){
             const managerInfo = await prisma.usuario.findFirst({
@@ -54,6 +63,8 @@ export default class EmailManagerService{
                 throw new Error("Ticket não encontrado.");
             }
 
+            const dataAtribuicao = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
             const text = `Olá, ${managerInfo.nome}!
 
 Um novo ticket foi atribuído ao seu time. Confira os detalhes abaixo:
@@ -63,6 +74,7 @@ Título:     ${ticketInfo.titulo}
 Categoria:  ${ticketInfo.categoria}
 Prioridade: ${ticketInfo.prioridade}
 Status:     ${ticketInfo.status}
+Data/Hora:  ${dataAtribuicao}
 --------------------------------------------------
 
 Acesse o sistema para mais detalhes.`;
@@ -100,18 +112,17 @@ Acesse o sistema para mais detalhes.`;
             <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Categoria</td>
               <td style="padding: 12px 16px; font-size: 14px; color: #334155;">${ticketInfo.categoria}</td>
-            </tr>
-            <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+            </tr><tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Prioridade</td>
-              <td style="padding: 12px 16px; font-size: 14px;">
-                <span style="display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background-color: #e0f2fe; color: #0284c7;">
-                  ${ticketInfo.prioridade}
-                </span>
-              </td>
+              <td style="padding: 12px 16px; font-size: 14px; color: #334155;">${ticketInfo.prioridade}</td>
             </tr>
             <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Status</td>
               <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${ticketInfo.status}</td>
+            </tr>
+            <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Atribuído em</td>
+              <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${dataAtribuicao}</td>
             </tr>
           </tbody>
         </table>
@@ -134,7 +145,7 @@ Acesse o sistema para mais detalhes.`;
 `;
 
             try {
-              const info = await this.transporter.sendMail({
+              const info = await transporter.sendMail({
                 from: process.env.EMAIL_USER,
                 to: managerInfo.email,
                 subject: `Ticket atribuido ao seu time ${ticketInfo.titulo}`,
