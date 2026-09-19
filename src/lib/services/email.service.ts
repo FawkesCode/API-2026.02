@@ -1,25 +1,11 @@
-import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { prisma } from '../prisma';
 
 import path from 'path';
+import CreateTransporter from './default-classes/transporter';
 
 dotenv.config({ path: path.resolve(process.cwd(), 'src', '.env') });
-// Cria o transporter fora da classe (Singleton) para reutilizar conexões entre chamadas
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, 
-    pool: true,    
-    maxConnections: 3, 
-    maxMessages: 2,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-    family: 4,
-    connectionTimeout: 5000,
-} as any);
+const transporter = CreateTransporter.transporter
 
 export default class EmailManagerService{
     private managerId: string
