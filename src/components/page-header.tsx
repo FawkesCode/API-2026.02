@@ -1,9 +1,4 @@
-import { ReactNode } from "react";
-
-function PageHeader({children}:{children:ReactNode}) {
-  
-
-
+function PageHeader({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-b-2 border-blue-900 pb-2 mb-13">
       <h1 className="text-2xl text-card-foreground font-semibold italic capitalize">

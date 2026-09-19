@@ -87,7 +87,7 @@ async function page({ params }: PageProps) {
 
   return (
     <>
-      <PageHeader title={`Projeto COD ${id} > Tickets`} />
+      <PageHeader>{`Projeto COD ${id} > Tickets`}</PageHeader>
 
       <section className="flex flex-col gap-4 pb-8">
         <TicketFilter />
