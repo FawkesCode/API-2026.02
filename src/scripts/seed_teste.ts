@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { prisma } from "@/lib/prisma";
-import { Cargo } from "@/lib/generated/prisma/client";
+import { Cargo, Categoria, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 
 async function main() {
   const equipe = await prisma.equipe.create({
@@ -14,16 +14,54 @@ async function main() {
   const gestor = await prisma.usuario.create({
     data: {
       nome: "Gestor Teste",
-      email: "gestor.teste@example.com",
+      email: "vbomfimcunha@gmail.com",
       senhaHash: "senha-fake-para-teste",
       cargo: Cargo.GESTOR,
       equipeId: equipe.id,
     },
   });
 
+  const projeto = await prisma.projeto.create({
+    data: {
+      nome: "Projeto Teste",
+      localInstalacao: "Sede Empresa Teste",
+      clienteId: cliente.id,
+      equipeId: equipe.id,
+      gestorId: gestor.id,
+    },
+  });
+
+  const ticketsData = Array.from({ length: 10 }).map((_, index) => ({
+    titulo: `Ticket de Teste ${index + 1}`,
+    descricao: `Descrição detalhada do problema ou instalação para o ticket de teste ${index + 1}.`,
+    categoria: index % 2 === 0 ? Categoria.MANUTENCAO : Categoria.INSTALACAO,
+    prioridade: [Prioridade.BAIXA, Prioridade.MEDIA, Prioridade.ALTA, Prioridade.CRITICA][index % 4],
+    status: StatusTicket.ABERTO,
+    slaEm: new Date(Date.now() + 1000 * 60 * 60 * 24 * (index + 1)),
+    projetoId: projeto.id,
+    abertoPorId: gestor.id,
+  }));
+
+  await prisma.ticket.createMany({
+    data: ticketsData,
+  });
+
+  const ticketsCriados = await prisma.ticket.findMany({
+    where: { projetoId: projeto.id },
+    select: { id: true }
+  });
+
+  console.log("=== SEED REALIZADO COM SUCESSO ===");
+  console.log("gestorId:", gestor.id);
+  console.log("Tickets IDs:");
+  for (const [i, t] of ticketsCriados.entries()) {
+    console.log(`  Ticket ${i + 1}: "${t.id}",`);
+  }
   console.log("clienteId:", cliente.id);
   console.log("equipeId:", equipe.id);
   console.log("gestorId:", gestor.id);
+  console.log("projetoId:", projeto.id);
+  console.log("10 Tickets criados associados ao projeto e abertos pelo gestor!");
 }
 
 main()
