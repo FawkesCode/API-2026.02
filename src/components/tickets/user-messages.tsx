@@ -26,8 +26,8 @@ export default function UserMessages({
   return (
     <div
       className={cn(
-        "flex w-full flex-col gap-3 rounded-md border border-gray-200 bg-white p-5 sm:w-1/2",
-        align === "right" && "sm:ml-auto"
+        "flex w-full flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 sm:w-1/2",
+        align === "right" && "sm:ml-auto",
       )}
     >
       <div className="flex w-fit items-center gap-2 rounded-full border border-blue-500 bg-blue-200 px-3 py-0.5">

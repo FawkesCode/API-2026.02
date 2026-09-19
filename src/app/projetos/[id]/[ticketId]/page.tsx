@@ -7,6 +7,13 @@ import {
   type Autor,
   type LogItem,
 } from "@/components/tickets/ticket-logs";
+import { servicoProjeto } from "@/lib/services/projeto.service";
+
+import {
+  formatTicket,
+  TicketPriority,
+  TicketView,
+} from "@/utils/formatTickets";
 
 // Mock temporário | TODO: buscar o ticket e seu histórico quando existir GET /api/tickets/[id]
 const ticket = {
@@ -62,54 +69,73 @@ const logsIniciais: Array<LogItem> = [
   },
 ];
 
+type PriorityLevel = "critical" | "high" | "medium" | "low";
+
+const TicketPriorityMap: Record<string, PriorityLevel> = {
+  Baixa: "low",
+  Média: "medium",
+  Alta: "high",
+  Crítica: "critical",
+};
+
 // TODO: Validação da url a partir dos ids disponíveis no banco
 export default async function TicketLogsPage({
   params,
 }: PageProps<"/projetos/[id]/[ticketId]">) {
   const { id, ticketId } = await params;
+  const projectInfo = await servicoProjeto.buscarDetalhePorId(id);
+  const projectWTicket =
+    await servicoProjeto.buscarProjetoComTicketDeInstalacao(id);
+  const ticketInfo = projectWTicket?.ticketInstalacao;
+
+  const formatedTicket = ticketInfo ? formatTicket(ticketInfo) : null;
+  const ticket: TicketView | null = formatedTicket ? formatedTicket : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col pb-6">
       <div className="shrink-0">
         <PageHeader>
           <Link href={`/projetos/${id}`} className="hover:underline">
-            Projeto COD {id}
+            Projeto {projectInfo?.nome}
           </Link>
-          {` > Ticket #${ticketId}`}
+          {` > Ticket ${!ticket ? "Sem título" : ticket.title}`}
         </PageHeader>
       </div>
 
-      <section className="shrink-0 rounded-t-md border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-bold text-card-foreground">
-          {ticket.title} | {ticket.type}
-        </h2>
-        <p className="pt-1 text-xs text-muted-foreground">
-          Aberto em {ticket.openedAt} • #{ticketId} • Aberto por{" "}
-          <span className="italic">{ticket.createdBy}</span>
-        </p>
-
-        <div className="flex items-center justify-between pt-3">
-          <div className="flex gap-2">
-            {ticket.teams.map((team) => (
-              <Badge
-                key={team}
-                className="border-muted-foreground bg-transparent text-xs text-muted-foreground"
-              >
-                {team}
-              </Badge>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground underline">
-              {ticket.status}
-            </span>
-            <PriorityBadge priority={ticket.priority}>Crítico</PriorityBadge>
-          </div>
-        </div>
-
-        <p className="pt-4 text-sm text-muted-foreground">
-          {ticket.description}
-        </p>
+      <section className="shrink-0 rounded-t-xl border -mt-6 border-gray-200 bg-white p-6">
+        {ticket ? (
+          <>
+            <div className="flex justify-between">
+              <h2 className="text-lg font-bold text-card-foreground">
+                {ticket.title} | {ticket.type}
+              </h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground underline">
+                  {ticket.status}
+                </span>
+                <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
+                  {ticket.priority}
+                </PriorityBadge>
+              </div>
+            </div>
+            <p className="pt-1 text-xs text-muted-foreground">
+              Aberto em {ticket.openedAt} • #{ticketId} • Aberto por{" "}
+              <span className="italic">{ticket.createdBy}</span>
+            </p>
+            <div className="flex items-center justify-between pt-3">
+              <div className="flex gap-2">
+                {ticket.teams.map((team) => (
+                  <Badge
+                    key={team}
+                    className="border-muted-foreground bg-transparent text-xs text-muted-foreground"
+                  >
+                    {team}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : null}
       </section>
 
       <TicketLogs logsIniciais={logsIniciais} autor={autor} />

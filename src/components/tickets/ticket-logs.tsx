@@ -44,7 +44,11 @@ function TicketLogs({ logsIniciais, autor, className }: TicketLogsProps) {
   const [logs, setLogs] = useState(logsIniciais);
 
   // TODO: trocar por POST no endpoint de histórico quando existir
-  function adicionarAviso(status: LogStatus, titulo: string, descricao: string) {
+  function adicionarAviso(
+    status: LogStatus,
+    titulo: string,
+    descricao: string,
+  ) {
     setLogs((anteriores) => [
       ...anteriores,
       { id: crypto.randomUUID(), tipo: "aviso", status, titulo, descricao },
@@ -76,7 +80,7 @@ function TicketLogs({ logsIniciais, autor, className }: TicketLogsProps) {
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto border-x border-gray-200 bg-slate-100 p-6">
+      <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto  border-x border-gray-200 bg-slate-100 p-6">
         <h3 className="font-bold text-card-foreground">LOGS DE ATIVIDADE</h3>
 
         {logs.map((log) =>
@@ -98,18 +102,18 @@ function TicketLogs({ logsIniciais, autor, className }: TicketLogsProps) {
               date={log.criadoEm}
               align={log.autorId === autor.id ? "right" : "left"}
             />
-          )
+          ),
         )}
       </section>
 
-      <section className="shrink-0 rounded-b-md border border-gray-200 bg-white p-6">
+      <section className="shrink-0 rounded-b-md border  border-gray-200 bg-white p-6">
         <div className="flex flex-wrap gap-2 pb-4">
           <LogSuggestion
             onClick={() =>
               adicionarAviso(
                 "iniciado",
                 `Equipe ${autor.equipe} começou a trabalhar no ticket`,
-                `${autor.nome} deu início a atividade`
+                `${autor.nome} deu início a atividade`,
               )
             }
           >
@@ -120,7 +124,7 @@ function TicketLogs({ logsIniciais, autor, className }: TicketLogsProps) {
               adicionarAviso(
                 "solicitado",
                 `Equipe ${autor.equipe} solicitou encerramento do ticket`,
-                `${autor.nome} realizou a solicitação`
+                `${autor.nome} realizou a solicitação`,
               )
             }
           >

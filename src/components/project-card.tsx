@@ -9,7 +9,7 @@ import {
 } from "./ui/card";
 
 interface Project {
-  id: number;
+  id: string;
   title: string;
   client: string;
   location: string;

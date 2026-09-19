@@ -54,28 +54,34 @@ function LogEditor({ onEnviar, className }: LogEditorProps) {
   }
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <label className="text-sm text-muted-foreground" htmlFor="log-titulo">
-        Nome do log:
-      </label>
-      <Input
-        id="log-titulo"
-        value={titulo}
-        onChange={(event) => setTitulo(event.target.value)}
-        placeholder="Título do log"
-      />
-
-      <div className="rounded-md border border-gray-200 bg-white">
-        {editor ? <Toolbar editor={editor} /> : null}
-        <EditorContent editor={editor} className="min-h-32" />
+    <div className={cn("flex flex-col gap-2  ", className)}>
+      <div className="flex items-center gap-3">
+        <label
+          className="text-sm text-foreground font-medium min-w-max"
+          htmlFor="log-titulo"
+        >
+          Nome do log:
+        </label>
+        <Input
+          id="log-titulo"
+          value={titulo}
+          className="w-auto border-0 border-b  border-b-foreground shadow-none"
+          onChange={(event) => setTitulo(event.target.value)}
+          placeholder="Digite o nome do log"
+        />
       </div>
 
-      <div className="flex justify-end">
+      <div className="rounded-xl border border-gray-200 bg-white">
+        {editor ? <Toolbar editor={editor} /> : null}
+        <EditorContent editor={editor} className="xl:min-h-16 xl:max-h-20" />
+      </div>
+
+      <div className="flex justify-end z-10">
         <Button
           type="button"
           onClick={enviar}
           disabled={!editor || editor.isEmpty}
-          className="bg-cyan-400 text-white hover:bg-cyan-500"
+          className="bg-cyan-400 text-white hover:bg-cyan-500 cursor-pointer"
         >
           Enviar
         </Button>
@@ -221,7 +227,7 @@ function ToolbarButton({
       aria-pressed={ativo}
       className={cn(
         "rounded p-1.5 text-muted-foreground transition-colors hover:bg-gray-100",
-        ativo && "bg-gray-200 text-foreground"
+        ativo && "bg-gray-200 text-foreground",
       )}
       {...props}
     >
