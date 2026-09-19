@@ -28,6 +28,47 @@ export class ServicoTicket {
     });
   }
 
+  async listarPorEquipeDoUsuario(usuarioId: string) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: {
+        equipeId: true,
+        ativo: true,
+      },
+    });
+
+    if (!usuario || !usuario.ativo || !usuario.equipeId) {
+      return [];
+    }
+
+    const tickets = await prisma.ticket.findMany({
+      where: {
+        projeto: {
+          equipeId: usuario.equipeId,
+        },
+      },
+      orderBy: {
+        criadoEm: "desc",
+      },
+      include: {
+        projeto: {
+          select: {
+            id: true,
+            nome: true,
+            equipeId: true,
+          },
+        },
+        responsavel: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+      },
+    });
+    return tickets;
+  }
+
   async atualizarPrioridade(ticketId: string, dados: AtualizarPrioridadeTicketSchema) {
     return prisma.$transaction(async (tx) => {
       const ticket = await tx.ticket.findUnique({ where: { id: ticketId } });
