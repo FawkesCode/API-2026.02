@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
-import { servicoProjeto } from "@/lib/services/projeto.service";
+import {
+  servicoProjeto,
+  GestorNaoEncontradoError,
+  GestorSemEquipeError,
+} from "@/lib/services/projeto.service";
 import { criarProjetoSchema } from "@/schemas/projeto.schema";
 
 async function extrairJson(requisicao: Request) {
@@ -21,7 +25,7 @@ async function extrairJson(requisicao: Request) {
 function tratarErroInesperado(erro: unknown) {
   if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2003") {
     return NextResponse.json(
-      { erro: "Referência inválida: clienteId, equipeId ou gestorId não existem." },
+      { erro: "Referência inválida: clienteId não existe." },
       { status: 400 },
     );
   }
@@ -31,7 +35,7 @@ function tratarErroInesperado(erro: unknown) {
 }
 
 export class ControladorProjeto {
-  // GET /api/projetos 
+
   async listar(_requisicao: Request) {
     try {
       const projetos = await servicoProjeto.listarAtivos();
@@ -61,6 +65,12 @@ export class ControladorProjeto {
       );
       return NextResponse.json({ ...projeto, ticketInstalacao }, { status: 201 });
     } catch (erro) {
+      if (erro instanceof GestorNaoEncontradoError) {
+        return NextResponse.json({ erro: erro.message }, { status: 400 });
+      }
+      if (erro instanceof GestorSemEquipeError) {
+        return NextResponse.json({ erro: erro.message }, { status: 400 });
+      }
       return tratarErroInesperado(erro);
     }
   }
@@ -93,7 +103,6 @@ export class ControladorProjeto {
     }
   }
 
-  // GET /api/projetos/[id] 
   async buscarDetalhe(_requisicao: Request, projetoId: string) {
     try {
       const projeto = await servicoProjeto.buscarDetalhePorId(projetoId);
@@ -106,6 +115,24 @@ export class ControladorProjeto {
     } catch (erro) {
       console.error(erro);
       return NextResponse.json({ erro: "Erro interno ao buscar o projeto." }, { status: 500 });
+    }
+  }
+
+  async listarTickets(_requisicao: Request, projetoId: string) {
+    try {
+      const projeto = await servicoProjeto.buscarDetalhePorId(projetoId);
+      if (!projeto) {
+        return NextResponse.json({ erro: "Projeto não encontrado." }, { status: 404 });
+      }
+
+      const tickets = await servicoProjeto.listarTicketsPorProjeto(projetoId);
+      return NextResponse.json(tickets, { status: 200 });
+    } catch (erro) {
+      console.error(erro);
+      return NextResponse.json(
+        { erro: "Erro interno ao listar os tickets do projeto." },
+        { status: 500 },
+      );
     }
   }
 }

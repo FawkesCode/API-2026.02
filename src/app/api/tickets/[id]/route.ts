@@ -6,3 +6,8 @@ export async function PATCH(requisicao: Request, contexto: ContextoRota) {
   const { id } = await contexto.params;
   return controladorTicket.atualizarPrioridade(requisicao, id);
 }
+
+export async function GET(requisicao: Request, contexto: ContextoRota) {
+  const { id } = await contexto.params;
+  return controladorTicket.buscarDetalhe(requisicao, id);
+}
