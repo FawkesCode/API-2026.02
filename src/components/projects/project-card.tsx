@@ -6,10 +6,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "./ui/card";
+} from "../ui/card";
 
 interface Project {
-  id: number;
+  id: string;
   title: string;
   client: string;
   location: string;
@@ -26,8 +26,8 @@ function ProjectCard({ project }: { project: Project }) {
     >
       <Card className="border border-transparent transition-all duration-100 ease-in-out min-h-min h-full justify-between">
         <CardHeader>
-          <span className="text-sm text-accent font-medium">
-            COD {project.id}
+          <span className="text-[10px] text-accent font-medium">
+            {project.id}
           </span>
           <CardTitle className="text-lg font-bold uppercase">
             {project.title}

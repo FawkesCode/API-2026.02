@@ -1,102 +1,40 @@
-"use client";
-import { useState } from "react";
+import { servicoProjeto } from "@/lib/services/projeto.service";
 import PageHeader from "@/components/page-header";
-import ProjectCard from "@/components/project-card";
-import {
-  ProjectFormDialog,
-  type ProjectFormValues,
-} from "@/components/project-form-dialog";
+import ProjectsView from "@/components/projects/projects-view";
+import { notFound } from "next/navigation";
 
-interface ProjectInfo {
-  id: number;
-  title: string;
-  client: string;
-  location: string;
-  description: string;
-  ticketCount: number;
-  createdBy: string;
+async function getProjects() {
+  let data;
+
+  try {
+    data = await servicoProjeto.listarAtivos();
+  } catch (error) {
+    console.error(`[getProjects] Erro ao buscar os projetos: ${error}`);
+    throw new Error("Não foi possível carregar a lista de projetos.");
+  }
+
+  if (!data) {
+    notFound();
+  }
+
+  return data.map((d) => ({
+    id: d.id,
+    title: d.nome,
+    client: d.cliente?.nome ?? "Cliente não informado",
+    location: d.localInstalacao,
+    description: "Sem descrição no endpoint ainda",
+    ticketCount: d._count?.tickets ?? 0,
+    createdBy: d.gestor?.nome ?? "Sistema",
+  }));
 }
 
-export default function Projects() {
-  // Mock temporário apenas para testar visibilidade dos componentes | TODO: Substituir para os dados verdadeiros quando os endpoints estiverem concluídos
-  const mock: Array<ProjectInfo> = [
-    {
-      id: 10,
-      title: "Expansão Solar",
-      client: "Vortex Energia",
-      location: "Campinas, SP",
-      description:
-        "Instalação de 450 novos painéis fotovoltaicos e comissionamento dos inversores centrais.",
-      ticketCount: 8,
-      createdBy: "Lucas",
-    },
-    {
-      id: 11,
-      title: "Modernização HVAC",
-      client: "Hospital Santa Clara",
-      location: "Belo Horizonte, MG",
-      description:
-        "Substituição de switches centrais, configuração de firewall e passagem de cabeamento Cat6a nos racks.",
-      ticketCount: 14,
-      createdBy: "Mariana",
-    },
-    {
-      id: 12,
-      title: "Acesso Biométrico",
-      client: "Nova FinTech",
-      location: "São Paulo, SP",
-      description:
-        "Instalação de sensores térmicos IoT, atuadores automáticos e integração com o sistema central BMS.",
-      ticketCount: 5,
-      createdBy: "Rodrigo",
-    },
-    {
-      id: 13,
-      title: "Acesso Biométrico",
-      client: "Nova FinTech",
-      location: "São Paulo, SP",
-      description:
-        "Instalação de sensores térmicos IoT, atuadores automáticos e integração com o sistema central BMS.",
-      ticketCount: 5,
-      createdBy: "Rodrigo",
-    },
-  ];
-
-  const [projects, setProjects] = useState<Array<ProjectInfo>>(mock);
-
-  function handleCreateProject(data: ProjectFormValues) {
-    setProjects((prev) => [
-      {
-        id: Math.max(0, ...prev.map((p) => p.id)) + 1,
-        title: data.nomeProjeto,
-        client: data.cliente,
-        location: data.localInstalacao,
-        description: data.descricao,
-        ticketCount: 0,
-        createdBy: "—",
-      },
-      ...prev,
-    ]);
-  }
+export default async function Projects() {
+  const initialProjects = await getProjects();
 
   return (
     <>
       <PageHeader>Projetos</PageHeader>
-      <div className="flex justify-end pb-4">
-        <ProjectFormDialog onSubmitProject={handleCreateProject} />
-      </div>
-      <section className="grid grid-cols-1 md:grid-cols-2  xl:grid-cols-4  gap-4 pb-8">
-        {projects.length !== 0 ? (
-          projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))
-        ) : (
-          <p className="col-span-full text-sm text-muted-foreground">
-            Nenhum projeto registrado ainda. Realize o cadastro de um para
-            começar a gerenciar os tickets atribuídos a ele.
-          </p>
-        )}
-      </section>
+      <ProjectsView projects={initialProjects} />
     </>
   );
 }

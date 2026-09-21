@@ -84,12 +84,12 @@
 
   --color-priority-critical: #d33d2d;
   --color-priority-critical-bg: #ffc2bc;
-  --color-priority-high: #999400;
-  --color-priority-high-bg: #fbf4bc;
-  --color-priority-medium: #17183a;
-  --color-priority-medium-bg: #6593ac;
-  --color-priority-low: #293b2e;
-  --color-priority-low-bg: #6b927b;
+  --color-priority-high: #e6b501;
+  --color-priority-high-bg: #fff8bc;
+  --color-priority-medium: #3065e1;
+  --color-priority-medium-bg: #ade1ff;
+  --color-priority-low: #0bb626;
+  --color-priority-low-bg: #8ffbbb;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);

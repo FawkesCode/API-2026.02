@@ -12,7 +12,14 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LogOut, LucideIcon, Settings, Ticket, Users } from "lucide-react";
+import {
+  ClipboardList,
+  LogOut,
+  LucideIcon,
+  Settings,
+  Ticket,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import UserSidebar from "./user-sidebar";
@@ -34,7 +41,7 @@ export function AppSidebar() {
     {
       title: "Projetos",
       url: "/projetos",
-      icon: Settings,
+      icon: ClipboardList,
     },
     {
       title: "Tickets",

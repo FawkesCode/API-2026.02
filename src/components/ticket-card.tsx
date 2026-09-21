@@ -12,32 +12,22 @@ import { Badge } from "./ui/badge";
 import { PriorityBadge } from "./priority-badge";
 import { ReactNode } from "react";
 import { cn } from "cn";
-
-interface Ticket {
-  id: number;
-  title: string;
-  type: string;
-  openedAt: string;
-  timeRemaining: string;
-  createdBy: string;
-  teams: Array<string>;
-  status: string;
-  priority: string;
-  description: string;
-  recentLogs: Array<TeamLog>;
-}
+import { TeamLogView, TicketView } from "@/types/ticket";
 
 interface TicketCardProps {
-  ticket: Ticket;
+  ticket: TicketView;
   projectId: string;
   woLogs?: boolean;
 }
 
-interface TeamLog {
-  title: string;
-  sentBy: string;
-  sentAt: string;
-}
+type PriorityLevel = "critical" | "high" | "medium" | "low";
+
+const TicketPriorityMap: Record<string, PriorityLevel> = {
+  Baixa: "low",
+  Média: "medium",
+  Alta: "high",
+  Crítica: "critical",
+};
 
 function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
   return (
@@ -47,16 +37,14 @@ function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
     >
       <Card className="border border-transparent transition-all duration-100 ease-in-out min-h-min h-full justify-between">
         <CardHeader>
-          <CardTitle className="text-xl flex gap-2 font-bold">
-            <span className="flex items-center gap-1 text-lg">
-              <Ticket aria-hidden={true} size="20" /> {ticket.id} :
-            </span>
-            {ticket.title} | {ticket.type}
+          <CardTitle className="text-xl flex gap-2 items-center font-bold">
+            <Ticket aria-hidden={true} size="20" /> {ticket.title} |{" "}
+            {ticket.type}
           </CardTitle>
           <CardDescription className="border-b pb-4 text-foreground font-medium flex flex-col gap-2">
             <div className="flex flex-col sm:flex-row items-start md:items-center gap-3">
               <span className="text-accent">
-                Tempo restante: {ticket.timeRemaining} dias
+                Tempo restante: {ticket.timeRemaining}
               </span>
 
               <p className="text-foreground font-normal">
@@ -66,15 +54,21 @@ function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
             </div>
             <div className="flex flex-col gap-2 sm:gap-0 sm:flex-row  justify-between">
               <div className="flex flex-wrap md:flex-nowrap gap-2">
-                {ticket.teams.map((team) => (
-                  <TeamsBadge key={team}>{team}</TeamsBadge>
-                ))}
+                {ticket.teams.map((team) =>
+                  team !== undefined ? (
+                    <TeamsBadge key={team}>{team}</TeamsBadge>
+                  ) : (
+                    "Times atribuídos não definidos"
+                  ),
+                )}
               </div>
               <div className="flex justify-between  items-center gap-2">
                 <span className="underline text-muted-foreground text-xs">
                   {ticket.status}
                 </span>
-                <PriorityBadge>{ticket.priority}</PriorityBadge>
+                <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
+                  {ticket.priority}
+                </PriorityBadge>
               </div>
             </div>
           </CardDescription>
@@ -94,7 +88,7 @@ function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
               LOGS Recentes
             </h4>
             <div className="flex flex-col gap-2 mask-[linear-gradient(to_top,transparent,black_2.5rem)]">
-              {ticket.recentLogs.map((log) => (
+              {ticket.recentLogs?.map((log) => (
                 <TeamLog
                   key={`${log.title}-${log.sentAt}`}
                   title={log.title}
@@ -126,7 +120,7 @@ function TeamsBadge({ children }: { children: ReactNode }) {
   );
 }
 
-function TeamLog({ title, sentBy, sentAt }: TeamLog) {
+function TeamLog({ title, sentBy, sentAt }: TeamLogView) {
   return (
     <div className=" flex flex-col sm:flex-row gap-3 items-center">
       <div className="flex flex-col sm:flex-row p-2 rounded-full pl-4 pr-4 bg-[#E6E7F2]  w-full xl:w-[50%] justify-between text-[#ACADC0]">
