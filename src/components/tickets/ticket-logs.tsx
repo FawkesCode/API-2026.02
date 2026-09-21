@@ -80,7 +80,7 @@ function TicketLogs({ logsIniciais, autor, className }: TicketLogsProps) {
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto  border-x border-gray-200 bg-slate-100 p-6">
+      <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-none border-x border-gray-200 bg-slate-100 p-6">
         <h3 className="font-bold text-card-foreground">LOGS DE ATIVIDADE</h3>
 
         {logs.map((log) =>

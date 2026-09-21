@@ -26,22 +26,22 @@ export default function UserMessages({
   return (
     <div
       className={cn(
-        "flex w-full flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5 sm:w-1/2",
+        "flex w-full flex-col gap-3 rounded-xl  border border-gray-200 bg-white p-5 sm:w-1/2",
         align === "right" && "sm:ml-auto",
       )}
     >
-      <div className="flex w-fit items-center gap-2 rounded-full border border-blue-500 bg-blue-200 px-3 py-0.5">
-        <span className="text-xs font-semibold text-blue-700">
+      <div className="flex w-fit  items-center gap-2 rounded-full border border-blue-500 bg-blue-200 px-3 py-0.5">
+        <span className="text-xs font-semibold text-blue-500">
           {team} | {sector}
         </span>
-        <button
+        {/* <button
           type="button"
           onClick={onRemoveTag}
           aria-label={`Remover ${team} | ${sector}`}
           className="text-blue-700 hover:text-blue-900"
         >
           <X className="h-3 w-3" />
-        </button>
+        </button>  Esse botao nao existe para o componente de apresentacao de mensagens, o figma deveria estar sem ele, porem essa retirada foi esquecida */}
       </div>
 
       <div className="flex flex-col gap-2">

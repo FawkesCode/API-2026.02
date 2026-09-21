@@ -20,6 +20,15 @@ interface TicketCardProps {
   woLogs?: boolean;
 }
 
+type PriorityLevel = "critical" | "high" | "medium" | "low";
+
+const TicketPriorityMap: Record<string, PriorityLevel> = {
+  Baixa: "low",
+  Média: "medium",
+  Alta: "high",
+  Crítica: "critical",
+};
+
 function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
   return (
     <Link
@@ -28,11 +37,9 @@ function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
     >
       <Card className="border border-transparent transition-all duration-100 ease-in-out min-h-min h-full justify-between">
         <CardHeader>
-          <CardTitle className="text-xl flex gap-2 font-bold">
-            <span className="flex items-center gap-1 text-lg">
-              <Ticket aria-hidden={true} size="20" /> {ticket.id} :
-            </span>
-            {ticket.title} | {ticket.type}
+          <CardTitle className="text-xl flex gap-2 items-center font-bold">
+            <Ticket aria-hidden={true} size="20" /> {ticket.title} |{" "}
+            {ticket.type}
           </CardTitle>
           <CardDescription className="border-b pb-4 text-foreground font-medium flex flex-col gap-2">
             <div className="flex flex-col sm:flex-row items-start md:items-center gap-3">
@@ -47,15 +54,21 @@ function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
             </div>
             <div className="flex flex-col gap-2 sm:gap-0 sm:flex-row  justify-between">
               <div className="flex flex-wrap md:flex-nowrap gap-2">
-                {ticket.teams.map((team) => (
-                  <TeamsBadge key={team}>{team}</TeamsBadge>
-                ))}
+                {ticket.teams.map((team) =>
+                  team !== undefined ? (
+                    <TeamsBadge key={team}>{team}</TeamsBadge>
+                  ) : (
+                    "Times atribuídos não definidos"
+                  ),
+                )}
               </div>
               <div className="flex justify-between  items-center gap-2">
                 <span className="underline text-muted-foreground text-xs">
                   {ticket.status}
                 </span>
-                <PriorityBadge>{ticket.priority}</PriorityBadge>
+                <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
+                  {ticket.priority}
+                </PriorityBadge>
               </div>
             </div>
           </CardDescription>

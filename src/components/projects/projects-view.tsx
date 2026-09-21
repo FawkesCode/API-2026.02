@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ProjectFormDialog, ProjectFormValues } from "../project-form-dialog";
-import ProjectCard from "../project-card";
+import { ProjectFormDialog, ProjectFormValues } from "./project-form-dialog";
+import ProjectCard from "./project-card";
 
 export interface ProjectInfo {
   id: string;

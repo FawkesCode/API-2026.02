@@ -88,6 +88,7 @@ export function ProjectFormDialog({
   async function onSubmit(data: ProjectFormValues) {
     setSubmitError(null);
     try {
+      // Fetch no lado do servidor n precisa da url completa
       const res = await fetch("/api/projetos", {
         method: "POST",
         headers: {
@@ -145,20 +146,24 @@ export function ProjectFormDialog({
         </DialogTrigger>
       )}
 
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="h-[65vh] min-h-min  flex flex-col gap-5">
+        <DialogHeader className="h-fit ">
           <DialogTitle>Cadastrar novo Projeto</DialogTitle>
+          <DialogDivider />
+          <DialogDescription>
+            Os campos com (*) são obrigatórios.
+          </DialogDescription>
         </DialogHeader>
-        <DialogDivider />
-        <DialogDescription>
-          Os campos com (*) são obrigatórios.
-        </DialogDescription>
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <DialogBody>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex-1 flex flex-col"
+          noValidate
+        >
+          <DialogBody className=" h-[80%]">
             <FormInput
               label="Nome do Projeto:"
-              placeholder="Digite o que o input pede..."
+              placeholder="Digite o nome do projeto..."
               required
               error={errors.nomeProjeto?.message}
               {...register("nomeProjeto", {
@@ -171,7 +176,7 @@ export function ProjectFormDialog({
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <FormInput
                 label="Cliente:"
-                placeholder="Digite o que o input pede..."
+                placeholder="Digite o nome do cliente.."
                 required
                 error={errors.cliente?.message}
                 {...register("cliente", {
@@ -185,7 +190,7 @@ export function ProjectFormDialog({
               />
               <FormInput
                 label="Local de Instalação:"
-                placeholder="Digite o que o input pede..."
+                placeholder="Digite o local de instalação..."
                 required
                 error={errors.localInstalacao?.message}
                 {...register("localInstalacao", {
@@ -201,7 +206,7 @@ export function ProjectFormDialog({
 
             <FormTextarea
               label="Descrição"
-              placeholder="Digite o que o input pede..."
+              placeholder="Digite uma descrição..."
               required
               error={errors.descricao?.message}
               {...register("descricao", {

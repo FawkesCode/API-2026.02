@@ -9,24 +9,7 @@ import {
 } from "@/components/tickets/ticket-logs";
 import { servicoProjeto } from "@/lib/services/projeto.service";
 
-import {
-  formatTicket,
-  TicketPriority,
-  TicketView,
-} from "@/utils/formatTickets";
-
-// Mock temporário | TODO: buscar o ticket e seu histórico quando existir GET /api/tickets/[id]
-const ticket = {
-  title: "Título do Ticket",
-  type: "Tipo",
-  openedAt: "12/09",
-  createdBy: "Usuário",
-  teams: ["TI", "Suporte"],
-  status: "Em Andamento",
-  priority: "critical" as const,
-  description:
-    "Descrição do Problema, Descrição do Problema, Descrição do Problema Descrição",
-};
+import { formatTicket, TicketView } from "@/utils/formatTickets";
 
 // TODO: vem da sessão do usuário logado quando existir autenticação
 const autor: Autor = {
@@ -84,11 +67,15 @@ export default async function TicketLogsPage({
 }: PageProps<"/projetos/[id]/[ticketId]">) {
   const { id, ticketId } = await params;
   const projectInfo = await servicoProjeto.buscarDetalhePorId(id);
+  if (!projectInfo) return;
+
   const projectWTicket =
     await servicoProjeto.buscarProjetoComTicketDeInstalacao(id);
   const ticketInfo = projectWTicket?.ticketInstalacao;
 
-  const formatedTicket = ticketInfo ? formatTicket(ticketInfo) : null;
+  const formatedTicket = ticketInfo
+    ? formatTicket(ticketInfo, projectInfo.equipe.nome, projectInfo.gestor.nome)
+    : null;
   const ticket: TicketView | null = formatedTicket ? formatedTicket : null;
 
   return (
@@ -96,9 +83,9 @@ export default async function TicketLogsPage({
       <div className="shrink-0">
         <PageHeader>
           <Link href={`/projetos/${id}`} className="hover:underline">
-            Projeto {projectInfo?.nome}
+            Projeto {projectInfo.nome}
           </Link>
-          {` > Ticket ${!ticket ? "Sem título" : ticket.title}`}
+          {` > Ticket ${!ticket ? "Sem título" : ticket.title + " : " + ticket.type}`}
         </PageHeader>
       </div>
 
@@ -118,11 +105,12 @@ export default async function TicketLogsPage({
                 </PriorityBadge>
               </div>
             </div>
-            <p className="pt-1 text-xs text-muted-foreground">
-              Aberto em {ticket.openedAt} • #{ticketId} • Aberto por{" "}
-              <span className="italic">{ticket.createdBy}</span>
-            </p>
             <div className="flex items-center justify-between pt-3">
+              <p className="pt-1 text-xs text-muted-foreground">
+                Criado em {ticket.openedAt} • Tempo restante:{" "}
+                {ticket.timeRemaining.split("em")} • Aberto por{" "}
+                <span className="italic">{ticket.createdBy}</span>
+              </p>
               <div className="flex gap-2">
                 {ticket.teams.map((team) => (
                   <Badge

@@ -1,62 +1,42 @@
-import {
-  Categoria,
-  Prioridade,
-  StatusTicket,
-} from "@/lib/generated/prisma/enums";
+import { servicoProjeto } from "@/lib/services/projeto.service";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export enum TicketType {
-  MAINTENANCE = "MANUTENCAO",
-  INSTALLATION = "INSTALACAO",
+enum TicketType {
+  Maintenance = "MANUTENCAO",
+  Installation = "INSTALACAO",
 }
 
-export enum TicketPriority {
-  LOW = "BAIXA",
-  MEDIUM = "MEDIA",
-  HIGH = "ALTA",
-  CRITIC = "CRITICA",
+enum TicketPriority {
+  Low = "BAIXA",
+  Medium = "MEDIA",
+  High = "ALTA",
+  Critic = "CRITICA",
 }
 
-export enum TicketStatus {
-  OPEN = "ABERTO",
-  INPROGRESS = "EM_ANDAMENTO",
-  FINALIZED = "ENCERRADO",
+enum TicketStatus {
+  Open = "ABERTO",
+  InProgress = "EM_ANDAMENTO",
+  Finished = "ENCERRADO",
 }
 
-export const TicketTypeLabel: Record<TicketType, string> = {
-  [TicketType.MAINTENANCE]: "Manutenção",
-  [TicketType.INSTALLATION]: "Instalação",
+const TicketTypeLabel: Record<TicketType, string> = {
+  [TicketType.Maintenance]: "Manutenção",
+  [TicketType.Installation]: "Instalação",
 };
 
-export const TicketPriorityLabel: Record<TicketPriority, string> = {
-  [TicketPriority.LOW]: "Baixa",
-  [TicketPriority.MEDIUM]: "Média",
-  [TicketPriority.HIGH]: "Alta",
-  [TicketPriority.CRITIC]: "Crítica",
+const TicketPriorityLabel: Record<TicketPriority, string> = {
+  [TicketPriority.Low]: "Baixa",
+  [TicketPriority.Medium]: "Média",
+  [TicketPriority.High]: "Alta",
+  [TicketPriority.Critic]: "Crítica",
 };
 
-export const TicketStatusLabel: Record<TicketStatus, string> = {
-  [TicketStatus.OPEN]: "Não iniciado",
-  [TicketStatus.INPROGRESS]: "Em Andamento",
-  [TicketStatus.FINALIZED]: "Encerrado",
+const TicketStatusLabel: Record<TicketStatus, string> = {
+  [TicketStatus.Open]: "Não iniciado",
+  [TicketStatus.InProgress]: "Em Andamento",
+  [TicketStatus.Finished]: "Encerrado",
 };
-
-export interface TicketRaw {
-  id: string;
-  titulo: string;
-  descricao: string;
-  categoria: Categoria;
-  prioridade: Prioridade;
-  status: StatusTicket;
-  slaEm: Date | string | null;
-  criadoEm: Date | string | null;
-  atualizadoEm: Date | string | null;
-  encerradoEm: Date | string | null;
-  projetoId: string;
-  abertoPorId: string;
-  responsavelId: string | null;
-}
 
 export interface TicketView {
   id: string;
@@ -65,7 +45,7 @@ export interface TicketView {
   openedAt: string;
   timeRemaining: string;
   createdBy: string;
-  teams: string[];
+  teams: Array<string | undefined>;
   status: string;
   priority: string;
   description: string;
@@ -78,7 +58,17 @@ export interface TeamLogView {
   sentAt: string;
 }
 
-export function formatTicket(info: TicketRaw | null): TicketView | null {
+type TicketRes = NonNullable<
+  Awaited<
+    ReturnType<typeof servicoProjeto.buscarProjetoComTicketDeInstalacao>
+  >["ticketInstalacao"]
+>;
+
+export function formatTicket(
+  info: TicketRes,
+  team: string,
+  creator: string,
+): TicketView | null {
   if (!info) return null;
 
   return {
@@ -94,8 +84,8 @@ export function formatTicket(info: TicketRaw | null): TicketView | null {
           locale: ptBR,
         })
       : "Sem prazo definido",
-    createdBy: info.abertoPorId,
-    teams: [],
+    createdBy: creator,
+    teams: [team],
     status: TicketStatusLabel[info.status],
     priority: TicketPriorityLabel[info.prioridade],
     description: info.descricao,

@@ -54,20 +54,20 @@ function LogEditor({ onEnviar, className }: LogEditorProps) {
   }
 
   return (
-    <div className={cn("flex flex-col gap-2  ", className)}>
+    <div className={cn("flex flex-col gap-3  ", className)}>
       <div className="flex items-center gap-3">
         <label
           className="text-sm text-foreground font-medium min-w-max"
           htmlFor="log-titulo"
         >
-          Nome do log:
+          Título:
         </label>
         <Input
           id="log-titulo"
           value={titulo}
-          className="w-auto border-0 border-b  border-b-foreground shadow-none"
+          className="w-auto border-0 border-b rounded-b-none text-xs!  border-b-muted shadow-none"
           onChange={(event) => setTitulo(event.target.value)}
-          placeholder="Digite o nome do log"
+          placeholder="Digite o título do log..."
         />
       </div>
 

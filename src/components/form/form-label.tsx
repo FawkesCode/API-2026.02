@@ -1,9 +1,9 @@
-import * as React from "react"
+import * as React from "react";
 
-import { Label } from "@/components/ui/label"
+import { Label } from "@/components/ui/label";
 
 interface FormLabelProps extends React.ComponentProps<typeof Label> {
-  required?: boolean
+  required?: boolean;
 }
 
 /** Label padrão de formulário, com o marcador (*) de obrigatório já resolvido. */
@@ -13,5 +13,5 @@ export function FormLabel({ required, children, ...props }: FormLabelProps) {
       {children}
       {required && <span className="ml-0.5 text-red-600">*</span>}
     </Label>
-  )
+  );
 }
