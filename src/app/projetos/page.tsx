@@ -1,25 +1,40 @@
 import { servicoProjeto } from "@/lib/services/projeto.service";
 import PageHeader from "@/components/page-header";
-import ProjectsView, { ProjectInfo } from "@/components/projects/projects-view";
+import ProjectsView from "@/components/projects/projects-view";
+import { notFound } from "next/navigation";
+
+async function getProjects() {
+  let data;
+
+  try {
+    data = await servicoProjeto.listarAtivos();
+  } catch (error) {
+    console.error(`[getProjects] Erro ao buscar os projetos: ${error}`);
+    throw new Error("Não foi possível carregar a lista de projetos.");
+  }
+
+  if (!data) {
+    notFound();
+  }
+
+  return data.map((d) => ({
+    id: d.id,
+    title: d.nome,
+    client: d.cliente?.nome ?? "Cliente não informado",
+    location: d.localInstalacao,
+    description: "Sem descrição no endpoint ainda",
+    ticketCount: d._count?.tickets ?? 0,
+    createdBy: d.gestor?.nome ?? "Sistema",
+  }));
+}
 
 export default async function Projects() {
-  const projects = await servicoProjeto.listarAtivos();
-  if (!projects) return;
-
-  const initialProjects: ProjectInfo[] = projects.map((p) => ({
-    id: p.id,
-    title: p.nome,
-    client: p.cliente.nome,
-    location: p.localInstalacao,
-    description: "Sem descrição cadastrada",
-    ticketCount: p._count.tickets,
-    createdBy: p.gestor.nome,
-  }));
+  const initialProjects = await getProjects();
 
   return (
     <>
       <PageHeader>Projetos</PageHeader>
-      <ProjectsView initialProjects={initialProjects} />
+      <ProjectsView projects={initialProjects} />
     </>
   );
 }

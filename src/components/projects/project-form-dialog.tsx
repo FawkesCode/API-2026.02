@@ -37,6 +37,7 @@ interface ProjectFormDialogBaseProps {
   ) => Promise<void> | void;
   /** Esconde o botão de gatilho interno quando o dialog é aberto de fora. */
   hideTrigger?: boolean;
+  onSuccess: () => void;
 }
 
 // Se `open` for passado, `onOpenChange` passa a ser obrigatório — evita a
@@ -56,6 +57,7 @@ export function ProjectFormDialog({
   open,
   onOpenChange,
   hideTrigger,
+  onSuccess,
 }: ProjectFormDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = open !== undefined;
@@ -105,17 +107,17 @@ export function ProjectFormDialog({
 
       if (!res.ok) {
         const errorServer = await res.json().catch(() => null);
+        console.log(errorServer);
         throw new Error(
           errorServer?.message || "Falha na resposta do servidor",
         );
       }
 
-      const result = await res.json();
-      console.log("resultado:", result);
+      await res.json();
 
-      await onSubmitProject?.(result.id, data);
       reset();
       setDialogOpen(false);
+      onSuccess?.();
     } catch (error) {
       setSubmitError("Não foi possível cadastrar o projeto. Tente novamente.");
     }

@@ -7,9 +7,10 @@ import {
   type Autor,
   type LogItem,
 } from "@/components/tickets/ticket-logs";
-import { servicoProjeto } from "@/lib/services/projeto.service";
 
-import { formatTicket, TicketView } from "@/utils/formatTickets";
+import { getProjectById, getProjectTickets } from "@/lib/data/project-ticket";
+import { TicketView } from "@/types/ticket";
+import { notFound } from "next/navigation";
 
 // TODO: vem da sessão do usuário logado quando existir autenticação
 const autor: Autor = {
@@ -66,24 +67,21 @@ export default async function TicketLogsPage({
   params,
 }: PageProps<"/projetos/[id]/[ticketId]">) {
   const { id, ticketId } = await params;
-  const projectInfo = await servicoProjeto.buscarDetalhePorId(id);
-  if (!projectInfo) return;
+  const { title } = await getProjectById(id);
+  const tickets: TicketView[] = await getProjectTickets(id);
 
-  const projectWTicket =
-    await servicoProjeto.buscarProjetoComTicketDeInstalacao(id);
-  const ticketInfo = projectWTicket?.ticketInstalacao;
+  const ticket = tickets[0];
 
-  const formatedTicket = ticketInfo
-    ? formatTicket(ticketInfo, projectInfo.equipe.nome, projectInfo.gestor.nome)
-    : null;
-  const ticket: TicketView | null = formatedTicket ? formatedTicket : null;
+  if (ticket.id !== ticketId) {
+    notFound();
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col pb-6">
       <div className="shrink-0">
         <PageHeader>
           <Link href={`/projetos/${id}`} className="hover:underline">
-            Projeto {projectInfo.nome}
+            Projeto {title}
           </Link>
           {` > Ticket ${!ticket ? "Sem título" : ticket.title + " : " + ticket.type}`}
         </PageHeader>

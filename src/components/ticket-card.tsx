@@ -12,7 +12,7 @@ import { Badge } from "./ui/badge";
 import { PriorityBadge } from "./priority-badge";
 import { ReactNode } from "react";
 import { cn } from "cn";
-import { TeamLogView, TicketView } from "@/utils/formatTickets";
+import { TeamLogView, TicketView } from "@/types/ticket";
 
 interface TicketCardProps {
   ticket: TicketView;
@@ -44,7 +44,7 @@ function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
           <CardDescription className="border-b pb-4 text-foreground font-medium flex flex-col gap-2">
             <div className="flex flex-col sm:flex-row items-start md:items-center gap-3">
               <span className="text-accent">
-                Tempo restante: {ticket.timeRemaining.split("em")}
+                Tempo restante: {ticket.timeRemaining}
               </span>
 
               <p className="text-foreground font-normal">

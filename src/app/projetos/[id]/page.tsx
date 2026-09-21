@@ -1,8 +1,8 @@
 import PageHeader from "@/components/page-header";
 import TicketCard from "@/components/ticket-card";
 import TicketFilter from "@/components/ticket-filter";
-import { servicoProjeto } from "@/lib/services/projeto.service";
-import { formatTicket, TicketView } from "@/utils/formatTickets";
+import { getProjectById, getProjectTickets } from "@/lib/data/project-ticket";
+import { TicketView } from "@/types/ticket";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -10,21 +10,12 @@ interface PageProps {
 
 async function page({ params }: PageProps) {
   const { id } = await params;
-  const projectInfo = await servicoProjeto.buscarDetalhePorId(id);
-  if (!projectInfo) return;
-
-  const projectWTicket =
-    await servicoProjeto.buscarProjetoComTicketDeInstalacao(id);
-  const ticket = projectWTicket?.ticketInstalacao;
-
-  const formatedTicket = ticket
-    ? formatTicket(ticket, projectInfo?.equipe.nome, projectInfo.gestor.nome)
-    : null;
-  const tickets: TicketView[] = formatedTicket ? [formatedTicket] : [];
+  const { title } = await getProjectById(id);
+  const tickets: TicketView[] = await getProjectTickets(id);
 
   return (
     <>
-      <PageHeader>{`Projeto ${projectInfo?.nome} > Tickets`}</PageHeader>
+      <PageHeader>{`Projeto ${title} > Tickets`}</PageHeader>
 
       <section className="flex flex-col gap-4 pb-8">
         <TicketFilter />
@@ -38,8 +29,8 @@ async function page({ params }: PageProps) {
             />
           ))
         ) : (
-          <p className="col-span-full text-sm text-muted-foreground">
-            Nenhum ticket cadastrado para o projeto #{id} ainda!
+          <p className="col-span-full pl-2 text-sm text-muted-foreground">
+            Nenhum ticket cadastrado para o projeto {title} ainda!
           </p>
         )}
       </section>
