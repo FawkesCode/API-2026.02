@@ -2,9 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { Categoria, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
 
-// TODO: substituir por regra oficial de SLA quando a US #11 (Indicador de SLA
-// nos tickets) for implementada. Por ora, apenas garante um valor válido para
-// a coluna `slaEm`, que é obrigatória no model Ticket.
 const DIAS_SLA_INSTALACAO_PADRAO = 7;
 
 function calcularSlaPadrao() {
@@ -13,19 +10,46 @@ function calcularSlaPadrao() {
   return sla;
 }
 
+export class GestorNaoEncontradoError extends Error {
+  constructor() {
+    super("Gestor não encontrado.");
+  }
+}
+
+export class GestorSemEquipeError extends Error {
+  constructor() {
+    super(
+      "O gestor selecionado não está vinculado a nenhuma equipe no momento. " +
+        "Associe o gestor a uma equipe antes de criar o projeto.",
+    );
+  }
+}
+
+const RANKING_PRIORIDADE: Record<Prioridade, number> = {
+  [Prioridade.CRITICA]: 0,
+  [Prioridade.ALTA]: 1,
+  [Prioridade.MEDIA]: 2,
+  [Prioridade.BAIXA]: 3,
+};
+
 export class ServicoProjeto {
-  /**
-   * Cria o projeto e, na mesma transação, o ticket de instalação (categoria
-   * INSTALACAO) referente a ele, conforme US #1 / subtasks BACK #2 e BACK #3.
-   */
+
   async criarComTicketDeInstalacao(dados: CriarProjetoSchema) {
     return prisma.$transaction(async (tx) => {
+      const gestor = await tx.usuario.findUnique({ where: { id: dados.gestorId } });
+      if (!gestor) {
+        throw new GestorNaoEncontradoError();
+      }
+      if (!gestor.equipeId) {
+        throw new GestorSemEquipeError();
+      }
+
       const projeto = await tx.projeto.create({
         data: {
           nome: dados.nome,
           localInstalacao: dados.localInstalacao,
           clienteId: dados.clienteId,
-          equipeId: dados.equipeId,
+          equipeId: gestor.equipeId,
           gestorId: dados.gestorId,
         },
       });
@@ -41,8 +65,6 @@ export class ServicoProjeto {
           status: StatusTicket.ABERTO,
           slaEm: calcularSlaPadrao(),
           projetoId: projeto.id,
-          // TODO: revisar autoria quando houver usuário autenticado / usuário
-          // de suporte padrão. Por ora, o gestor do projeto é o autor.
           abertoPorId: dados.gestorId,
         },
       });
@@ -51,12 +73,7 @@ export class ServicoProjeto {
     });
   }
 
-  /**
-   * Busca o projeto e o ticket de instalação associado a ele (US #1 /
-   * subtask BACK #3). Retorna `projeto: null` se o projeto não existir e
-   * `ticketInstalacao: null` se o projeto existir mas ainda não tiver um
-   * ticket de instalação.
-   */
+
   async buscarProjetoComTicketDeInstalacao(projetoId: string) {
     const projeto = await prisma.projeto.findUnique({ where: { id: projetoId } });
     if (!projeto) {
@@ -83,8 +100,7 @@ export class ServicoProjeto {
       },
     });
   }
-  
-
+ 
   async listarAtivos() {
     return prisma.projeto.findMany({
       where: { ativo: true },
@@ -95,6 +111,23 @@ export class ServicoProjeto {
         gestor: { select: { id: true, nome: true } },
         _count: { select: { tickets: true } },
       },
+    });
+  }
+
+
+  async listarTicketsPorProjeto(projetoId: string) {
+    const tickets = await prisma.ticket.findMany({ where: { projetoId } });
+
+    return [...tickets].sort((a, b) => {
+      if (a.categoria !== b.categoria) {
+        if (a.categoria === Categoria.INSTALACAO) return -1;
+        if (b.categoria === Categoria.INSTALACAO) return 1;
+      }
+
+      const diferencaPrioridade = RANKING_PRIORIDADE[a.prioridade] - RANKING_PRIORIDADE[b.prioridade];
+      if (diferencaPrioridade !== 0) return diferencaPrioridade;
+
+      return a.criadoEm.getTime() - b.criadoEm.getTime();
     });
   }
 }

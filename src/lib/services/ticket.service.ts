@@ -60,6 +60,24 @@ export class ServicoTicket {
       return atualizado;
     });
   }
+
+    async buscarDetalhePorId(ticketId: string) {
+    return prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        abertoPor: { select: { id: true, nome: true } },
+        responsavel: { select: { id: true, nome: true } },
+        projeto: {
+          select: {
+            id: true,
+            nome: true,
+            equipe: { select: { id: true, nome: true } },
+          },
+        },
+      },
+    });
+  }
+  
 }
 
 export const servicoTicket = new ServicoTicket();
