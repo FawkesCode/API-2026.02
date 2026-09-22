@@ -7,10 +7,8 @@ export const criarProjetoSchema = z.object({
     .trim()
     .min(1, "Local de instalação é obrigatório.")
     .max(255),
-
   descricao: z.string().trim().min(1).optional(),
   clienteId: z.uuid("clienteId deve ser um UUID válido."),
-  equipeId: z.uuid("equipeId deve ser um UUID válido."),
   gestorId: z.uuid("gestorId deve ser um UUID válido."),
 });
 

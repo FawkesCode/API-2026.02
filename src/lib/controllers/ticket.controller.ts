@@ -102,6 +102,21 @@ export class ControladorTicket {
       return tratarErroInesperado(erro);
     }
   }
+
+
+  async buscarDetalhe(_requisicao: Request, ticketId: string) {
+    try {
+      const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
+      if (!ticket) {
+        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+        }
+      return NextResponse.json(ticket, { status: 200 });
+      } catch (erro) {
+      console.error(erro);
+      return NextResponse.json({ erro: "Erro interno ao buscar o ticket." }, { status: 500 });
+      }
+    }
+
 }
 
 export const controladorTicket = new ControladorTicket();
