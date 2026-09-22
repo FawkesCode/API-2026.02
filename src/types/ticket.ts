@@ -52,4 +52,6 @@ export interface TicketView {
   priority: string;
   description: string;
   recentLogs: TeamLogView[] | null;
+  
+  projectId?: string;
 }

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Prioridade } from "@/lib/generated/prisma/client";
+import { Prioridade, StatusTicket, Prisma } from "@/lib/generated/prisma/client";
 import type {
   CriarTicketSchema,
   AtualizarPrioridadeTicketSchema,
@@ -10,6 +10,37 @@ export class ErroConflitoPrioridade extends Error {
     super("A prioridade do ticket foi alterada por outra requisição enquanto esta era processada.");
     this.name = "ErroConflitoPrioridade";
   }
+}
+
+export interface FiltrosTicket {
+  prioridade?: Prioridade;
+  status?: StatusTicket;
+  titulo?: string;
+  data?: string; // "yyyy-MM-dd"
+}
+
+function montarWhere(
+  filtros: FiltrosTicket | undefined,
+  base: Prisma.TicketWhereInput = {},
+): Prisma.TicketWhereInput {
+  const where: Prisma.TicketWhereInput = { ...base };
+
+  if (filtros?.prioridade) {
+    where.prioridade = filtros.prioridade;
+  }
+  if (filtros?.status) {
+    where.status = filtros.status;
+  }
+  if (filtros?.titulo) {
+    where.titulo = { contains: filtros.titulo };
+  }
+  if (filtros?.data) {
+    const inicio = new Date(`${filtros.data}T00:00:00`);
+    const fim = new Date(`${filtros.data}T23:59:59.999`);
+    where.criadoEm = { gte: inicio, lte: fim };
+  }
+
+  return where;
 }
 
 export class ServicoTicket {
@@ -58,6 +89,15 @@ export class ServicoTicket {
       });
 
       return atualizado;
+    });
+  }
+
+  
+  async listarTodos(filtros?: FiltrosTicket) {
+    return prisma.ticket.findMany({
+      where: montarWhere(filtros),
+      orderBy: { criadoEm: "desc" },
+      include: { projeto: { select: { id: true } } },
     });
   }
 }

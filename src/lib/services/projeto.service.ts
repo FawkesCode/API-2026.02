@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Categoria, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
+import { Categoria, Prioridade, StatusTicket, Prisma } from "@/lib/generated/prisma/client";
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
 
 // TODO: substituir por regra oficial de SLA quando a US #11 (Indicador de SLA
@@ -71,7 +71,6 @@ export class ServicoProjeto {
     return { projeto, ticketInstalacao };
   }
 
-
   async buscarDetalhePorId(projetoId: string) {
     return prisma.projeto.findUnique({
       where: { id: projetoId },
@@ -83,7 +82,44 @@ export class ServicoProjeto {
       },
     });
   }
-  
+
+  /**
+   * Lista todos os tickets de um projeto (qualquer categoria/status),
+   * usada pela tela de detalhe do projeto. Diferente de
+   * `buscarProjetoComTicketDeInstalacao`, que retorna apenas o ticket
+   * de instalação automático.
+   */
+  async listarTicketsDoProjeto(
+  projetoId: string,
+  filtros?: {
+    prioridade?: Prioridade;
+    status?: StatusTicket;
+    titulo?: string;
+    data?: string; // "yyyy-MM-dd"
+  },
+) {
+  const where: Prisma.TicketWhereInput = { projetoId };
+
+  if (filtros?.prioridade) {
+    where.prioridade = filtros.prioridade;
+  }
+  if (filtros?.status) {
+    where.status = filtros.status;
+  }
+  if (filtros?.titulo) {
+    where.titulo = { contains: filtros.titulo };
+  }
+  if (filtros?.data) {
+    const inicio = new Date(`${filtros.data}T00:00:00`);
+    const fim = new Date(`${filtros.data}T23:59:59.999`);
+    where.criadoEm = { gte: inicio, lte: fim };
+  }
+
+  return prisma.ticket.findMany({
+    where,
+    orderBy: { criadoEm: "desc" },
+  });
+}
 
   async listarAtivos() {
     return prisma.projeto.findMany({

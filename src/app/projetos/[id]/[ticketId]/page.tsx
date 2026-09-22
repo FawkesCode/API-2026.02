@@ -70,12 +70,11 @@ export default async function TicketLogsPage({
   const { title } = await getProjectById(id);
   const tickets: TicketView[] = await getProjectTickets(id);
 
-  const ticket = tickets[0];
+  const ticket = tickets.find((ticket) => ticket.id === ticketId);
 
-  if (ticket.id !== ticketId) {
+  if (!ticket) {
     notFound();
   }
-
   return (
     <div className="flex h-full min-h-0 flex-col pb-6">
       <div className="shrink-0">

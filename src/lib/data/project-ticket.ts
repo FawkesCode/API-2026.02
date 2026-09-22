@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { servicoProjeto } from "../services/projeto.service";
 import { toTicketDTO } from "../mappers/ticket.mapper";
+import type { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 
 export async function getProjectById(id: string) {
   let data;
@@ -16,7 +17,6 @@ export async function getProjectById(id: string) {
     notFound();
   }
 
-  // No momento, a única coisa que precisamos pegar o projeto é o nome e o id
   return {
     projectId: data.id,
     title: data.nome,
@@ -24,15 +24,24 @@ export async function getProjectById(id: string) {
   };
 }
 
-export async function getProjectTickets(id: string) {
+export interface FiltrosTicket {
+  prioridade?: Prioridade;
+  status?: StatusTicket;
+  titulo?: string;
+  data?: string;
+}
+
+export async function getProjectTickets(id: string, filtros?: FiltrosTicket) {
   if (!id) {
     notFound();
   }
 
-  let res;
+  let projeto;
+  let tickets;
 
   try {
-    res = await servicoProjeto.buscarProjetoComTicketDeInstalacao(id);
+    projeto = await servicoProjeto.buscarDetalhePorId(id);
+    tickets = await servicoProjeto.listarTicketsDoProjeto(id, filtros);
   } catch (error) {
     console.error(`[getProjectTickets] Erro ao buscar os tickets: ${error}`);
     throw new Error(
@@ -40,15 +49,9 @@ export async function getProjectTickets(id: string) {
     );
   }
 
-  if (!res || !res.projeto) {
+  if (!projeto) {
     notFound();
   }
 
-  if (!res.ticketInstalacao) {
-    return [];
-  }
-
-  const data = [res.ticketInstalacao];
-
-  return data.map((d) => toTicketDTO(d));
+  return tickets.map((t) => toTicketDTO(t));
 }
