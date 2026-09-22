@@ -3,6 +3,8 @@
 import { ProjectFormDialog } from "./project-form-dialog";
 import ProjectCard from "./project-card";
 import { useRouter } from "next/navigation";
+import { SelectInterface } from "@/lib/data/dropdown";
+import { use } from "react";
 
 export interface ProjectInfo {
   id: string;
@@ -16,9 +18,11 @@ export interface ProjectInfo {
 
 interface ProjectsClientProps {
   projects: ProjectInfo[];
+  clients: SelectInterface[];
+  supervisors: SelectInterface[];
 }
 
-function ProjectsView({ projects }: ProjectsClientProps) {
+function ProjectsView({ projects, clients, supervisors }: ProjectsClientProps) {
   const router = useRouter();
 
   function handleSuccess() {
@@ -28,7 +32,11 @@ function ProjectsView({ projects }: ProjectsClientProps) {
   return (
     <>
       <div className="flex justify-end pb-4">
-        <ProjectFormDialog onSuccess={handleSuccess} />
+        <ProjectFormDialog
+          onSuccess={handleSuccess}
+          clientsData={clients}
+          supervisorsData={supervisors}
+        />
       </div>
       <section className="grid grid-cols-1 md:grid-cols-2  xl:grid-cols-4  gap-4 pb-8">
         {projects.length !== 0 ? (
