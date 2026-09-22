@@ -4,4 +4,14 @@
 
 ---
 
-Documentação em andamento 🚧
+| Rank | Prioridade | User Story | Estimativa | Sprint |
+|:----:|:----------:|------------|:----------:|:------:|
+|  8   |    Media   | Como TÉCNICO, quero receber um email quando um ticket for associado ao meu time, para que eu possa me manter informado das demandas.| 8 | 3 |
+|  12  |    Baixa   | Como GESTOR, quero receber um email com um alerta quando o SLA de um ticket estiver próximo do fim, para que eu possa gerir de maneira mais coordenada o meu time. | 5 | 3 |
+|  17  |    Baixa   | Como ANALISTA DE SUPORTE INTERNO,  quero ter a opção de redefinir as senhas dos técnicos, para que, caso haja algum esquecimento ou vazamento, a plataforma possa ser acessada e protegida.| 5 | 3 |
+|  18  |    Baixa   | Como ANALISTA DE SUPORTE INTERNO, quero que a senha que eu criei para o técnico seja provisória, para que as senhas dos usuários estejam protegidas| 8 | 2 |
+|  19  |    Media   | Como TÉCNICO, quero que, ao adicionar algum time num ticket, eles recebam um email para que, quando eu necessitar de suporte de outro time, eles sejam notificados e possam me auxiliar.| 8 | 2 |
+|  25  |    Media   | Como ANALISTA DE SUPORTE INTERNO, quero poder desativar/ativar todos os perfis da empresa, para que eu possa gerenciar os perfis da plataforma.| 5 | 2 |
+|  26  |    Media   | Como ANALISTA DE SUPORTE INTERNO, quero poder editar todos os perfis da empresa, para que eu possa manter a gerência dos perfis da plataforma.| 5 | 2 |
+
+

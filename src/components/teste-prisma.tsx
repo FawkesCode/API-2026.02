@@ -1,37 +1,27 @@
-'use server'
-
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "@/lib/generated/prisma/client";
-
-
+import { prisma } from "@/lib/prisma";
 
 export default async function TesteUser() {
-    const adapter = new PrismaMariaDb({
-        host: "localhost",
-        port: 3306,
-        connectionLimit: 5,
-    });
+  const usuario = await prisma.usuario.findFirst({
+    orderBy: {
+      nome: "asc",
+    },
+    select: {
+      nome: true,
+      email: true,
+    },
+  });
 
-    const prisma = new PrismaClient({ adapter });
+  return (
+    <section>
+      <h1>Teste de conexão com o banco</h1>
 
-    const user = await prisma.teste.create({
-        data: {
-            id: 1,
-            nome: "james"
-        }
-    })
-    console.log(user)
-
-    const querieUser = await prisma.teste.findFirst()
-    console.log(querieUser)
-    return (
-        <>
-            <h1>Usuário:  </h1>
-            <span>{user.nome}</span>
-
-            <h1>Usuário querie: </h1>
-            <span>{querieUser?.nome}</span>
-
-        </>
-    )
+      {usuario ? (
+        <p>
+          Primeiro usuário: {usuario.nome} ({usuario.email})
+        </p>
+      ) : (
+        <p>Conexão realizada. Nenhum usuário cadastrado.</p>
+      )}
+    </section>
+  );
 }
