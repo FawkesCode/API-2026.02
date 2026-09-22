@@ -25,6 +25,37 @@ Nesse contexto, o desafio é construir uma plataforma unificada de tickets com i
 
 <br>
 
+## **📖 Product Backlog**
+
+| Rank | Prioridade | User Story | Estimativa | Sprint |
+|:----:|:----------:|------------|:----------:|:------:|
+|  1   |    Alta    | Como ANALISTA COMERCIAL, quero cadastrar um novo projeto, e gerar um ticket vinculado a ele, para que o projeto seja registrado na plataforma e sua instalação possa ser acompanhada pela equipe(s) responsável. | 13 | 1 |
+|  2   |    Alta    |Como TÉCNICO, quero visualizar os tickets atribuídos ao meu time, para que eu possa me manter informado quanto às demandas pendentes.| 13 | 1 |
+|  3   |    Baixa   | Como GESTOR, quero receber um email quando um ticket for associado ao meu time, para que eu possa me manter informado das demandas.| 5 | 1 |
+|  4   |    Alta    | Como TÉCNICO, quero poder adicionar logs/mensagens ao chamado, com campo para especificar o reparo feito, materiais utilizados, e outros detalhes, para que eu possa registrar o trabalho feito.| 13 | 1 |
+|  5   |    Alta    | Como TÉCNICO, quero que haja algum indicador visual do SLA nos tickets, para que eu possa avaliar a urgência de cada demanda.| 13 | 1 |
+|  6   |    Baixa   | Como GESTOR, quero poder alterar a prioridade dos tickets, para que a urgência de cada cliente seja respeitada.| 8 | 1 |
+|  7   |    Baixa   | Como GESTOR, quero que os tickets de maior prioridade apareçam no topo da fila, para que minha priorização de demandas seja mais rápida e precisa.| 8 | 1 |
+|  8   |    Baixa   | Como ANALISTA DE SUPORTE EXTERNO,  quero poder criar tickets de manutenção e atribuir estes tickets a um determinado projeto, para que o time responsável possa atuar.| 8 | 1 |
+|  9   |    Media   | Como ANALISTA DE SUPORTE INTERNO, quero criar contas para os técnicos na plataforma, para que os usuários criados estejam padronizados. | 13 | 2 |
+|  10  |    Baixa   | Como GESTOR, quero poder editar o nome e a descrição da equipe, para que essas informações fiquem mais direcionadas a área de atuação que faço parte. | 5 | 2 |
+|  11  |    Media   | Como GESTOR, quero adicionar os técnicos previamente criados na minha equipe, para que eles tenham acesso aos tickets.| 5 | 2 |
+|  12  |    Baixa   | Como FUNCIONÁRIO, desejo logar na plataforma, para que eu possa acessar o site e que as informações nele estejam protegidas.| 8 | 2 |
+|  13  |    Media   | Como GESTOR, quero ter uma equipe própria para me organizar a respeito das demandas em aberto e dos técnicos disponíveis para pegá-las.| 8 | 2 |
+|  14  |    Media   | Como ANALISTA DE SUPORTE INTERNO, quero ter a funcionalidade de criar contas de gestor, para que os gestores possam ter seus perfis criados e atuarem na empresa.| 8 | 2 |
+|  15  |    Media   | Como ANALISTA DE SUPORTE INTERNO, quero que a funcionalidade de criar contas de analista comercial, para que os gestores possam ter seus perfis criados e atuarem na empresa.| 8 | 2 |
+|  16  |    Media   | Como ANALISTA DE SUPORTE INTERNO, quero ter a funcionalidade de criar contas de analista de  suporte externo, para que os analistas de suporte externo possam ter seus perfis criados e atuarem na empresa.| 8 | 2 |
+|  17  |    Media   | Como ANALISTA DE SUPORTE INTERNO, quero ter uma tela para poder visualizar todas as contas, para que eu possa visualizar os perfis da empresa.| 5 | 2 |
+|  18  |    Media   | Como TÉCNICO, quero receber um email quando um ticket for associado ao meu time, para que eu possa me manter informado das demandas.| 8 | 3 |
+|  19  |    Baixa   | Como GESTOR, quero receber um email com um alerta quando o SLA de um ticket estiver próximo do fim, para que eu possa gerir de maneira mais coordenada o meu time. | 5 | 3 |
+|  20  |    Baixa   | Como ANALISTA DE SUPORTE INTERNO,  quero ter a opção de redefinir as senhas dos técnicos, para que, caso haja algum esquecimento ou vazamento, a plataforma possa ser acessada e protegida.| 5 | 3 |
+|  21  |    Baixa   | Como ANALISTA DE SUPORTE INTERNO, quero que a senha que eu criei para o técnico seja provisória, para que as senhas dos usuários estejam protegidas| 8 | 3 |
+|  22  |    Media   | Como TÉCNICO, quero que, ao adicionar algum time num ticket, eles recebam um email para que, quando eu necessitar de suporte de outro time, eles sejam notificados e possam me auxiliar.| 8 | 3 |
+|  23  |    Media   | Como ANALISTA DE SUPORTE INTERNO, quero poder desativar/ativar todos os perfis da empresa, para que eu possa gerenciar os perfis da plataforma.| 5 | 3 |
+|  24  |    Media   | Como ANALISTA DE SUPORTE INTERNO, quero poder editar todos os perfis da empresa, para que eu possa manter a gerência dos perfis da plataforma.| 5 | 3 |
+
+
+
 ---
 
 ## 📅 Sprints <a id="sprints"></a>
