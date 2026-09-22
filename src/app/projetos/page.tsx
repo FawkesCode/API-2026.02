@@ -33,16 +33,12 @@ export default async function Projects() {
   const initialProjects = await getProjects();
   const clients = await getClients();
   const supervisors = await getUsers();
-  console.log(clients);
 
   return (
-    <>
-      <PageHeader>Projetos</PageHeader>
-      <ProjectsView
-        projects={initialProjects}
-        clients={clients}
-        supervisors={supervisors}
-      />
-    </>
+    <ProjectsView
+      projects={initialProjects}
+      clients={clients}
+      supervisors={supervisors}
+    />
   );
 }

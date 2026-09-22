@@ -116,7 +116,6 @@ export function ProjectFormDialog({
 
       if (!res.ok) {
         const errorServer = await res.json().catch(() => null);
-        console.log(errorServer);
         throw new Error(
           errorServer?.message || "Falha na resposta do servidor",
         );

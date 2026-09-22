@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { servicoProjeto } from "../services/projeto.service";
 import { toTicketDTO } from "../mappers/ticket.mapper";
+import { servicoTicket } from "../services/ticket.service";
 
 export async function getProjectById(id: string) {
   let data;
@@ -29,10 +30,10 @@ export async function getProjectTickets(id: string) {
     notFound();
   }
 
-  let res;
+  let data;
 
   try {
-    res = await servicoProjeto.buscarProjetoComTicketDeInstalacao(id);
+    data = await servicoProjeto.listarTicketsPorProjeto(id);
   } catch (error) {
     console.error(`[getProjectTickets] Erro ao buscar os tickets: ${error}`);
     throw new Error(
@@ -40,15 +41,32 @@ export async function getProjectTickets(id: string) {
     );
   }
 
-  if (!res || !res.projeto) {
+  if (!data) {
     notFound();
   }
 
-  if (!res.ticketInstalacao) {
-    return [];
+  return data.map((d) => toTicketDTO(d));
+}
+
+export async function getTicket(id: string) {
+  if (!id) {
+    notFound();
   }
 
-  const data = [res.ticketInstalacao];
+  let data;
 
-  return data.map((d) => toTicketDTO(d));
+  try {
+    data = await servicoTicket.buscarDetalhePorId(id);
+  } catch (error) {
+    console.error(`[getProjectTickets] Erro ao buscar os tickets: ${error}`);
+    throw new Error(
+      "Não foi possível carregar os tickets do projeto selecionado.",
+    );
+  }
+
+  if (!data) {
+    notFound();
+  }
+
+  return toTicketDTO(data);
 }

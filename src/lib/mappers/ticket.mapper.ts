@@ -7,14 +7,31 @@ import {
 } from "@/types/ticket";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { servicoTicket } from "../services/ticket.service";
 
 export type TicketRes = NonNullable<
+  Awaited<ReturnType<typeof servicoTicket.buscarDetalhePorId>>
+>;
+
+export type ProjTicketRes = NonNullable<
   Awaited<
     ReturnType<typeof servicoProjeto.buscarProjetoComTicketDeInstalacao>
   >["ticketInstalacao"]
 >;
 
-export function toTicketDTO(info: TicketRes): TicketView {
+type TicketFromProject = {
+  info: ProjTicketRes;
+  project?: true;
+};
+
+type AloneTicket = {
+  info: TicketRes;
+  project?: false;
+};
+
+type TicketProps = AloneTicket | TicketFromProject;
+
+export function toTicketDTO(info: ProjTicketRes): TicketView {
   return {
     id: info.id,
     title: info.titulo.split("Instalação")[1].split("—")[1],
