@@ -28,10 +28,10 @@ export async function getUsers() {
   let data;
 
   try {
-    data = await servicoUsuario.listarParaSelecao();
+    data = await servicoUsuario.listarParaSelecao("GESTOR");
   } catch (error) {
-    console.error(`[getClients] Erro ao listar os clientes: ${error}`);
-    throw new Error("Não foi possível carregar a lista de clientes.");
+    console.error(`[getClients] Erro ao listar os gestores: ${error}`);
+    throw new Error("Não foi possível carregar a lista de gestores.");
   }
 
   if (!data) return [];

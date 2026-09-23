@@ -1,5 +1,4 @@
 import { servicoProjeto } from "@/lib/services/projeto.service";
-import PageHeader from "@/components/page-header";
 import ProjectsView from "@/components/projects/projects-view";
 import { notFound } from "next/navigation";
 import { getClients, getUsers } from "@/lib/data/dropdown";
@@ -31,8 +30,7 @@ async function getProjects() {
 
 export default async function Projects() {
   const initialProjects = await getProjects();
-  const clients = await getClients();
-  const supervisors = await getUsers();
+  const [clients, supervisors] = await Promise.all([getClients(), getUsers()]);
 
   return (
     <ProjectsView

@@ -12,7 +12,10 @@ export function toTicketDTO(info: TicketComRelacoes): TicketView {
   return {
     id: info.id,
     title: info.titulo,
-    type: TicketTypeLabel[info.categoria] ?? "Não definido",
+    type:
+      TicketTypeLabel[info.categoria] === "Instalação"
+        ? ""
+        : (TicketTypeLabel[info.categoria] ?? "Não definido"),
     openedAt: format(new Date(info.criadoEm), "d/M"),
     timeRemaining: formatDistanceToNow(new Date(info.slaEm), {
       addSuffix: false,

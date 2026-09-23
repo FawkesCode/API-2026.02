@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { Categoria, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
+import {
+  Categoria,
+  Prioridade,
+  StatusTicket,
+} from "@/lib/generated/prisma/client";
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
 import { RELACOES_TICKET } from "@/lib/services/ticket.service";
 
@@ -27,10 +31,11 @@ export class GestorSemEquipeError extends Error {
 }
 
 export class ServicoProjeto {
-
   async criarComTicketDeInstalacao(dados: CriarProjetoSchema) {
     return prisma.$transaction(async (tx) => {
-      const gestor = await tx.usuario.findUnique({ where: { id: dados.gestorId } });
+      const gestor = await tx.usuario.findUnique({
+        where: { id: dados.gestorId },
+      });
       if (!gestor) {
         throw new GestorNaoEncontradoError();
       }
@@ -78,7 +83,9 @@ export class ServicoProjeto {
   }
 
   async buscarProjetoComTicketDeInstalacao(projetoId: string) {
-    const projeto = await prisma.projeto.findUnique({ where: { id: projetoId } });
+    const projeto = await prisma.projeto.findUnique({
+      where: { id: projetoId },
+    });
     if (!projeto) {
       return { projeto: null, ticketInstalacao: null };
     }
