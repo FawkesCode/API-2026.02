@@ -23,7 +23,7 @@ async function getProjects() {
     title: d.nome,
     client: d.cliente?.nome ?? "Cliente não informado",
     location: d.localInstalacao,
-    description: "teste",
+    description: d.descricao ?? "",
     ticketCount: d._count?.tickets ?? 0,
     createdBy: d.gestor?.nome ?? "Sistema",
   }));

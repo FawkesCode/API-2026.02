@@ -15,9 +15,11 @@ enum Cargo {
 }
 
 enum StatusTicket {
-  ABERTO
+  NAO_INICIADO
   EM_ANDAMENTO
+  SOLICITACAO_ENCERRAMENTO
   ENCERRADO
+  EM_REVISAO
 }
 
 enum Prioridade {
@@ -42,8 +44,6 @@ model Usuario {
   senhaProvisoria Boolean  @default(true) @map("senha_provisoria")
   criadoEm        DateTime @default(now()) @map("criado_em") @db.DateTime(3)
   atualizadoEm    DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
-
-  // O usuario pode ficar temporariamente sem equipe, conforme a US7.
   equipeId String? @map("equipe_id") @db.Char(36)
   equipe   Equipe? @relation(fields: [equipeId], references: [id], onDelete: SetNull)
 
@@ -67,6 +67,7 @@ model Equipe {
 
   usuarios Usuario[]
   projetos Projeto[]
+  ticketsAlocados TicketEquipe[]
 
   @@map("equipes")
 }
@@ -87,6 +88,7 @@ model Projeto {
   id              String   @id @default(uuid()) @db.Char(36)
   nome            String   @db.VarChar(150)
   localInstalacao String   @map("local_instalacao") @db.VarChar(255)
+  descricao       String?  @db.Text
   ativo           Boolean  @default(true)
   criadoEm        DateTime @default(now()) @map("criado_em") @db.DateTime(3)
   atualizadoEm    DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
@@ -94,14 +96,12 @@ model Projeto {
   clienteId String  @map("cliente_id") @db.Char(36)
   cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
 
-  // Cada projeto possui uma unica equipe responsavel no MVP.
   equipeId String @map("equipe_id") @db.Char(36)
   equipe   Equipe @relation(fields: [equipeId], references: [id], onDelete: Restrict)
 
   gestorId String  @map("gestor_id") @db.Char(36)
   gestor   Usuario @relation("ProjetosGerenciados", fields: [gestorId], references: [id], onDelete: Restrict)
 
-  // A equipe dos tickets e herdada do projeto.
   tickets Ticket[]
 
   @@unique([clienteId, nome], map: "uq_projetos_cliente_nome")
@@ -116,7 +116,7 @@ model Ticket {
   descricao    String       @db.Text
   categoria    Categoria
   prioridade   Prioridade   @default(MEDIA)
-  status       StatusTicket @default(ABERTO)
+  status       StatusTicket @default(NAO_INICIADO)
   slaEm        DateTime     @map("sla_em") @db.DateTime(3)
   encerradoEm  DateTime?    @map("encerrado_em") @db.DateTime(3)
   criadoEm     DateTime     @default(now()) @map("criado_em") @db.DateTime(3)
@@ -133,12 +133,28 @@ model Ticket {
 
   relatorios Relatorio[]
   historico  HistoricoTicket[]
+  equipesAlocadas TicketEquipe[]
 
   @@index([projetoId, status, prioridade, criadoEm], map: "ix_tickets_fila")
   @@index([status, slaEm], map: "ix_tickets_sla")
   @@index([abertoPorId], map: "ix_tickets_aberto_por")
   @@index([responsavelId], map: "ix_tickets_responsavel")
   @@map("tickets")
+}
+
+model TicketEquipe {
+  id       String   @id @default(uuid()) @db.Char(36)
+  criadoEm DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+
+  ticketId String @map("ticket_id") @db.Char(36)
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  equipeId String @map("equipe_id") @db.Char(36)
+  equipe   Equipe @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketId, equipeId], map: "uq_ticket_equipes_ticket_equipe")
+  @@index([equipeId], map: "ix_ticket_equipes_equipe")
+  @@map("ticket_equipes")
 }
 
 model Relatorio {

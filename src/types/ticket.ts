@@ -11,9 +11,11 @@ enum TicketPriority {
 }
 
 enum TicketStatus {
-  Open = "ABERTO",
+  NotStarted = "NAO_INICIADO",
   InProgress = "EM_ANDAMENTO",
+  ClosureRequested = "SOLICITACAO_ENCERRAMENTO",
   Finished = "ENCERRADO",
+  InReview = "EM_REVISAO",
 }
 
 export const TicketTypeLabel: Record<TicketType, string> = {
@@ -29,9 +31,11 @@ export const TicketPriorityLabel: Record<TicketPriority, string> = {
 };
 
 export const TicketStatusLabel: Record<TicketStatus, string> = {
-  [TicketStatus.Open]: "Não iniciado",
-  [TicketStatus.InProgress]: "Em Andamento",
+  [TicketStatus.NotStarted]: "Não iniciado",
+  [TicketStatus.InProgress]: "Em andamento",
+  [TicketStatus.ClosureRequested]: "Solicitação de encerramento",
   [TicketStatus.Finished]: "Encerrado",
+  [TicketStatus.InReview]: "Em revisão",
 };
 
 export interface TeamLogView {
@@ -47,6 +51,7 @@ export interface TicketView {
   openedAt: string;
   timeRemaining: string;
   createdBy: string;
+  createdById: string;
   teams: Array<string | undefined>;
   status: string;
   priority: string;

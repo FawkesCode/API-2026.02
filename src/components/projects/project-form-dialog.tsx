@@ -111,6 +111,7 @@ export function ProjectFormDialog({
           gestorId: data.gestor?.value,
           localInstalacao: data.localInstalacao,
           clienteId: data.cliente?.value,
+          descricao: data.descricao,
         }),
       });
 
