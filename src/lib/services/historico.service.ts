@@ -1,5 +1,21 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import type { CriarLogTicketSchema } from "@/schemas/historico.schema";
+
+const incluirUsuario = {
+  usuario: {
+    select: {
+      id: true,
+      nome: true,
+      cargo: true,
+      equipe: { select: { nome: true } },
+    },
+  },
+} satisfies Prisma.HistoricoTicketInclude;
+
+export type LogTicketComUsuario = Prisma.HistoricoTicketGetPayload<{
+  include: typeof incluirUsuario;
+}>;
 
 export class ServicoHistoricoTicket {
   async listarPorTicket(ticketId: string) {
@@ -9,9 +25,7 @@ export class ServicoHistoricoTicket {
     return prisma.historicoTicket.findMany({
       where: { ticketId },
       orderBy: { criadoEm: "desc" },
-      include: {
-        usuario: { select: { id: true, nome: true } },
-      },
+      include: incluirUsuario,
     });
   }
 
@@ -26,9 +40,7 @@ export class ServicoHistoricoTicket {
         descricao: dados.descricao,
         usuarioId: dados.usuarioId,
       },
-      include: {
-        usuario: { select: { id: true, nome: true } },
-      },
+      include: incluirUsuario,
     });
   }
 }

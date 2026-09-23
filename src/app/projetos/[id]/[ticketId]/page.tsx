@@ -2,56 +2,12 @@ import Link from "next/link";
 import PageHeader from "@/components/page-header";
 import { PriorityBadge } from "@/components/priority-badge";
 import { Badge } from "@/components/ui/badge";
-import {
-  TicketLogs,
-  type Autor,
-  type LogItem,
-} from "@/components/tickets/ticket-logs";
+import { TicketLogs } from "@/components/tickets/ticket-logs";
 
 import { getProjectById, getProjectTickets } from "@/lib/data/project-ticket";
+import { getLogAuthor, getTicketLogs } from "@/lib/data/ticket-logs";
 import { TicketView } from "@/types/ticket";
 import { notFound } from "next/navigation";
-
-// TODO: vem da sessão do usuário logado quando existir autenticação
-const autor: Autor = {
-  id: "u-1",
-  nome: "Ana Ribeiro",
-  equipe: "Infraestrutura",
-  setor: "Redes",
-};
-
-const logsIniciais: Array<LogItem> = [
-  {
-    id: "1",
-    tipo: "aviso",
-    status: "iniciado",
-    titulo: "Equipe Infraestrutura começou a trabalhar no ticket",
-    descricao: "Ana Ribeiro deu início a atividade",
-  },
-  {
-    id: "2",
-    tipo: "manual",
-    autorId: "u-2",
-    autorNome: "Carlos Menezes",
-    equipe: "Elétrica",
-    setor: "Campo",
-    titulo: "Troca de disjuntor",
-    descricao:
-      "Descrição do que foi feito. Descrição do que foi feito. Descrição do que foi feito.",
-    criadoEm: new Date("2026-09-16T09:00:00"),
-  },
-  {
-    id: "3",
-    tipo: "manual",
-    autorId: "u-1",
-    autorNome: "Ana Ribeiro",
-    equipe: "Infraestrutura",
-    setor: "Redes",
-    titulo: "Recabeamento do rack",
-    descricao: "Descrição do que foi feito. Descrição do que foi feito.",
-    criadoEm: new Date("2026-09-16T11:30:00"),
-  },
-];
 
 type PriorityLevel = "critical" | "high" | "medium" | "low";
 
@@ -75,6 +31,12 @@ export default async function TicketLogsPage({
   if (ticket.id !== ticketId) {
     notFound();
   }
+
+  // TODO: autor vem da sessão do usuário logado quando existir autenticação
+  const [autor, logs] = await Promise.all([
+    getLogAuthor(ticketId),
+    getTicketLogs(ticketId),
+  ]);
 
   return (
     <div className="flex h-full min-h-0 flex-col pb-6">
@@ -124,7 +86,7 @@ export default async function TicketLogsPage({
         ) : null}
       </section>
 
-      <TicketLogs logsIniciais={logsIniciais} autor={autor} />
+      <TicketLogs ticketId={ticketId} logsIniciais={logs} autor={autor} />
     </div>
   );
 }
