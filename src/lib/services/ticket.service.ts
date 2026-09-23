@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Cargo, Prioridade } from "@/lib/generated/prisma/client";
 import type {
   CriarTicketSchema,
-  AtualizarPrioridadeTicketSchema,
+  AtualizarPrioridadeComAutor,
 } from "@/schemas/ticket.schema";
 
 export class ErroConflitoPrioridade extends Error {
@@ -37,7 +37,7 @@ export class ServicoTicket {
     });
   }
 
-  async atualizarPrioridade(ticketId: string, dados: AtualizarPrioridadeTicketSchema) {
+  async atualizarPrioridade(ticketId: string, dados: AtualizarPrioridadeComAutor) {
     return this.banco.$transaction(async (tx) => {
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
