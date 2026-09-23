@@ -9,7 +9,10 @@ export default async function Team() {
 
   return (
     <>
-      <PageHeader>Minha Equipe</PageHeader>
+      <PageHeader>
+        Minha Equipe :{" "}
+        <span className="font-light!">Nome da Equipe | Setor</span>
+      </PageHeader>
       <MyTeamTickets tickets={tickets} />
     </>
   );
