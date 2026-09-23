@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Prioridade } from "@/lib/generated/prisma/client";
+import { Cargo, Prioridade } from "@/lib/generated/prisma/client";
 import type {
   CriarTicketSchema,
   AtualizarPrioridadeTicketSchema,
@@ -12,9 +12,18 @@ export class ErroConflitoPrioridade extends Error {
   }
 }
 
+export class ErroNaoAutorizadoParaAlterarPrioridade extends Error {
+  constructor() {
+    super("Apenas gestores da equipe responsável pelo ticket podem alterar sua prioridade.");
+    this.name = "ErroNaoAutorizadoParaAlterarPrioridade";
+  }
+}
+
 export class ServicoTicket {
+  constructor(private readonly banco = prisma) {}
+
   async criar(dados: CriarTicketSchema) {
-    return prisma.ticket.create({
+    return this.banco.ticket.create({
       data: {
         titulo: dados.titulo,
         descricao: dados.descricao,
@@ -29,9 +38,22 @@ export class ServicoTicket {
   }
 
   async atualizarPrioridade(ticketId: string, dados: AtualizarPrioridadeTicketSchema) {
-    return prisma.$transaction(async (tx) => {
-      const ticket = await tx.ticket.findUnique({ where: { id: ticketId } });
+    return this.banco.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+        include: { projeto: { select: { equipeId: true } } },
+      });
       if (!ticket) return null;
+
+      const gestor = await tx.usuario.findUnique({ where: { id: dados.usuarioId } });
+      if (
+        !gestor ||
+        !gestor.ativo ||
+        gestor.cargo !== Cargo.GESTOR ||
+        gestor.equipeId !== ticket.projeto.equipeId
+      ) {
+        throw new ErroNaoAutorizadoParaAlterarPrioridade();
+      }
 
       if (ticket.prioridade === dados.prioridade) {
         return ticket;

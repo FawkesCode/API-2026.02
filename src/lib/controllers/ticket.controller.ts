@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
-import { ErroConflitoPrioridade, servicoTicket } from "@/lib/services/ticket.service";
+import {
+  ErroConflitoPrioridade,
+  ErroNaoAutorizadoParaAlterarPrioridade,
+  servicoTicket,
+} from "@/lib/services/ticket.service";
 import {
   atualizarPrioridadeTicketSchema,
   criarTicketSchema,
@@ -38,6 +42,10 @@ function validarCorpo<T>(schema: z.ZodType<T>, corpo: unknown) {
 function tratarErroInesperado(erro: unknown) {
   if (erro instanceof ErroConflitoPrioridade) {
     return NextResponse.json({ erro: erro.message }, { status: 409 });
+  }
+
+  if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {
+    return NextResponse.json({ erro: erro.message }, { status: 403 });
   }
 
   if (erro instanceof Prisma.PrismaClientKnownRequestError) {
@@ -97,7 +105,10 @@ export class ControladorTicket {
       if (!ticket) {
         return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
       }
-      return NextResponse.json(ticket, { status: 200 });
+      return NextResponse.json(
+        { mensagem: "Prioridade atualizada com sucesso.", ticket },
+        { status: 200 },
+      );
     } catch (erro) {
       return tratarErroInesperado(erro);
     }

@@ -119,11 +119,6 @@ export class ServicoProjeto {
     const tickets = await prisma.ticket.findMany({ where: { projetoId } });
 
     return [...tickets].sort((a, b) => {
-      if (a.categoria !== b.categoria) {
-        if (a.categoria === Categoria.INSTALACAO) return -1;
-        if (b.categoria === Categoria.INSTALACAO) return 1;
-      }
-
       const diferencaPrioridade = RANKING_PRIORIDADE[a.prioridade] - RANKING_PRIORIDADE[b.prioridade];
       if (diferencaPrioridade !== 0) return diferencaPrioridade;
 

@@ -29,10 +29,12 @@ export async function getProjectTickets(id: string) {
     notFound();
   }
 
-  let res;
+  let projeto: Awaited<ReturnType<typeof servicoProjeto.buscarDetalhePorId>>;
+  let tickets: Awaited<ReturnType<typeof servicoProjeto.listarTicketsPorProjeto>>;
 
   try {
-    res = await servicoProjeto.buscarProjetoComTicketDeInstalacao(id);
+    projeto = await servicoProjeto.buscarDetalhePorId(id);
+    tickets = await servicoProjeto.listarTicketsPorProjeto(id);
   } catch (error) {
     console.error(`[getProjectTickets] Erro ao buscar os tickets: ${error}`);
     throw new Error(
@@ -40,15 +42,9 @@ export async function getProjectTickets(id: string) {
     );
   }
 
-  if (!res || !res.projeto) {
+  if (!projeto) {
     notFound();
   }
 
-  if (!res.ticketInstalacao) {
-    return [];
-  }
-
-  const data = [res.ticketInstalacao];
-
-  return data.map((d) => toTicketDTO(d));
+  return tickets.map((ticket) => toTicketDTO(ticket));
 }

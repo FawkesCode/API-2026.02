@@ -8,16 +8,14 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export type TicketRes = NonNullable<
-  Awaited<
-    ReturnType<typeof servicoProjeto.buscarProjetoComTicketDeInstalacao>
-  >["ticketInstalacao"]
->;
+export type TicketRes = Awaited<
+  ReturnType<typeof servicoProjeto.listarTicketsPorProjeto>
+>[number];
 
 export function toTicketDTO(info: TicketRes): TicketView {
   return {
     id: info.id,
-    title: info.titulo.split("Instalação")[1].split("—")[1],
+    title: info.titulo,
     type: info.categoria ? TicketTypeLabel[info.categoria] : "Não definido",
     openedAt: info.criadoEm
       ? format(new Date(info.criadoEm), "d/M")

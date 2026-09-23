@@ -18,7 +18,8 @@ export type CriarTicketSchema = z.infer<typeof criarTicketSchema>;
 
 export const atualizarPrioridadeTicketSchema = z.object({
   prioridade: z.enum(Prioridade),
-  usuarioId: z.uuid("usuarioId deve ser um UUID válido.").optional(),
+  // Identifica o gestor solicitante para validar o cargo e a equipe.
+  usuarioId: z.uuid("usuarioId deve ser um UUID válido."),
 });
 
 export type AtualizarPrioridadeTicketSchema = z.infer<typeof atualizarPrioridadeTicketSchema>;
