@@ -36,20 +36,25 @@ async function main() {
     descricao: `Descrição detalhada do problema ou instalação para o ticket de teste ${index + 1}.`,
     categoria: index % 2 === 0 ? Categoria.MANUTENCAO : Categoria.INSTALACAO,
     prioridade: [Prioridade.BAIXA, Prioridade.MEDIA, Prioridade.ALTA, Prioridade.CRITICA][index % 4],
-    status: StatusTicket.ABERTO,
+    status: StatusTicket.NAO_INICIADO,
     slaEm: new Date(Date.now() + 1000 * 60 * 60 * 24 * (index + 1)),
     projetoId: projeto.id,
     abertoPorId: gestor.id,
   }));
 
-  await prisma.ticket.createMany({
-    data: ticketsData,
-  });
-
-  const ticketsCriados = await prisma.ticket.findMany({
-    where: { projetoId: projeto.id },
-    select: { id: true }
-  });
+  const ticketsCriados = [];
+  for (const dados of ticketsData) {
+    const ticket = await prisma.ticket.create({
+      data: {
+        ...dados,
+        equipesAlocadas: {
+          create: { equipeId: equipe.id },
+        },
+      },
+      select: { id: true },
+    });
+    ticketsCriados.push(ticket);
+  }
 
   console.log("=== SEED REALIZADO COM SUCESSO ===");
   console.log("gestorId:", gestor.id);

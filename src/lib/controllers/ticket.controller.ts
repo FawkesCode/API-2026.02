@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
-import { ErroConflitoPrioridade, servicoTicket } from "@/lib/services/ticket.service";
+import {
+  ErroConflitoPrioridade,
+  ProjetoNaoEncontradoError,
+  servicoTicket,
+} from "@/lib/services/ticket.service";
+import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
 import {
   atualizarPrioridadeTicketSchema,
   criarTicketSchema,
+  alocarEquipeTicketSchema,
 } from "@/schemas/ticket.schema";
 
 async function extrairJson(requisicao: Request) {
@@ -40,10 +46,14 @@ function tratarErroInesperado(erro: unknown) {
     return NextResponse.json({ erro: erro.message }, { status: 409 });
   }
 
+  if (erro instanceof ProjetoNaoEncontradoError) {
+    return NextResponse.json({ erro: erro.message }, { status: 400 });
+  }
+
   if (erro instanceof Prisma.PrismaClientKnownRequestError) {
     if (erro.code === "P2003") {
       return NextResponse.json(
-        { erro: "Referência inválida: projetoId, abertoPorId ou responsavelId não existem." },
+        { erro: "Referência inválida: projetoId, abertoPorId, responsavelId ou equipeId não existem." },
         { status: 400 },
       );
     }
@@ -74,7 +84,7 @@ export class ControladorTicket {
 
     try {
       const ticket = await servicoTicket.criar(dados);
-      return NextResponse.json(ticket, { status: 201 });
+      return NextResponse.json(toTicketDTO(ticket), { status: 201 });
     } catch (erro) {
       return tratarErroInesperado(erro);
     }
@@ -97,26 +107,47 @@ export class ControladorTicket {
       if (!ticket) {
         return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
       }
-      return NextResponse.json(ticket, { status: 200 });
+      return NextResponse.json(toTicketDTO(ticket), { status: 200 });
     } catch (erro) {
       return tratarErroInesperado(erro);
     }
   }
-
 
   async buscarDetalhe(_requisicao: Request, ticketId: string) {
     try {
       const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
       if (!ticket) {
         return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
-        }
-      return NextResponse.json(ticket, { status: 200 });
-      } catch (erro) {
+      }
+      return NextResponse.json(toTicketDTO(ticket), { status: 200 });
+    } catch (erro) {
       console.error(erro);
       return NextResponse.json({ erro: "Erro interno ao buscar o ticket." }, { status: 500 });
-      }
+    }
+  }
+
+  async alocarEquipe(requisicao: Request, ticketId: string) {
+    const idValidado = z.uuid().safeParse(ticketId);
+    if (!idValidado.success) {
+      return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
     }
 
+    const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
+    if (erroDeParse) return erroDeParse;
+
+    const { dados, erro: erroDeValidacao } = validarCorpo(alocarEquipeTicketSchema, corpo);
+    if (erroDeValidacao) return erroDeValidacao;
+
+    try {
+      const ticket = await servicoTicket.alocarEquipe(idValidado.data, dados.equipeId);
+      if (!ticket) {
+        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+      }
+      return NextResponse.json(toTicketDTO(ticket), { status: 200 });
+    } catch (erro) {
+      return tratarErroInesperado(erro);
+    }
+  }
 }
 
 export const controladorTicket = new ControladorTicket();

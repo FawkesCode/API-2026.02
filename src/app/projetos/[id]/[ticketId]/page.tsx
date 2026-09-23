@@ -8,7 +8,11 @@ import {
   type LogItem,
 } from "@/components/tickets/ticket-logs";
 
-import { getProjectById, getProjectTickets } from "@/lib/data/project-ticket";
+import {
+  getProjectById,
+  getProjectTickets,
+  getTicket,
+} from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
 import { notFound } from "next/navigation";
 
@@ -68,13 +72,7 @@ export default async function TicketLogsPage({
 }: PageProps<"/projetos/[id]/[ticketId]">) {
   const { id, ticketId } = await params;
   const { title } = await getProjectById(id);
-  const tickets: TicketView[] = await getProjectTickets(id);
-
-  const ticket = tickets[0];
-
-  if (ticket.id !== ticketId) {
-    notFound();
-  }
+  const ticket: TicketView = await getTicket(ticketId);
 
   return (
     <div className="flex h-full min-h-0 flex-col pb-6">
@@ -92,7 +90,7 @@ export default async function TicketLogsPage({
           <>
             <div className="flex justify-between">
               <h2 className="text-lg font-bold text-card-foreground">
-                {ticket.title} | {ticket.type}
+                {ticket.title} {ticket.type !== "" && "|"} {ticket.type}
               </h2>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground underline">
