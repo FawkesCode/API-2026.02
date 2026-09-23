@@ -90,6 +90,20 @@ export class ControladorTicket {
     }
   }
 
+  async listar(usuarioId: string | null) {
+    const idValidado = z.uuid().safeParse(usuarioId);
+    if (!idValidado.success) {
+      return NextResponse.json({ erro: "usuarioId deve ser um UUID válido." }, { status: 400 });
+    }
+
+    try {
+      const tickets = await servicoTicket.listarPorEquipeDoUsuario(idValidado.data);
+      return NextResponse.json(tickets, { status: 200 });
+    } catch (erro) {
+      return tratarErroInesperado(erro);
+    }
+  }
+
   async atualizarPrioridade(requisicao: Request, ticketId: string) {
     const idValidado = z.uuid().safeParse(ticketId);
     if (!idValidado.success) {
