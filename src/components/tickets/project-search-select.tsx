@@ -58,7 +58,7 @@ export function ProjectSearchSelect({ onSelect }: ProjectSearchSelectProps) {
             <button
               type="button"
               onClick={() => onSelect(projeto)}
-              className="w-full rounded-md border border-transparent px-3 py-2 text-left text-sm transition-colors hover:border-accent hover:bg-sky-50"
+              className="w-full cursor-pointer rounded-xl border border-transparent px-3 py-2 text-left text-sm transition-colors hover:border-accent hover:bg-sky-50"
             >
               <span className="font-semibold">{projeto.nome}</span>
               {projeto.cliente?.nome && (

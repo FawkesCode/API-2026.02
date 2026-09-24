@@ -9,9 +9,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // Ticket "puro" (sem include)
-type TicketSemProjeto = Prisma.TicketGetPayload<
-  Record<string, never>
->;
+type TicketSemProjeto = Prisma.TicketGetPayload<Record<string, never>>;
 
 // Ticket com o projeto incluído
 type TicketComProjeto = Prisma.TicketGetPayload<{
@@ -58,10 +56,7 @@ type TicketComRelacoes = Prisma.TicketGetPayload<{
   };
 }>;
 
-export type TicketRes =
-  | TicketSemProjeto
-  | TicketComProjeto
-  | TicketComRelacoes;
+export type TicketRes = TicketSemProjeto | TicketComProjeto | TicketComRelacoes;
 
 function extrairProjectId(info: TicketRes): string | undefined {
   if ("projeto" in info && info.projeto) {
@@ -72,14 +67,13 @@ function extrairProjectId(info: TicketRes): string | undefined {
 }
 
 export function toTicketDTO(info: TicketRes): TicketView {
-  const ticketComRelacoes =
-    "abertoPor" in info &&
-    "equipesAlocadas" in info;
-  
-//   const teamsArray = [];
-//   for (const [key, equipes] of Object.entries(info.equipesAlocadas)) {
-//     teamsArray.push({ id: equipes.equipe.id, nome: equipes.equipe.nome });
-//   }
+  const ticketComRelacoes = "abertoPor" in info && "equipesAlocadas" in info;
+
+  const teamsArray = [];
+  if (ticketComRelacoes)
+    for (const [key, equipes] of Object.entries(info.equipesAlocadas)) {
+      teamsArray.push({ id: equipes.equipe.id, nome: equipes.equipe.nome });
+    }
 
   return {
     id: info.id,
@@ -89,9 +83,8 @@ export function toTicketDTO(info: TicketRes): TicketView {
       TicketTypeLabel[info.categoria as keyof typeof TicketTypeLabel] ===
       "Instalação"
         ? ""
-        : (TicketTypeLabel[
-            info.categoria as keyof typeof TicketTypeLabel
-          ] ?? "Não definido"),
+        : (TicketTypeLabel[info.categoria as keyof typeof TicketTypeLabel] ??
+          "Não definido"),
 
     openedAt: format(new Date(info.criadoEm), "d/M"),
 
@@ -106,18 +99,13 @@ export function toTicketDTO(info: TicketRes): TicketView {
       ? (info.abertoPor?.nome ?? "Não definido")
       : "Esperando correção",
 
-    createdById: ticketComRelacoes
-      ? info.abertoPorId
-      : "",
+    createdById: ticketComRelacoes ? info.abertoPorId : "",
 
-    teams: ticketComRelacoes
-      ? info.equipesAlocadas.map((alocacao) => alocacao.equipe.nome)
-      : ["Esperando correção"],
+    teams: ticketComRelacoes ? teamsArray : null,
 
     status:
-      TicketStatusLabel[
-        info.status as keyof typeof TicketStatusLabel
-      ] ?? "Não definido",
+      TicketStatusLabel[info.status as keyof typeof TicketStatusLabel] ??
+      "Não definido",
 
     priority:
       TicketPriorityLabel[

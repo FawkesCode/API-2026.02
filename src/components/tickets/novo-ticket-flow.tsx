@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDivider,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -54,7 +55,7 @@ export function NovoTicketFlow() {
 
       {etapa === "buscar-projeto" && (
         <Dialog open={aberto} onOpenChange={fecharTudo}>
-          <DialogContent>
+          <DialogContent className="min-h-fit flex flex-col gap-4">
             <DialogHeader>
               <DialogTitle className="text-accent">
                 Selecionar Projeto

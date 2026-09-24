@@ -172,7 +172,8 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const variantResolvida = variant ?? (pathname.startsWith("/tickets") ? "tickets" : "projetos");
+  const variantResolvida =
+    variant ?? (pathname.startsWith("/tickets") ? "tickets" : "projetos");
   const mostrarFiltrosDeTicket = variantResolvida === "tickets";
 
   const { projetos } = useProjetosDisponiveis();
@@ -185,15 +186,15 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
   const data = dataParam ? new Date(`${dataParam}T00:00:00`) : undefined;
 
   // --- Filtros exclusivos da tela de tickets ---
-  const tipo = mostrarFiltrosDeTicket ? searchParams.get("tipo") ?? "" : "";
+  const tipo = mostrarFiltrosDeTicket ? (searchParams.get("tipo") ?? "") : "";
   const projetoId = mostrarFiltrosDeTicket
-    ? searchParams.get("projetoId") ?? ""
+    ? (searchParams.get("projetoId") ?? "")
     : "";
   const equipeId = mostrarFiltrosDeTicket
-    ? searchParams.get("equipeId") ?? ""
+    ? (searchParams.get("equipeId") ?? "")
     : "";
   const localInstalacao = mostrarFiltrosDeTicket
-    ? searchParams.get("localInstalacao") ?? ""
+    ? (searchParams.get("localInstalacao") ?? "")
     : "";
 
   const [tituloInput, setTituloInput] = useState(titulo);
@@ -271,6 +272,73 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
             <FilterInput
+              title="Título"
+              id="titulo"
+              value={tituloInput}
+              onChange={(evento) => setTituloInput(evento.target.value)}
+              onClear={() => {
+                setTituloInput("");
+                updateParam("titulo", undefined);
+              }}
+            />
+            <ProjetoFilterCombobox
+              projetos={projetos}
+              value={projetoId}
+              onSelect={(id) => updateParam("projetoId", id)}
+              onClear={() => updateParam("projetoId", undefined)}
+            />
+            <FilterInput
+              title="Local de instalação"
+              id="localInstalacao"
+              value={localInput}
+              onChange={(evento) => setLocalInput(evento.target.value)}
+              onClear={() => {
+                setLocalInput("");
+                updateParam("localInstalacao", undefined);
+              }}
+            />
+
+            <Field className="relative">
+              <DatePicker
+                value={data}
+                onChange={(novaData) =>
+                  updateParam(
+                    "data",
+                    novaData ? format(novaData, "yyyy-MM-dd") : undefined,
+                  )
+                }
+              />
+              {/* <FieldLabel
+                htmlFor="data-abertura"
+                className="text-gray-500 text-xs absolute top-[-8] left-3 bg-white max-w-min whitespace-nowrap pl-2 pr-2"
+              >
+                Data de abertura
+              </FieldLabel> */}
+              {data && (
+                <button
+                  type="button"
+                  onClick={() => updateParam("data", undefined)}
+                  aria-label="Limpar filtro de data"
+                  className={CLEAR_BUTTON_CLASS}
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </Field>
+
+            {!equipesIndisponivel && (
+              <FilterInput
+                title="Time"
+                id="equipe"
+                type="select"
+                value={equipeId}
+                onValueChange={(valor) => updateParam("equipeId", valor)}
+                onClear={() => updateParam("equipeId", undefined)}
+                items={equipeItems}
+              />
+            )}
+
+            <FilterInput
               title="Tipo"
               id="tipo"
               type="select"
@@ -297,70 +365,6 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
               onClear={() => updateParam("status", undefined)}
               selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Encerrado,ENCERRADO"
             />
-            <FilterInput
-              title="Título"
-              id="titulo"
-              value={tituloInput}
-              onChange={(evento) => setTituloInput(evento.target.value)}
-              onClear={() => {
-                setTituloInput("");
-                updateParam("titulo", undefined);
-              }}
-            />
-            <ProjetoFilterCombobox
-              projetos={projetos}
-              value={projetoId}
-              onSelect={(id) => updateParam("projetoId", id)}
-              onClear={() => updateParam("projetoId", undefined)}
-            />
-            {!equipesIndisponivel && (
-              <FilterInput
-                title="Time"
-                id="equipe"
-                type="select"
-                value={equipeId}
-                onValueChange={(valor) => updateParam("equipeId", valor)}
-                onClear={() => updateParam("equipeId", undefined)}
-                items={equipeItems}
-              />
-            )}
-            <FilterInput
-              title="Local de instalação"
-              id="localInstalacao"
-              value={localInput}
-              onChange={(evento) => setLocalInput(evento.target.value)}
-              onClear={() => {
-                setLocalInput("");
-                updateParam("localInstalacao", undefined);
-              }}
-            />
-            <Field className="relative">
-              <DatePicker
-                value={data}
-                onChange={(novaData) =>
-                  updateParam(
-                    "data",
-                    novaData ? format(novaData, "yyyy-MM-dd") : undefined,
-                  )
-                }
-              />
-              <FieldLabel
-                htmlFor="data-abertura"
-                className="text-gray-500 text-xs absolute top-[-8] left-3 bg-white max-w-min whitespace-nowrap pl-2 pr-2"
-              >
-                Data de abertura
-              </FieldLabel>
-              {data && (
-                <button
-                  type="button"
-                  onClick={() => updateParam("data", undefined)}
-                  aria-label="Limpar filtro de data"
-                  className={CLEAR_BUTTON_CLASS}
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </Field>
           </div>
           {algumFiltroAtivo && (
             <div className="flex justify-end">
@@ -483,10 +487,7 @@ function FilterInput({
             >
               <SelectValue placeholder="Selecione uma opção" />
             </SelectTrigger>
-            <SelectContent
-              alignItemWithTrigger={false}
-              className="rounded-xl"
-            >
+            <SelectContent alignItemWithTrigger={false} className="rounded-xl">
               <SelectGroup>
                 {items.map((item) => (
                   <SelectItem key={item.value} value={item.value}>

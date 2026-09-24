@@ -68,7 +68,10 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
       }
 
       const updatedTicket = toTicketDTO(res.data);
-      setCurTicket(updatedTicket);
+      setCurTicket((prevState) => ({
+        ...updatedTicket,
+        recentLogs: prevState?.recentLogs ?? [],
+      }));
     } catch (err) {
       toast.add({
         type: "error",
@@ -136,7 +139,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
                     Times atribuídos não definidos
                   </span>
                 )}
-                {curTicket.teams.some((team) => team.id === loggedUserTeam) ? (
+                {curTicket.teams?.some((team) => team.id === loggedUserTeam) ? (
                   <TeamAddButton
                     style="outline"
                     onClick={() => handleManageTeam(loggedUserTeam)}
