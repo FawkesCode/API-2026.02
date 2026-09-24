@@ -71,44 +71,42 @@ export class ServicoTicket {
     });
   }
 
-  async listarPorEquipeDoUsuario(usuarioId: string) {
+  async buscarTicketsDaEquipeDoUsuario(usuarioId: string) {
     const usuario = await prisma.usuario.findUnique({
       where: { id: usuarioId },
       select: {
-        equipeId: true,
         ativo: true,
+        equipe: {
+          select: {
+            id: true,
+            nome: true,
+            ativo: true,
+          },
+        },
       },
     });
 
-    if (!usuario || !usuario.ativo || !usuario.equipeId) {
-      return [];
+    if (!usuario?.ativo || !usuario.equipe?.ativo) {
+      return { equipe: null, tickets: [] };
     }
 
     const tickets = await prisma.ticket.findMany({
+      // Um ticket pode estar alocado a equipes diferentes da equipe do projeto.
+      // A listagem deve considerar a alocação do ticket, não a equipe do projeto.
       where: {
-        projeto: {
-          equipeId: usuario.equipeId,
+        equipesAlocadas: {
+          some: { equipeId: usuario.equipe.id },
         },
       },
-      orderBy: {
-        criadoEm: "desc",
-      },
-      include: {
-        projeto: {
-          select: {
-            id: true,
-            nome: true,
-            equipeId: true,
-          },
-        },
-        responsavel: {
-          select: {
-            id: true,
-            nome: true,
-          },
-        },
-      },
+      orderBy: { criadoEm: "desc" },
+      include: RELACOES_TICKET,
     });
+
+    return { equipe: usuario.equipe, tickets };
+  }
+
+  async listarPorEquipeDoUsuario(usuarioId: string) {
+    const { tickets } = await this.buscarTicketsDaEquipeDoUsuario(usuarioId);
     return tickets;
   }
 
