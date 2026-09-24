@@ -15,9 +15,27 @@ import { FieldLabel } from "./ui/field";
 import { useState } from "react";
 import { ptBR } from "date-fns/locale";
 
-export default function DatePicker() {
-  const [date, setDate] = useState<Date>();
+interface DatePickerProps {
+  value?: Date;
+  onChange?: (date: Date | undefined) => void;
+}
+
+export default function DatePicker({ value, onChange }: DatePickerProps) {
+  // Suporta uso controlado (via `value`/`onChange`, ex: TicketFilter) e
+  // não controlado (estado interno), pra não quebrar quem já usa
+  // <DatePicker /> sem props.
+  const [internalDate, setInternalDate] = useState<Date | undefined>();
+  const date = value !== undefined ? value : internalDate;
   const [isOpen, setIsOpen] = useState<boolean>(false);
+
+  function handleSelect(selectedDate: Date | undefined) {
+    if (onChange) {
+      onChange(selectedDate);
+    } else {
+      setInternalDate(selectedDate);
+    }
+    setIsOpen(false);
+  }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -56,10 +74,7 @@ export default function DatePicker() {
           locale={ptBR}
           mode="single"
           selected={date}
-          onSelect={(selectedDate) => {
-            setDate(selectedDate);
-            setIsOpen(false);
-          }}
+          onSelect={handleSelect}
         />
       </PopoverContent>
     </Popover>

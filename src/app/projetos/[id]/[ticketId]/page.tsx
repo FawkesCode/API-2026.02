@@ -30,12 +30,20 @@ export default async function TicketLogsPage({
   const { title } = await getProjectById(id);
   const ticket: TicketView = await getTicket(ticketId);
 
+<<<<<<< HEAD
+  const ticket = tickets.find((ticket) => ticket.id === ticketId);
+
+  if (!ticket) {
+    notFound();
+  }
+=======
   // TODO: autor vem da sessão do usuário logado quando existir autenticação
   const [autor, logs] = await Promise.all([
     getLogAuthor(ticketId),
     getTicketLogs(ticketId),
   ]);
 
+>>>>>>> origin/development
   return (
     <div className="flex h-full min-h-0 flex-col pb-6">
       <div className="shrink-0">

@@ -1,24 +1,41 @@
+import { Suspense } from "react";
 import PageHeader from "@/components/page-header";
 import TicketCard from "@/components/ticket-card";
 import TicketFilter from "@/components/ticket-filter";
 import { getProjectById, getProjectTickets } from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
+import type { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    prioridade?: string;
+    status?: string;
+    titulo?: string;
+    data?: string;
+  }>;
 }
 
-async function page({ params }: PageProps) {
+async function page({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const filtros = await searchParams;
+
   const { title } = await getProjectById(id);
-  const tickets: TicketView[] = await getProjectTickets(id);
+  const tickets: TicketView[] = await getProjectTickets(id, {
+    prioridade: filtros.prioridade as Prioridade | undefined,
+    status: filtros.status as StatusTicket | undefined,
+    titulo: filtros.titulo,
+    data: filtros.data,
+  });
 
   return (
     <>
       <PageHeader>{`Projeto ${title} > Tickets`}</PageHeader>
 
       <section className="flex flex-col gap-4 pb-8">
-        <TicketFilter />
+        <Suspense fallback={null}>
+          <TicketFilter />
+        </Suspense>
         {tickets.length !== 0 ? (
           tickets.map((ticket) => (
             <TicketCard
