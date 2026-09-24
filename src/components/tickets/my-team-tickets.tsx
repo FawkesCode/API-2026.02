@@ -1,7 +1,6 @@
 import { TicketView } from "@/types/ticket";
 import TicketFilter from "../ticket-filter";
 import TicketCard from "../ticket-card";
-import PageHeader from "../page-header";
 
 function MyTeamTickets({ tickets }: { tickets: TicketView[] }) {
   return (
