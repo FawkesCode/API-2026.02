@@ -11,10 +11,8 @@ import type {
 } from "@/schemas/ticket.schema";
 
 export class ErroConflitoPrioridade extends Error {
-  constructor() {
-    super(
-      "A prioridade do ticket foi alterada por outra requisição enquanto esta era processada.",
-    );
+  constructor(message: string) {
+    super(message);
     this.name = "ErroConflitoPrioridade";
   }
 }
@@ -24,32 +22,62 @@ export interface FiltrosTicket {
   status?: StatusTicket;
   titulo?: string;
   data?: string;
+  categoria?: Categoria;
+  projetoId?: string;
+  equipeId?: string;
+  localInstalacao?: string;
 }
 
 function montarWhere(
-  filtros: FiltrosTicket | undefined,
+  filtros?: FiltrosTicket,
   base: Prisma.TicketWhereInput = {},
 ): Prisma.TicketWhereInput {
+  if (!filtros) return base;
+
   const where: Prisma.TicketWhereInput = {
     ...base,
   };
 
-  if (filtros?.prioridade) {
+  if (filtros.prioridade) {
     where.prioridade = filtros.prioridade;
   }
 
-  if (filtros?.status) {
+  if (filtros.status) {
     where.status = filtros.status;
   }
 
-  if (filtros?.titulo) {
+  if (filtros.categoria) {
+    where.categoria = filtros.categoria;
+  }
+
+  if (filtros.titulo) {
     where.titulo = {
       contains: filtros.titulo,
     };
   }
 
-  if (filtros?.data) {
-    const inicio = new Date(`${filtros.data}T00:00:00`);
+  if (filtros.projetoId) {
+    where.projetoId = filtros.projetoId;
+  }
+
+  if (filtros.localInstalacao) {
+    where.projeto = {
+      localInstalacao: {
+        contains: filtros.localInstalacao,
+      },
+    };
+  }
+
+  if (filtros.equipeId) {
+    where.equipesAlocadas = {
+      some: {
+        equipeId: filtros.equipeId,
+      },
+    };
+  }
+
+  if (filtros.data) {
+    const inicio = new Date(`${filtros.data}T00:00:00.000`);
     const fim = new Date(`${filtros.data}T23:59:59.999`);
 
     where.criadoEm = {
@@ -62,8 +90,9 @@ function montarWhere(
 }
 
 export class ProjetoNaoEncontradoError extends Error {
-  constructor() {
-    super("projetoId não corresponde a nenhum projeto existente.");
+  constructor(message = "Projeto não encontrado.") {
+    super(message);
+    this.name = "ProjetoNaoEncontradoError";
   }
 }
 
@@ -74,21 +103,18 @@ export const RELACOES_TICKET = {
       nome: true,
     },
   },
-
   responsavel: {
     select: {
       id: true,
       nome: true,
     },
   },
-
   projeto: {
     select: {
       id: true,
       nome: true,
     },
   },
-
   equipesAlocadas: {
     select: {
       equipe: {
@@ -112,147 +138,110 @@ const RANKING_PRIORIDADE: Record<Prioridade, number> = {
   [Prioridade.BAIXA]: 3,
 };
 
+const includeListagem = {
+  projeto: {
+    select: {
+      id: true,
+      localInstalacao: true,
+    },
+  },
+  equipesAlocadas: {
+    include: {
+      equipe: {
+        select: {
+          id: true,
+          nome: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.TicketInclude;
+
 export class ServicoTicket {
   async criar(dados: CriarTicketSchema) {
-    return prisma.$transaction(async (tx) => {
-      const projeto = await tx.projeto.findUnique({
-        where: {
-          id: dados.projetoId,
-        },
-      });
+    const ticket = await prisma.ticket.create({
+      data: {
+        titulo: dados.titulo,
+        descricao: dados.descricao,
+        categoria: dados.categoria,
+        prioridade: dados.prioridade,
+        projetoId: dados.projetoId,
+        abertoPorId: dados.abertoPorId,
+        slaEm: dados.slaEm,
 
-      if (!projeto) {
-        throw new ProjetoNaoEncontradoError();
-      }
-
-      const ticket = await tx.ticket.create({
-        data: {
-          titulo: dados.titulo,
-          descricao: dados.descricao,
-          categoria: dados.categoria,
-          prioridade: dados.prioridade ?? Prioridade.MEDIA,
-          slaEm: dados.slaEm,
-          projetoId: dados.projetoId,
-          abertoPorId: dados.abertoPorId,
-          responsavelId: dados.responsavelId,
-        },
-      });
-
-      await tx.ticketEquipe.create({
-        data: {
-          ticketId: ticket.id,
-          equipeId: projeto.equipeId,
-        },
-      });
-
-      return tx.ticket.findUniqueOrThrow({
-        where: {
-          id: ticket.id,
-        },
-        include: RELACOES_TICKET,
-      });
+        equipesAlocadas: dados.equipeIds?.length
+          ? {
+            create: dados.equipeIds.map((equipeId) => ({
+              equipeId,
+            })),
+          }
+          : undefined,
+      },
+      include: RELACOES_TICKET,
     });
+
+    return ticket;
   }
 
   async listarPorEquipeDoUsuario(usuarioId: string) {
-    const usuario = await prisma.usuario.findUnique({
+    return prisma.ticket.findMany({
       where: {
-        id: usuarioId,
+        OR: [
+          {
+            projeto: {
+              equipe: {
+                usuarios: {
+                  some: {
+                    id: usuarioId,
+                  },
+                },
+              },
+            },
+          },
+          {
+            equipesAlocadas: {
+              some: {
+                equipe: {
+                  usuarios: {
+                    some: {
+                      id: usuarioId,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        ],
       },
-      select: {
-        equipeId: true,
-        ativo: true,
-      },
-    });
-
-    if (!usuario || !usuario.ativo || !usuario.equipeId) {
-      return [];
-    }
-
-    const tickets = await prisma.ticket.findMany({
-      where: {
-        projeto: {
-          equipeId: usuario.equipeId,
-        },
-      },
+      include: RELACOES_TICKET,
       orderBy: {
         criadoEm: "desc",
       },
-      include: {
-        projeto: {
-          select: {
-            id: true,
-            nome: true,
-            equipeId: true,
-          },
-        },
-        responsavel: {
-          select: {
-            id: true,
-            nome: true,
-          },
-        },
-      },
     });
-
-    return tickets;
   }
 
   async atualizarPrioridade(
     ticketId: string,
     dados: AtualizarPrioridadeTicketSchema,
   ) {
-    return prisma.$transaction(async (tx) => {
-      const ticket = await tx.ticket.findUnique({
-        where: {
-          id: ticketId,
-        },
-      });
+    const ticket = await prisma.ticket.findUnique({
+      where: {
+        id: ticketId,
+      },
+    });
 
-      if (!ticket) {
-        return null;
-      }
+    if (!ticket) {
+      throw new Error("Ticket não encontrado.");
+    }
 
-      if (ticket.prioridade === dados.prioridade) {
-        return tx.ticket.findUniqueOrThrow({
-          where: {
-            id: ticketId,
-          },
-          include: RELACOES_TICKET,
-        });
-      }
-
-      const { count } = await tx.ticket.updateMany({
-        where: {
-          id: ticketId,
-          prioridade: ticket.prioridade,
-        },
-        data: {
-          prioridade: dados.prioridade,
-        },
-      });
-
-      if (count === 0) {
-        throw new ErroConflitoPrioridade();
-      }
-
-      const atualizado = await tx.ticket.findUniqueOrThrow({
-        where: {
-          id: ticketId,
-        },
-        include: RELACOES_TICKET,
-      });
-
-      await tx.historicoTicket.create({
-        data: {
-          ticketId,
-          evento: "PRIORIDADE_ALTERADA",
-          descricao: `Prioridade alterada de ${ticket.prioridade} para ${dados.prioridade}.`,
-          usuarioId: dados.usuarioId,
-        },
-      });
-
-      return atualizado;
+    return prisma.ticket.update({
+      where: {
+        id: ticketId,
+      },
+      data: {
+        prioridade: dados.prioridade,
+      },
+      include: RELACOES_TICKET,
     });
   }
 
@@ -262,13 +251,7 @@ export class ServicoTicket {
       orderBy: {
         criadoEm: "desc",
       },
-      include: {
-        projeto: {
-          select: {
-            id: true,
-          },
-        },
-      },
+      include: includeListagem,
     });
   }
 
@@ -282,61 +265,27 @@ export class ServicoTicket {
   }
 
   async listarPorProjeto(projetoId: string) {
-    const tickets = await prisma.ticket.findMany({
+    return prisma.ticket.findMany({
       where: {
         projetoId,
       },
       include: RELACOES_TICKET,
-    });
-
-    return [...tickets].sort((a, b) => {
-      if (a.categoria !== b.categoria) {
-        if (a.categoria === Categoria.INSTALACAO) return -1;
-        if (b.categoria === Categoria.INSTALACAO) return 1;
-      }
-
-      const diferencaPrioridade =
-        RANKING_PRIORIDADE[a.prioridade] -
-        RANKING_PRIORIDADE[b.prioridade];
-
-      if (diferencaPrioridade !== 0) {
-        return diferencaPrioridade;
-      }
-
-      return a.criadoEm.getTime() - b.criadoEm.getTime();
+      orderBy: {
+        criadoEm: "desc",
+      },
     });
   }
 
   async alocarEquipe(ticketId: string, equipeId: string) {
-    const ticket = await prisma.ticket.findUnique({
-      where: {
-        id: ticketId,
-      },
-    });
-
-    if (!ticket) {
-      return null;
-    }
-
-    await prisma.ticketEquipe.upsert({
-      where: {
-        ticketId_equipeId: {
-          ticketId,
-          equipeId,
-        },
-      },
-      create: {
+    return prisma.ticketEquipe.create({
+      data: {
         ticketId,
         equipeId,
       },
-      update: {},
-    });
-
-    return prisma.ticket.findUniqueOrThrow({
-      where: {
-        id: ticketId,
+      include: {
+        equipe: true,
+        ticket: true,
       },
-      include: RELACOES_TICKET,
     });
   }
 }

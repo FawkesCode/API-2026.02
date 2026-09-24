@@ -5,7 +5,11 @@ import TicketFilter from "@/components/ticket-filter";
 import { NovoTicketButton } from "@/components/tickets/novo-ticket-button";
 import { getAllTickets } from "@/lib/data/tickets";
 import { TicketView } from "@/types/ticket";
-import type { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
+import type {
+  Categoria,
+  Prioridade,
+  StatusTicket,
+} from "@/lib/generated/prisma/client";
 
 interface PageProps {
   searchParams: Promise<{
@@ -13,6 +17,10 @@ interface PageProps {
     status?: string;
     titulo?: string;
     data?: string;
+    tipo?: string;
+    projetoId?: string;
+    equipeId?: string;
+    localInstalacao?: string;
   }>;
 }
 
@@ -24,6 +32,10 @@ export default async function TicketsPage({ searchParams }: PageProps) {
     status: filtros.status as StatusTicket | undefined,
     titulo: filtros.titulo,
     data: filtros.data,
+    categoria: filtros.tipo as Categoria | undefined,
+    projetoId: filtros.projetoId,
+    equipeId: filtros.equipeId,
+    localInstalacao: filtros.localInstalacao,
   });
 
   return (

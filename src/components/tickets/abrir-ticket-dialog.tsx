@@ -160,6 +160,8 @@ export function AbrirTicketDialog({
     }
 
     setEnviando(true);
+    console.log("USUARIO ATUAL:", usuario);
+    console.log("ID DO USUARIO:", usuario.id);
     console.log("payload ticket:", {
       projetoId: resultado.data.projetoId,
       abertoPorId: usuario.id,
