@@ -24,7 +24,7 @@ async function page({ params }: PageProps) {
             <TicketCard
               key={ticket.id}
               ticket={ticket}
-              projectId={id}
+              ticketUrl={`/projetos/${id}/${ticket.id}`}
               woLogs={ticket.recentLogs?.length === 0 ? true : false}
             />
           ))
