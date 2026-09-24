@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import {
+  Cargo,
   Categoria,
   Prioridade,
   Prisma,
@@ -7,13 +8,22 @@ import {
 } from "@/lib/generated/prisma/client";
 import type {
   CriarTicketSchema,
-  AtualizarPrioridadeTicketSchema,
+  AtualizarPrioridadeComAutor,
 } from "@/schemas/ticket.schema";
 
 export class ErroConflitoPrioridade extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ErroConflitoPrioridade";
+  }
+}
+
+// NOTE: se esta classe já existir em outro arquivo de erros do projeto,
+// remova esta definição local e importe a existente em vez de duplicá-la.
+export class ErroNaoAutorizadoParaAlterarPrioridade extends Error {
+  constructor(message = "Usuário não autorizado a alterar a prioridade deste ticket.") {
+    super(message);
+    this.name = "ErroNaoAutorizadoParaAlterarPrioridade";
   }
 }
 
@@ -183,65 +193,99 @@ export class ServicoTicket {
     return ticket;
   }
 
-  async listarPorEquipeDoUsuario(usuarioId: string) {
-    return prisma.ticket.findMany({
-      where: {
-        OR: [
-          {
-            projeto: {
-              equipe: {
-                usuarios: {
-                  some: {
-                    id: usuarioId,
-                  },
-                },
-              },
-            },
+  async buscarTicketsDaEquipeDoUsuario(usuarioId: string) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: {
+        ativo: true,
+        equipe: {
+          select: {
+            id: true,
+            nome: true,
+            ativo: true,
           },
-          {
-            equipesAlocadas: {
-              some: {
-                equipe: {
-                  usuarios: {
-                    some: {
-                      id: usuarioId,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        ],
-      },
-      include: RELACOES_TICKET,
-      orderBy: {
-        criadoEm: "desc",
+        },
       },
     });
+
+    if (!usuario?.ativo || !usuario.equipe?.ativo) {
+      return { equipe: null, tickets: [] };
+    }
+
+    const tickets = await prisma.ticket.findMany({
+      // Um ticket pode estar alocado a equipes diferentes da equipe do projeto.
+      // A listagem deve considerar a alocação do ticket, não a equipe do projeto.
+      where: {
+        equipesAlocadas: {
+          some: { equipeId: usuario.equipe.id },
+        },
+      },
+      orderBy: { criadoEm: "desc" },
+      include: RELACOES_TICKET,
+    });
+
+    return { equipe: usuario.equipe, tickets };
+  }
+
+  async listarPorEquipeDoUsuario(usuarioId: string) {
+    const { tickets } = await this.buscarTicketsDaEquipeDoUsuario(usuarioId);
+    return tickets;
   }
 
   async atualizarPrioridade(
     ticketId: string,
-    dados: AtualizarPrioridadeTicketSchema,
+    dados: AtualizarPrioridadeComAutor,
   ) {
-    const ticket = await prisma.ticket.findUnique({
-      where: {
-        id: ticketId,
-      },
-    });
+    return prisma.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+        include: { projeto: { select: { equipeId: true } } },
+      });
+      if (!ticket) return null;
 
-    if (!ticket) {
-      throw new Error("Ticket não encontrado.");
-    }
+      const gestor = await tx.usuario.findUnique({ where: { id: dados.usuarioId } });
+      if (
+        !gestor ||
+        !gestor.ativo ||
+        gestor.cargo !== Cargo.GESTOR ||
+        gestor.equipeId !== ticket.projeto.equipeId
+      ) {
+        throw new ErroNaoAutorizadoParaAlterarPrioridade();
+      }
 
-    return prisma.ticket.update({
-      where: {
-        id: ticketId,
-      },
-      data: {
-        prioridade: dados.prioridade,
-      },
-      include: RELACOES_TICKET,
+      if (ticket.prioridade === dados.prioridade) {
+        return tx.ticket.findUniqueOrThrow({
+          where: { id: ticketId },
+          include: RELACOES_TICKET,
+        });
+      }
+
+      const { count } = await tx.ticket.updateMany({
+        where: { id: ticketId, prioridade: ticket.prioridade },
+        data: { prioridade: dados.prioridade },
+      });
+
+      if (count === 0) {
+        throw new ErroConflitoPrioridade(
+          "A prioridade do ticket foi alterada por outro usuário. Tente novamente.",
+        );
+      }
+
+      const atualizado = await tx.ticket.findUniqueOrThrow({
+        where: { id: ticketId },
+        include: RELACOES_TICKET,
+      });
+
+      await tx.historicoTicket.create({
+        data: {
+          ticketId,
+          evento: "PRIORIDADE_ALTERADA",
+          descricao: `Prioridade alterada de ${ticket.prioridade} para ${dados.prioridade}.`,
+          usuarioId: dados.usuarioId,
+        },
+      });
+
+      return atualizado;
     });
   }
 

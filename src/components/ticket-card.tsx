@@ -16,8 +16,8 @@ import { TeamLogView, TicketView } from "@/types/ticket";
 
 interface TicketCardProps {
   ticket: TicketView;
-  projectId: string;
   woLogs?: boolean;
+  ticketUrl: string;
 }
 
 type PriorityLevel = "critical" | "high" | "medium" | "low";
@@ -29,10 +29,10 @@ const TicketPriorityMap: Record<string, PriorityLevel> = {
   Crítica: "critical",
 };
 
-function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
+function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
   return (
     <Link
-      href={`/projetos/${projectId}/${ticket.id}`}
+      href={ticketUrl}
       className="hover:*:bg-gray-50 hover:*:border hover:*:border-gray-100 focus:*:rounded-xs "
     >
       <Card className="border border-transparent transition-all duration-100 ease-in-out min-h-min h-full justify-between">

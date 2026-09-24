@@ -110,6 +110,11 @@ export class ControladorTicket {
       return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
     }
 
+    const sessao = obterSessaoDaRequisicao(requisicao);
+    if (!sessao) {
+      return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+    }
+
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
@@ -117,7 +122,10 @@ export class ControladorTicket {
     if (erroDeValidacao) return erroDeValidacao;
 
     try {
-      const ticket = await servicoTicket.atualizarPrioridade(idValidado.data, dados);
+      const ticket = await servicoTicket.atualizarPrioridade(idValidado.data, {
+        ...dados,
+        usuarioId: sessao.usuarioId,
+      });
       if (!ticket) {
         return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
       }
