@@ -1,7 +1,7 @@
 import { servicoProjeto } from "@/lib/services/projeto.service";
-import PageHeader from "@/components/page-header";
 import ProjectsView from "@/components/projects/projects-view";
 import { notFound } from "next/navigation";
+import { getClients, getUsers } from "@/lib/data/dropdown";
 
 async function getProjects() {
   let data;
@@ -22,7 +22,7 @@ async function getProjects() {
     title: d.nome,
     client: d.cliente?.nome ?? "Cliente não informado",
     location: d.localInstalacao,
-    description: "Sem descrição no endpoint ainda",
+    description: d.descricao ?? "",
     ticketCount: d._count?.tickets ?? 0,
     createdBy: d.gestor?.nome ?? "Sistema",
   }));
@@ -30,11 +30,13 @@ async function getProjects() {
 
 export default async function Projects() {
   const initialProjects = await getProjects();
+  const [clients, supervisors] = await Promise.all([getClients(), getUsers()]);
 
   return (
-    <>
-      <PageHeader>Projetos</PageHeader>
-      <ProjectsView projects={initialProjects} />
-    </>
+    <ProjectsView
+      projects={initialProjects}
+      clients={clients}
+      supervisors={supervisors}
+    />
   );
 }

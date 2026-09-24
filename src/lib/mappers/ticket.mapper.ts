@@ -1,4 +1,4 @@
-import { servicoProjeto } from "@/lib/services/projeto.service";
+import type { TicketComRelacoes } from "@/lib/services/ticket.service";
 import {
   TicketPriorityLabel,
   TicketStatusLabel,
@@ -8,30 +8,24 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export type TicketRes = Awaited<
-  ReturnType<typeof servicoProjeto.listarTicketsPorProjeto>
->[number];
-
-export function toTicketDTO(info: TicketRes): TicketView {
+export function toTicketDTO(info: TicketComRelacoes): TicketView {
   return {
     id: info.id,
     title: info.titulo,
-    type: info.categoria ? TicketTypeLabel[info.categoria] : "Não definido",
-    openedAt: info.criadoEm
-      ? format(new Date(info.criadoEm), "d/M")
-      : "Criado em -",
-    timeRemaining: info.slaEm
-      ? formatDistanceToNow(new Date(info.slaEm), {
-          addSuffix: false,
-          locale: ptBR,
-        })
-      : "Sem prazo definido",
-    createdBy: "Esperando correção",
-    teams: ["Esperando correção"],
-    status: info.status ? TicketStatusLabel[info.status] : "Não definido",
-    priority: info.status
-      ? TicketPriorityLabel[info.prioridade]
-      : "Não definido",
+    type:
+      TicketTypeLabel[info.categoria] === "Instalação"
+        ? ""
+        : (TicketTypeLabel[info.categoria] ?? "Não definido"),
+    openedAt: format(new Date(info.criadoEm), "d/M"),
+    timeRemaining: formatDistanceToNow(new Date(info.slaEm), {
+      addSuffix: false,
+      locale: ptBR,
+    }),
+    createdBy: info.abertoPor?.nome ?? "Não definido",
+    createdById: info.abertoPorId,
+    teams: info.equipesAlocadas.map((alocacao) => alocacao.equipe.nome),
+    status: TicketStatusLabel[info.status] ?? "Não definido",
+    priority: TicketPriorityLabel[info.prioridade] ?? "Não definido",
     description: info.descricao,
     recentLogs: [],
   };

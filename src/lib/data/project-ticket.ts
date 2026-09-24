@@ -1,22 +1,26 @@
 import { notFound } from "next/navigation";
 import { servicoProjeto } from "../services/projeto.service";
 import { toTicketDTO } from "../mappers/ticket.mapper";
+import { servicoTicket } from "../services/ticket.service";
 
 export async function getProjectById(id: string) {
+  if (!id) {
+    notFound();
+  }
+
   let data;
 
   try {
     data = await servicoProjeto.buscarDetalhePorId(id);
   } catch (error) {
-    console.error(`[getProjectById] Erro ao buscar o projeto: ${error}`);
+    console.error(`[getProjectById] Erro ao buscar o projeto:`, error);
     throw new Error("Não foi possível carregar o projeto selecionado.");
   }
 
-  if (!data || !id) {
+  if (!data) {
     notFound();
   }
 
-  // No momento, a única coisa que precisamos pegar o projeto é o nome e o id
   return {
     projectId: data.id,
     title: data.nome,
@@ -29,22 +33,41 @@ export async function getProjectTickets(id: string) {
     notFound();
   }
 
-  let projeto: Awaited<ReturnType<typeof servicoProjeto.buscarDetalhePorId>>;
-  let tickets: Awaited<ReturnType<typeof servicoProjeto.listarTicketsPorProjeto>>;
+  let data;
 
   try {
-    projeto = await servicoProjeto.buscarDetalhePorId(id);
-    tickets = await servicoProjeto.listarTicketsPorProjeto(id);
+    data = await servicoTicket.listarPorProjeto(id);
   } catch (error) {
-    console.error(`[getProjectTickets] Erro ao buscar os tickets: ${error}`);
+    console.error(`[getProjectTickets] Erro ao buscar os tickets:`, error);
     throw new Error(
       "Não foi possível carregar os tickets do projeto selecionado.",
     );
   }
 
-  if (!projeto) {
+  if (!data) {
     notFound();
   }
 
-  return tickets.map((ticket) => toTicketDTO(ticket));
+  return data.map((ticket) => toTicketDTO(ticket));
+}
+
+export async function getTicket(id: string) {
+  if (!id) {
+    notFound();
+  }
+
+  let data;
+
+  try {
+    data = await servicoTicket.buscarDetalhePorId(id);
+  } catch (error) {
+    console.error(`[getTicket] Erro ao buscar o ticket:`, error);
+    throw new Error("Não foi possível carregar o ticket selecionado.");
+  }
+
+  if (!data) {
+    notFound();
+  }
+
+  return toTicketDTO(data);
 }

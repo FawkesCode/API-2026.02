@@ -83,7 +83,9 @@ function LogState({
             className="text-xs italic text-muted-foreground"
           >
             Enviada em{" "}
-            {typeof criadoEm === "string" ? criadoEm : criadoEm.toLocaleTimeString()}
+            {typeof criadoEm === "string"
+              ? criadoEm
+              : criadoEm.toLocaleTimeString("pt-BR", { timeStyle: "short" })}
           </time>
         ) : null}
       </div>

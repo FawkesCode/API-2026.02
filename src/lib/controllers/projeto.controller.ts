@@ -6,6 +6,8 @@ import {
   GestorNaoEncontradoError,
   GestorSemEquipeError,
 } from "@/lib/services/projeto.service";
+import { servicoTicket } from "@/lib/services/ticket.service";
+import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
 import { criarProjetoSchema } from "@/schemas/projeto.schema";
 
 async function extrairJson(requisicao: Request) {
@@ -35,7 +37,6 @@ function tratarErroInesperado(erro: unknown) {
 }
 
 export class ControladorProjeto {
-
   async listar(_requisicao: Request) {
     try {
       const projetos = await servicoProjeto.listarAtivos();
@@ -63,7 +64,10 @@ export class ControladorProjeto {
       const { projeto, ticketInstalacao } = await servicoProjeto.criarComTicketDeInstalacao(
         resultado.data,
       );
-      return NextResponse.json({ ...projeto, ticketInstalacao }, { status: 201 });
+      return NextResponse.json(
+        { ...projeto, ticketInstalacao: toTicketDTO(ticketInstalacao) },
+        { status: 201 },
+      );
     } catch (erro) {
       if (erro instanceof GestorNaoEncontradoError) {
         return NextResponse.json({ erro: erro.message }, { status: 400 });
@@ -93,7 +97,7 @@ export class ControladorProjeto {
         );
       }
 
-      return NextResponse.json(ticketInstalacao, { status: 200 });
+      return NextResponse.json(toTicketDTO(ticketInstalacao), { status: 200 });
     } catch (erro) {
       console.error(erro);
       return NextResponse.json(
@@ -125,8 +129,8 @@ export class ControladorProjeto {
         return NextResponse.json({ erro: "Projeto não encontrado." }, { status: 404 });
       }
 
-      const tickets = await servicoProjeto.listarTicketsPorProjeto(projetoId);
-      return NextResponse.json(tickets, { status: 200 });
+      const tickets = await servicoTicket.listarPorProjeto(projetoId);
+      return NextResponse.json(tickets.map(toTicketDTO), { status: 200 });
     } catch (erro) {
       console.error(erro);
       return NextResponse.json(

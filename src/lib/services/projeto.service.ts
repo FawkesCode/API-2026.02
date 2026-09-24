@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { Categoria, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
+import {
+  Categoria,
+  Prioridade,
+  StatusTicket,
+} from "@/lib/generated/prisma/client";
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
+import { RELACOES_TICKET } from "@/lib/services/ticket.service";
 
 const DIAS_SLA_INSTALACAO_PADRAO = 7;
 
@@ -25,18 +30,12 @@ export class GestorSemEquipeError extends Error {
   }
 }
 
-const RANKING_PRIORIDADE: Record<Prioridade, number> = {
-  [Prioridade.CRITICA]: 0,
-  [Prioridade.ALTA]: 1,
-  [Prioridade.MEDIA]: 2,
-  [Prioridade.BAIXA]: 3,
-};
-
 export class ServicoProjeto {
-
   async criarComTicketDeInstalacao(dados: CriarProjetoSchema) {
     return prisma.$transaction(async (tx) => {
-      const gestor = await tx.usuario.findUnique({ where: { id: dados.gestorId } });
+      const gestor = await tx.usuario.findUnique({
+        where: { id: dados.gestorId },
+      });
       if (!gestor) {
         throw new GestorNaoEncontradoError();
       }
@@ -48,6 +47,7 @@ export class ServicoProjeto {
         data: {
           nome: dados.nome,
           localInstalacao: dados.localInstalacao,
+          descricao: dados.descricao ?? null,
           clienteId: dados.clienteId,
           equipeId: gestor.equipeId,
           gestorId: dados.gestorId,
@@ -62,20 +62,30 @@ export class ServicoProjeto {
             `Ticket de instalação gerado automaticamente para o projeto "${dados.nome}" (local: ${dados.localInstalacao}).`,
           categoria: Categoria.INSTALACAO,
           prioridade: Prioridade.MEDIA,
-          status: StatusTicket.ABERTO,
+          status: StatusTicket.NAO_INICIADO,
           slaEm: calcularSlaPadrao(),
           projetoId: projeto.id,
           abertoPorId: dados.gestorId,
         },
       });
 
-      return { projeto, ticketInstalacao };
+      await tx.ticketEquipe.create({
+        data: { ticketId: ticketInstalacao.id, equipeId: gestor.equipeId },
+      });
+
+      const ticketInstalacaoComRelacoes = await tx.ticket.findUniqueOrThrow({
+        where: { id: ticketInstalacao.id },
+        include: RELACOES_TICKET,
+      });
+
+      return { projeto, ticketInstalacao: ticketInstalacaoComRelacoes };
     });
   }
 
-
   async buscarProjetoComTicketDeInstalacao(projetoId: string) {
-    const projeto = await prisma.projeto.findUnique({ where: { id: projetoId } });
+    const projeto = await prisma.projeto.findUnique({
+      where: { id: projetoId },
+    });
     if (!projeto) {
       return { projeto: null, ticketInstalacao: null };
     }
@@ -83,11 +93,11 @@ export class ServicoProjeto {
     const ticketInstalacao = await prisma.ticket.findFirst({
       where: { projetoId, categoria: Categoria.INSTALACAO },
       orderBy: { criadoEm: "asc" },
+      include: RELACOES_TICKET,
     });
 
     return { projeto, ticketInstalacao };
   }
-
 
   async buscarDetalhePorId(projetoId: string) {
     return prisma.projeto.findUnique({
@@ -100,7 +110,7 @@ export class ServicoProjeto {
       },
     });
   }
- 
+
   async listarAtivos() {
     return prisma.projeto.findMany({
       where: { ativo: true },
@@ -111,18 +121,6 @@ export class ServicoProjeto {
         gestor: { select: { id: true, nome: true } },
         _count: { select: { tickets: true } },
       },
-    });
-  }
-
-
-  async listarTicketsPorProjeto(projetoId: string) {
-    const tickets = await prisma.ticket.findMany({ where: { projetoId } });
-
-    return [...tickets].sort((a, b) => {
-      const diferencaPrioridade = RANKING_PRIORIDADE[a.prioridade] - RANKING_PRIORIDADE[b.prioridade];
-      if (diferencaPrioridade !== 0) return diferencaPrioridade;
-
-      return a.criadoEm.getTime() - b.criadoEm.getTime();
     });
   }
 }
