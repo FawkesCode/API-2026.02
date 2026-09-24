@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Categoria, Prioridade, Prisma } from "@/lib/generated/prisma/client";
 import type {
   CriarTicketSchema,
-  AtualizarPrioridadeTicketSchema,
+  AtualizarPrioridadeComAutor,
 } from "@/schemas/ticket.schema";
 
 export class ErroConflitoPrioridade extends Error {
@@ -110,10 +110,23 @@ export class ServicoTicket {
     return tickets;
   }
 
-  async atualizarPrioridade(ticketId: string, dados: AtualizarPrioridadeTicketSchema) {
-    return prisma.$transaction(async (tx) => {
-      const ticket = await tx.ticket.findUnique({ where: { id: ticketId } });
+  async atualizarPrioridade(ticketId: string, dados: AtualizarPrioridadeComAutor) {
+    return this.banco.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+        include: { projeto: { select: { equipeId: true } } },
+      });
       if (!ticket) return null;
+
+      const gestor = await tx.usuario.findUnique({ where: { id: dados.usuarioId } });
+      if (
+        !gestor ||
+        !gestor.ativo ||
+        gestor.cargo !== Cargo.GESTOR ||
+        gestor.equipeId !== ticket.projeto.equipeId
+      ) {
+        throw new ErroNaoAutorizadoParaAlterarPrioridade();
+      }
 
       if (ticket.prioridade === dados.prioridade) {
         return tx.ticket.findUniqueOrThrow({
