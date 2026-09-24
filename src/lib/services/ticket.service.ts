@@ -1,32 +1,138 @@
 import { prisma } from "@/lib/prisma";
-import { Categoria, Prioridade, Prisma } from "@/lib/generated/prisma/client";
+import {
+  Cargo,
+  Categoria,
+  Prioridade,
+  Prisma,
+  StatusTicket,
+} from "@/lib/generated/prisma/client";
 import type {
   CriarTicketSchema,
   AtualizarPrioridadeComAutor,
 } from "@/schemas/ticket.schema";
 
 export class ErroConflitoPrioridade extends Error {
-  constructor() {
-    super(
-      "A prioridade do ticket foi alterada por outra requisição enquanto esta era processada.",
-    );
+  constructor(message: string) {
+    super(message);
     this.name = "ErroConflitoPrioridade";
   }
 }
 
+// NOTE: se esta classe já existir em outro arquivo de erros do projeto,
+// remova esta definição local e importe a existente em vez de duplicá-la.
+export class ErroNaoAutorizadoParaAlterarPrioridade extends Error {
+  constructor(message = "Usuário não autorizado a alterar a prioridade deste ticket.") {
+    super(message);
+    this.name = "ErroNaoAutorizadoParaAlterarPrioridade";
+  }
+}
+
+export interface FiltrosTicket {
+  prioridade?: Prioridade;
+  status?: StatusTicket;
+  titulo?: string;
+  data?: string;
+  categoria?: Categoria;
+  projetoId?: string;
+  equipeId?: string;
+  localInstalacao?: string;
+}
+
+function montarWhere(
+  filtros?: FiltrosTicket,
+  base: Prisma.TicketWhereInput = {},
+): Prisma.TicketWhereInput {
+  if (!filtros) return base;
+
+  const where: Prisma.TicketWhereInput = {
+    ...base,
+  };
+
+  if (filtros.prioridade) {
+    where.prioridade = filtros.prioridade;
+  }
+
+  if (filtros.status) {
+    where.status = filtros.status;
+  }
+
+  if (filtros.categoria) {
+    where.categoria = filtros.categoria;
+  }
+
+  if (filtros.titulo) {
+    where.titulo = {
+      contains: filtros.titulo,
+    };
+  }
+
+  if (filtros.projetoId) {
+    where.projetoId = filtros.projetoId;
+  }
+
+  if (filtros.localInstalacao) {
+    where.projeto = {
+      localInstalacao: {
+        contains: filtros.localInstalacao,
+      },
+    };
+  }
+
+  if (filtros.equipeId) {
+    where.equipesAlocadas = {
+      some: {
+        equipeId: filtros.equipeId,
+      },
+    };
+  }
+
+  if (filtros.data) {
+    const inicio = new Date(`${filtros.data}T00:00:00.000`);
+    const fim = new Date(`${filtros.data}T23:59:59.999`);
+
+    where.criadoEm = {
+      gte: inicio,
+      lte: fim,
+    };
+  }
+
+  return where;
+}
+
 export class ProjetoNaoEncontradoError extends Error {
-  constructor() {
-    super("projetoId não corresponde a nenhum projeto existente.");
+  constructor(message = "Projeto não encontrado.") {
+    super(message);
+    this.name = "ProjetoNaoEncontradoError";
   }
 }
 
 export const RELACOES_TICKET = {
-  abertoPor: { select: { id: true, nome: true } },
-  responsavel: { select: { id: true, nome: true } },
-  projeto: { select: { id: true, nome: true } },
+  abertoPor: {
+    select: {
+      id: true,
+      nome: true,
+    },
+  },
+  responsavel: {
+    select: {
+      id: true,
+      nome: true,
+    },
+  },
+  projeto: {
+    select: {
+      id: true,
+      nome: true,
+    },
+  },
   equipesAlocadas: {
     select: {
-      equipe: { select: { id: true, nome: true } },
+      equipe: {
+        select: {
+          id: true,
+          nome: true,
+        },
+      },
     },
   },
 } satisfies Prisma.TicketInclude;
@@ -42,38 +148,49 @@ const RANKING_PRIORIDADE: Record<Prioridade, number> = {
   [Prioridade.BAIXA]: 3,
 };
 
+const includeListagem = {
+  projeto: {
+    select: {
+      id: true,
+      localInstalacao: true,
+    },
+  },
+  equipesAlocadas: {
+    include: {
+      equipe: {
+        select: {
+          id: true,
+          nome: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.TicketInclude;
+
 export class ServicoTicket {
   async criar(dados: CriarTicketSchema) {
-    return prisma.$transaction(async (tx) => {
-      const projeto = await tx.projeto.findUnique({
-        where: { id: dados.projetoId },
-      });
-      if (!projeto) {
-        throw new ProjetoNaoEncontradoError();
-      }
+    const ticket = await prisma.ticket.create({
+      data: {
+        titulo: dados.titulo,
+        descricao: dados.descricao,
+        categoria: dados.categoria,
+        prioridade: dados.prioridade,
+        projetoId: dados.projetoId,
+        abertoPorId: dados.abertoPorId,
+        slaEm: dados.slaEm,
 
-      const ticket = await tx.ticket.create({
-        data: {
-          titulo: dados.titulo,
-          descricao: dados.descricao,
-          categoria: dados.categoria,
-          prioridade: dados.prioridade ?? Prioridade.MEDIA,
-          slaEm: dados.slaEm,
-          projetoId: dados.projetoId,
-          abertoPorId: dados.abertoPorId,
-          responsavelId: dados.responsavelId,
-        },
-      });
-
-      await tx.ticketEquipe.create({
-        data: { ticketId: ticket.id, equipeId: projeto.equipeId },
-      });
-
-      return tx.ticket.findUniqueOrThrow({
-        where: { id: ticket.id },
-        include: RELACOES_TICKET,
-      });
+        equipesAlocadas: dados.equipeIds?.length
+          ? {
+            create: dados.equipeIds.map((equipeId) => ({
+              equipeId,
+            })),
+          }
+          : undefined,
+      },
+      include: RELACOES_TICKET,
     });
+
+    return ticket;
   }
 
   async buscarTicketsDaEquipeDoUsuario(usuarioId: string) {
@@ -119,7 +236,7 @@ export class ServicoTicket {
     ticketId: string,
     dados: AtualizarPrioridadeComAutor,
   ) {
-    return this.banco.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx) => {
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
         include: { projeto: { select: { equipeId: true } } },
@@ -151,7 +268,9 @@ export class ServicoTicket {
       });
 
       if (count === 0) {
-        throw new ErroConflitoPrioridade();
+        throw new ErroConflitoPrioridade(
+          "A prioridade do ticket foi alterada por outro usuário. Tente novamente.",
+        );
       }
 
       const atualizado = await tx.ticket.findUniqueOrThrow({
@@ -172,30 +291,34 @@ export class ServicoTicket {
     });
   }
 
+  async listarTodos(filtros?: FiltrosTicket) {
+    return prisma.ticket.findMany({
+      where: montarWhere(filtros),
+      orderBy: {
+        criadoEm: "desc",
+      },
+      include: includeListagem,
+    });
+  }
+
   async buscarDetalhePorId(ticketId: string) {
     return prisma.ticket.findUnique({
-      where: { id: ticketId },
+      where: {
+        id: ticketId,
+      },
       include: RELACOES_TICKET,
     });
   }
 
   async listarPorProjeto(projetoId: string) {
-    const tickets = await prisma.ticket.findMany({
-      where: { projetoId },
+    return prisma.ticket.findMany({
+      where: {
+        projetoId,
+      },
       include: RELACOES_TICKET,
-    });
-
-    return [...tickets].sort((a, b) => {
-      if (a.categoria !== b.categoria) {
-        if (a.categoria === Categoria.INSTALACAO) return -1;
-        if (b.categoria === Categoria.INSTALACAO) return 1;
-      }
-
-      const diferencaPrioridade =
-        RANKING_PRIORIDADE[a.prioridade] - RANKING_PRIORIDADE[b.prioridade];
-      if (diferencaPrioridade !== 0) return diferencaPrioridade;
-
-      return a.criadoEm.getTime() - b.criadoEm.getTime();
+      orderBy: {
+        criadoEm: "desc",
+      },
     });
   }
 
