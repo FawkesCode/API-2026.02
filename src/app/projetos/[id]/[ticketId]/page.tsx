@@ -1,22 +1,9 @@
 import Link from "next/link";
 import PageHeader from "@/components/page-header";
-import { PriorityBadge } from "@/components/priority-badge";
-import { Badge } from "@/components/ui/badge";
-import { TicketLogs } from "@/components/tickets/ticket-logs";
 
 import { getProjectById, getTicket } from "@/lib/data/project-ticket";
-import { getLogAuthor, getTicketLogs } from "@/lib/data/ticket-logs";
 import { TicketView } from "@/types/ticket";
 import TicketsLogsView from "@/components/tickets/ticket-logs-view";
-
-type PriorityLevel = "critical" | "high" | "medium" | "low";
-
-const TicketPriorityMap: Record<string, PriorityLevel> = {
-  Baixa: "low",
-  Média: "medium",
-  Alta: "high",
-  Crítica: "critical",
-};
 
 export default async function TicketLogsPage({
   params,
