@@ -13,11 +13,9 @@
   <a href="#backlog">Backlog do Produto</a> |
   <a href="#dor">DoR</a> |
   <a href="#dod">DoD</a> |
-  <a href="#sprints">Cronograma de Sprints</a> |
+  <a href="#sprints">Sprints</a> |
   <a href="#tecnologias">Tecnologias</a> |
-  <a href="#documentacao">Documentação</a> |
   <a href="#executar">Como executar</a> |
-  <a href="#estrutura">Estrutura</a> |
   <a href="#equipe">Equipe</a> |
 </p>
 
@@ -109,6 +107,12 @@ O objetivo é padronizar o processo, eliminar a necessidade de vários softwares
 
 <br>
 
+> [!NOTE]
+> **Outros documentos:**
+>
+> - [Estratégia de Branches](./docs/dev/estrutura-branches.md): explicação sobre o padrão escolhido e sua justificativa.
+> - [Manual de Instalação (backend)](./docs/dev/docker-compose.md): cotninuação do tópico "como executar", explicando os requisitos do desenvolvimento back.
+
 ---
 
 ## 💻 Tecnologias <a id="tecnologias"></a>
@@ -124,13 +128,6 @@ O objetivo é padronizar o processo, eliminar a necessidade de vários softwares
   <a href="https://tailwindcss.com/"><img alt="Static Badge" src="https://img.shields.io/badge/tailwind_css-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white&logoSize=auto"></a>
   <a href="https://developer.mozilla.org/en-US/docs/Web/CSS"><img src="https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white"/></a>
 </p>
-
----
-
-## 📋 Documentação <a id="documentacao"></a>
-
-- [Estratégia de Branches](./docs/dev/estrutura-branches.md)
-- [Manual de Instalação](./docs/dev/docker-compose.md)
 
 ## 🚀 Como executar <a id="executar"></a>
 
