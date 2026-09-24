@@ -68,7 +68,28 @@ Nesse contexto, o desafio é construir uma plataforma unificada de tickets com i
 
 <br>
 
+## Definition of Done (DoD):
+
+- Código alinhado com o exigido nos critérios de aceite;
+- Testes verficados e validados -> (Relatório dos resultados);
+- Código revisado sob aprovação do PO;
+- Documentação entregue (Manual de usuário e Manual de instalação);
+- Stakeholders cientes da conclusão do projeto.
+
 ---
+## **Definition of Ready (DoR)**
+
+- Modelo já definido da arquitetura do banco;
+- Mockup relacionado já planejado;
+- Critérios de aceite definidos e aprovados pela equipe;
+- User story bem escritas, respeitando as definições padrões de "Como <usuário> quero <funcionalidade> para <finalidade>" e com os story points estipulados pela equipe;
+- Ferramentas e ambientes configurados (Repositório no git, Jira)
+- User Stories não ambíguas e com atomicidade;
+- Responsibilidades da equipe bem definidas;
+- Respeitar os padrões de commits definidos;
+
+---
+
 ## 💻 Tecnologias <a id="tecnologias"></a>
 
 <p>
