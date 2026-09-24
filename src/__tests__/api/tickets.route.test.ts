@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/tickets/route";
+import { GET, POST } from "@/app/api/tickets/route";
 import { PATCH } from "@/app/api/tickets/[id]/route";
 import { criarTokenDeSessao } from "@/lib/auth/sessao";
 import {
@@ -159,5 +159,56 @@ describe("rotas de tickets", () => {
     expect(await resposta.json()).toMatchObject({
       erro: "Apenas gestores da equipe responsável pelo ticket podem alterar sua prioridade.",
     });
+  });
+
+  it("lista todos os tickets, sem filtrar por projeto nem por equipe, quando nenhum usuarioId é informado", async () => {
+    const ticket = {
+      id: ticketId,
+      titulo: "Falha no equipamento",
+      descricao: "O equipamento precisa de manutenção.",
+      categoria: "MANUTENCAO",
+      prioridade: "CRITICA",
+      status: "NAO_INICIADO",
+      criadoEm: new Date("2026-09-24T10:00:00.000Z"),
+      slaEm: new Date("2026-09-25T10:00:00.000Z"),
+      projeto: { id: "550e8400-e29b-41d4-a716-446655440000", localInstalacao: "Sala 1" },
+      equipesAlocadas: [],
+    };
+    const listarTodos = vi
+      .spyOn(servicoTicket, "listarTodos")
+      .mockResolvedValue([ticket] as unknown as Awaited<ReturnType<typeof servicoTicket.listarTodos>>);
+    const listarPorEquipe = vi.spyOn(servicoTicket, "listarPorEquipeDoUsuario");
+
+    const resposta = await GET(new Request("http://localhost/api/tickets"));
+    const corpo = await resposta.json();
+
+    expect(resposta.status).toBe(200);
+    expect(corpo).toHaveLength(1);
+    expect(corpo[0]).toMatchObject({ id: ticketId, title: "Falha no equipamento" });
+    expect(listarTodos).toHaveBeenCalledWith();
+    expect(listarPorEquipe).not.toHaveBeenCalled();
+  });
+
+  it("continua filtrando pela equipe do usuário quando usuarioId é informado", async () => {
+    const listarPorEquipe = vi
+      .spyOn(servicoTicket, "listarPorEquipeDoUsuario")
+      .mockResolvedValue(
+        [] as unknown as Awaited<ReturnType<typeof servicoTicket.listarPorEquipeDoUsuario>>,
+      );
+    const listarTodos = vi.spyOn(servicoTicket, "listarTodos");
+
+    const resposta = await GET(
+      new Request(`http://localhost/api/tickets?usuarioId=${usuarioDaSessaoId}`),
+    );
+
+    expect(resposta.status).toBe(200);
+    expect(listarPorEquipe).toHaveBeenCalledWith(usuarioDaSessaoId);
+    expect(listarTodos).not.toHaveBeenCalled();
+  });
+
+  it("rejeita um usuarioId inválido na listagem", async () => {
+    const resposta = await GET(new Request("http://localhost/api/tickets?usuarioId=not-a-uuid"));
+
+    expect(resposta.status).toBe(400);
   });
 });

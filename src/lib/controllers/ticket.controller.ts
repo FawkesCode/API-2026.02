@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
+import { obterSessaoDaRequisicao } from "@/lib/auth/sessao";
 import {
   ErroConflitoPrioridade,
   ProjetoNaoEncontradoError,
@@ -90,15 +91,26 @@ export class ControladorTicket {
     }
   }
 
-  async listar(usuarioId: string | null) {
-    const idValidado = z.uuid().safeParse(usuarioId);
-    if (!idValidado.success) {
-      return NextResponse.json({ erro: "usuarioId deve ser um UUID válido." }, { status: 400 });
+  async listar(requisicao: Request) {
+    const usuarioId = new URL(requisicao.url).searchParams.get("usuarioId");
+
+    if (usuarioId !== null) {
+      const idValidado = z.uuid().safeParse(usuarioId);
+      if (!idValidado.success) {
+        return NextResponse.json({ erro: "usuarioId deve ser um UUID válido." }, { status: 400 });
+      }
+
+      try {
+        const tickets = await servicoTicket.listarPorEquipeDoUsuario(idValidado.data);
+        return NextResponse.json(tickets, { status: 200 });
+      } catch (erro) {
+        return tratarErroInesperado(erro);
+      }
     }
 
     try {
-      const tickets = await servicoTicket.listarPorEquipeDoUsuario(idValidado.data);
-      return NextResponse.json(tickets, { status: 200 });
+      const tickets = await servicoTicket.listarTodos();
+      return NextResponse.json(tickets.map(toTicketDTO), { status: 200 });
     } catch (erro) {
       return tratarErroInesperado(erro);
     }

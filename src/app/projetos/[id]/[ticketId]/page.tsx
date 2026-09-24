@@ -6,12 +6,10 @@ import { TicketLogs } from "@/components/tickets/ticket-logs";
 
 import {
   getProjectById,
-  getProjectTickets,
   getTicket,
 } from "@/lib/data/project-ticket";
 import { getLogAuthor, getTicketLogs } from "@/lib/data/ticket-logs";
 import { TicketView } from "@/types/ticket";
-import { notFound } from "next/navigation";
 
 type PriorityLevel = "critical" | "high" | "medium" | "low";
 
@@ -30,20 +28,12 @@ export default async function TicketLogsPage({
   const { title } = await getProjectById(id);
   const ticket: TicketView = await getTicket(ticketId);
 
-<<<<<<< HEAD
-  const ticket = tickets.find((ticket) => ticket.id === ticketId);
-
-  if (!ticket) {
-    notFound();
-  }
-=======
   // TODO: autor vem da sessão do usuário logado quando existir autenticação
   const [autor, logs] = await Promise.all([
     getLogAuthor(ticketId),
     getTicketLogs(ticketId),
   ]);
 
->>>>>>> origin/development
   return (
     <div className="flex h-full min-h-0 flex-col pb-6">
       <div className="shrink-0">
