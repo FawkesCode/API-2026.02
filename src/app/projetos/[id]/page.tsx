@@ -25,7 +25,6 @@ async function page({ params }: PageProps) {
               key={ticket.id}
               ticket={ticket}
               ticketUrl={`/projetos/${id}/${ticket.id}`}
-              woLogs={ticket.recentLogs?.length === 0 ? true : false}
             />
           ))
         ) : (

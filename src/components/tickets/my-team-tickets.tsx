@@ -1,5 +1,5 @@
 import { TicketView } from "@/types/ticket";
-import TicketFilter from "../ticket-filter";
+
 import TicketCard from "../ticket-card";
 
 function MyTeamTickets({ tickets }: { tickets: TicketView[] }) {
@@ -16,7 +16,6 @@ function MyTeamTickets({ tickets }: { tickets: TicketView[] }) {
               key={ticket.id}
               ticket={ticket}
               ticketUrl={`/equipe/${ticket.id}`}
-              woLogs={ticket.recentLogs?.length === 0 ? true : false}
             />
           ))
         ) : (

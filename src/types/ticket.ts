@@ -41,7 +41,7 @@ export const TicketStatusLabel: Record<TicketStatus, string> = {
 export interface TeamLogView {
   title: string;
   sentBy: string;
-  sentAt: string;
+  sentAt: Date;
 }
 
 export interface TicketView {

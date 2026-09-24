@@ -11,12 +11,16 @@ import {
 import { ChevronsLeft, Ticket } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { PriorityBadge } from "./priority-badge";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { cn } from "cn";
 import { TeamLogView, TicketView } from "@/types/ticket";
 import { Button } from "./ui/button";
 import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
-import { addMyTeamAction, removeMyTeamAction } from "@/lib/actions/ticket";
+import {
+  addMyTeamAction,
+  getRecentLogs,
+  removeMyTeamAction,
+} from "@/lib/actions/ticket";
 import { usePathname } from "next/navigation";
 import { toast } from "./ui/toast";
 
@@ -38,6 +42,7 @@ const TicketPriorityMap: Record<string, PriorityLevel> = {
 function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
   const [curTicket, setCurTicket] = useState(ticket);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLogLoading, setIsLogLoading] = useState(false);
 
   const pathname = usePathname();
 
@@ -74,6 +79,26 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    async function fetchLogs() {
+      setIsLogLoading(true);
+      try {
+        const logs = await getRecentLogs(curTicket.id);
+        setCurTicket((state) =>
+          state ? { ...state, recentLogs: logs } : state,
+        );
+      } catch (err) {
+        console.error("Erro ao carregar logs:", err);
+      } finally {
+        setIsLogLoading(false);
+      }
+    }
+
+    if (curTicket.id) {
+      fetchLogs();
+    }
+  }, [curTicket.id]);
 
   return (
     <Link
@@ -146,25 +171,34 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
           <div
             className={cn(
               "bg-background w-full p-3 rounded-xl flex flex-col log-view",
-              { hidden: woLogs },
+              (!curTicket.recentLogs ||
+                curTicket.recentLogs.length === 0 ||
+                woLogs) &&
+                "hidden!",
             )}
           >
-            <h4 className="text-card-foreground font-bold text-md mb-3">
-              LOGS Recentes
-            </h4>
-            <div className="flex flex-col gap-2 mask-[linear-gradient(to_top,transparent,black_2.5rem)]">
-              {curTicket.recentLogs?.map((log) => (
-                <TeamLog
-                  key={`${log.title}-${log.sentAt}`}
-                  title={log.title}
-                  sentBy={log.sentBy}
-                  sentAt={log.sentAt}
-                />
-              ))}
-            </div>
-            <span className="cursor-pointer font-bold text-xs bg-transparent text-center text-card-foreground hover:underline  hover:bg-transparent">
-              Ver mais
-            </span>
+            {isLogLoading ? (
+              "Carregando logs"
+            ) : (
+              <>
+                <h4 className="text-card-foreground font-bold text-md mb-3">
+                  LOGS Recentes
+                </h4>
+                <div className="flex flex-col gap-2 mask-[linear-gradient(to_top,transparent,black_1.5rem)]">
+                  {curTicket.recentLogs?.map((log) => (
+                    <TeamLog
+                      key={`${log.title}-${log.sentAt}`}
+                      title={log.title}
+                      sentBy={log.sentBy}
+                      sentAt={log.sentAt}
+                    />
+                  ))}
+                </div>
+                <span className="cursor-pointer font-bold text-xs bg-transparent text-center text-card-foreground hover:underline  hover:bg-transparent">
+                  Ver mais
+                </span>
+              </>
+            )}
           </div>
         </CardFooter>
       </Card>
@@ -196,7 +230,7 @@ function TeamLog({ title, sentBy, sentAt }: TeamLogView) {
       </div>
       <span className="flex gap-1 items-center text-[#ACADC0]">
         <ChevronsLeft />
-        {sentAt}
+        {sentAt.toLocaleTimeString("pt-BR", { timeStyle: "short" })}
       </span>
     </div>
   );

@@ -13,6 +13,7 @@ export function toTicketDTO(info: TicketComRelacoes): TicketView {
   for (const [key, equipes] of Object.entries(info.equipesAlocadas)) {
     teamsArray.push({ id: equipes.equipe.id, nome: equipes.equipe.nome });
   }
+
   return {
     id: info.id,
     title: info.titulo,
