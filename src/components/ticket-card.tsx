@@ -38,7 +38,8 @@ function TicketCard({ ticket, projectId, woLogs }: TicketCardProps) {
       <Card className="border border-transparent transition-all duration-100 ease-in-out min-h-min h-full justify-between">
         <CardHeader>
           <CardTitle className="text-xl flex gap-2 items-center font-bold">
-            <Ticket aria-hidden={true} size="20" /> {ticket.title} |{" "}
+            <Ticket aria-hidden={true} size="20" /> {ticket.title}{" "}
+            {ticket.type !== "" && "| "}
             {ticket.type}
           </CardTitle>
           <CardDescription className="border-b pb-4 text-foreground font-medium flex flex-col gap-2">
