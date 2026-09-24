@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import {
   Dialog,
   DialogContent,
@@ -14,12 +14,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FormInput, FormTextarea } from "@/components/form/form-field";
+import {
+  FormInput,
+  FormSelect,
+  FormTextarea,
+} from "@/components/form/form-field";
 import { Plus } from "lucide-react";
+import { SelectInterface } from "@/lib/data/dropdown";
 
 export interface ProjectFormValues {
   nomeProjeto: string;
-  cliente: string;
+  gestor: SelectInterface | null;
+  cliente: SelectInterface | null;
   localInstalacao: string;
   descricao: string;
 }
@@ -38,6 +44,8 @@ interface ProjectFormDialogBaseProps {
   /** Esconde o botão de gatilho interno quando o dialog é aberto de fora. */
   hideTrigger?: boolean;
   onSuccess: () => void;
+  clientsData: SelectInterface[];
+  supervisorsData: SelectInterface[];
 }
 
 // Se `open` for passado, `onOpenChange` passa a ser obrigatório — evita a
@@ -53,11 +61,12 @@ type ProjectFormDialogProps =
     });
 
 export function ProjectFormDialog({
-  onSubmitProject,
   open,
   onOpenChange,
   hideTrigger,
   onSuccess,
+  clientsData,
+  supervisorsData,
 }: ProjectFormDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isControlled = open !== undefined;
@@ -75,13 +84,15 @@ export function ProjectFormDialog({
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ProjectFormValues>({
     defaultValues: {
       nomeProjeto: "",
-      cliente: "",
+      gestor: null,
+      cliente: null,
       localInstalacao: "",
       descricao: "",
     },
@@ -90,7 +101,6 @@ export function ProjectFormDialog({
   async function onSubmit(data: ProjectFormValues) {
     setSubmitError(null);
     try {
-      // Fetch no lado do servidor n precisa da url completa
       const res = await fetch("/api/projetos", {
         method: "POST",
         headers: {
@@ -98,16 +108,15 @@ export function ProjectFormDialog({
         },
         body: JSON.stringify({
           nome: data.nomeProjeto,
+          gestorId: data.gestor?.value,
           localInstalacao: data.localInstalacao,
-          clienteId: "588675ca-b3ae-11f1-9aeb-0ea8acf6b539",
-          equipeId: "3c14cfc5-b3ae-11f1-9aeb-0ea8acf6b539",
-          gestorId: "3c14cfc8-b3ae-11f1-9aeb-0ea8acf6b539",
+          clienteId: data.cliente?.value,
+          descricao: data.descricao,
         }),
       });
 
       if (!res.ok) {
         const errorServer = await res.json().catch(() => null);
-        console.log(errorServer);
         throw new Error(
           errorServer?.message || "Falha na resposta do servidor",
         );
@@ -162,7 +171,7 @@ export function ProjectFormDialog({
           className="flex-1 flex flex-col"
           noValidate
         >
-          <DialogBody className=" h-[80%]">
+          <DialogBody className=" h-[85%]">
             <FormInput
               label="Nome do Projeto:"
               placeholder="Digite o nome do projeto..."
@@ -170,26 +179,49 @@ export function ProjectFormDialog({
               error={errors.nomeProjeto?.message}
               {...register("nomeProjeto", {
                 required: "Informe o nome do projeto.",
-                maxLength: { value: 150, message: "Máximo de 150 caracteres." },
+                maxLength: {
+                  value: 150,
+                  message: "Máximo de 150 caracteres.",
+                },
                 validate: required("Informe o nome do projeto."),
               })}
             />
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <FormInput
-                label="Cliente:"
-                placeholder="Digite o nome do cliente.."
-                required
-                error={errors.cliente?.message}
-                {...register("cliente", {
-                  required: "Informe o cliente.",
-                  maxLength: {
-                    value: 150,
-                    message: "Máximo de 150 caracteres.",
-                  },
-                  validate: required("Informe o cliente."),
-                })}
+            <Controller
+              control={control}
+              name="gestor"
+              rules={{ required: "Informe o gestor responsável." }}
+              render={({ field }) => (
+                <FormSelect
+                  label="Gestor Responsável:"
+                  options={supervisorsData}
+                  required
+                  error={errors.gestor?.message}
+                  value={field.value}
+                  onChange={field.onChange}
+                  ref={field.ref}
+                />
+              )}
+            />
+
+            <div className="flex gap-2 w-full">
+              <Controller
+                control={control}
+                name="cliente"
+                rules={{ required: "Informe o cliente." }}
+                render={({ field }) => (
+                  <FormSelect
+                    label="Cliente:"
+                    options={clientsData}
+                    required
+                    error={errors.cliente?.message}
+                    value={field.value}
+                    onChange={field.onChange}
+                    ref={field.ref}
+                  />
+                )}
               />
+
               <FormInput
                 label="Local de Instalação:"
                 placeholder="Digite o local de instalação..."

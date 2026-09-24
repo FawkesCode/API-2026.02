@@ -18,6 +18,12 @@ export const criarTicketSchema = z.object({
   equipeIds: z.array(z.uuid("Cada id de equipe deve ser um UUID válido.")).optional(),
 });
 
+export const alocarEquipeTicketSchema = z.object({
+  equipeId: z.uuid("equipeId deve ser um UUID válido."),
+});
+ 
+export type AlocarEquipeTicketSchema = z.infer<typeof alocarEquipeTicketSchema>;
+
 export type CriarTicketSchema = z.infer<typeof criarTicketSchema>;
 
 export const atualizarPrioridadeTicketSchema = z.object({

@@ -14,6 +14,18 @@ export class ServicoUsuario {
       orderBy: { nome: "asc" },
     });
   }
+
+  async buscarPorId(usuarioId: string) {
+    return prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: {
+        id: true,
+        nome: true,
+        cargo: true,
+        equipe: { select: { nome: true } },
+      },
+    });
+  }
 }
 
 export const servicoUsuario = new ServicoUsuario();

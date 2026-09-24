@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { Categoria, Prioridade, StatusTicket, Prisma } from "@/lib/generated/prisma/client";
+import {
+  Categoria,
+  Prioridade,
+  StatusTicket,
+  Prisma,
+} from "@/lib/generated/prisma/client";
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
+import { RELACOES_TICKET } from "@/lib/services/ticket.service";
 
 const DIAS_SLA_INSTALACAO_PADRAO = 7;
 
@@ -51,6 +57,7 @@ export class ServicoProjeto {
         data: {
           nome: dados.nome,
           localInstalacao: dados.localInstalacao,
+          descricao: dados.descricao ?? null,
           clienteId: dados.clienteId,
           equipeId: gestor.equipeId,
           gestorId: dados.gestorId,
@@ -65,14 +72,30 @@ export class ServicoProjeto {
             `Ticket de instalação gerado automaticamente para o projeto "${dados.nome}" (local: ${dados.localInstalacao}).`,
           categoria: Categoria.INSTALACAO,
           prioridade: Prioridade.MEDIA,
-          status: StatusTicket.ABERTO,
+          status: StatusTicket.NAO_INICIADO,
           slaEm: calcularSlaPadrao(),
           projetoId: projeto.id,
           abertoPorId: dados.gestorId,
         },
       });
 
-      return { projeto, ticketInstalacao };
+      await tx.ticketEquipe.create({
+        data: {
+          ticketId: ticketInstalacao.id,
+          equipeId: gestor.equipeId,
+        },
+      });
+
+      const ticketInstalacaoComRelacoes =
+        await tx.ticket.findUniqueOrThrow({
+          where: { id: ticketInstalacao.id },
+          include: RELACOES_TICKET,
+        });
+
+      return {
+        projeto,
+        ticketInstalacao: ticketInstalacaoComRelacoes,
+      };
     });
   }
 
@@ -82,7 +105,10 @@ export class ServicoProjeto {
     });
 
     if (!projeto) {
-      return { projeto: null, ticketInstalacao: null };
+      return {
+        projeto: null,
+        ticketInstalacao: null,
+      };
     }
 
     const ticketInstalacao = await prisma.ticket.findFirst({
@@ -90,10 +116,16 @@ export class ServicoProjeto {
         projetoId,
         categoria: Categoria.INSTALACAO,
       },
-      orderBy: { criadoEm: "asc" },
+      orderBy: {
+        criadoEm: "asc",
+      },
+      include: RELACOES_TICKET,
     });
 
-    return { projeto, ticketInstalacao };
+    return {
+      projeto,
+      ticketInstalacao,
+    };
   }
 
   async buscarDetalhePorId(projetoId: string) {
@@ -129,10 +161,7 @@ export class ServicoProjeto {
   }
 
   /**
-   * Lista todos os tickets de um projeto (qualquer categoria/status),
-   * usada pela tela de detalhe do projeto. Diferente de
-   * `buscarProjetoComTicketDeInstalacao`, que retorna apenas o ticket
-   * de instalação automático.
+   * Lista todos os tickets de um projeto, permitindo filtros.
    */
   async listarTicketsDoProjeto(
     projetoId: string,
@@ -143,7 +172,9 @@ export class ServicoProjeto {
       data?: string;
     },
   ) {
-    const where: Prisma.TicketWhereInput = { projetoId };
+    const where: Prisma.TicketWhereInput = {
+      projetoId,
+    };
 
     if (filtros?.prioridade) {
       where.prioridade = filtros.prioridade;
@@ -154,7 +185,9 @@ export class ServicoProjeto {
     }
 
     if (filtros?.titulo) {
-      where.titulo = { contains: filtros.titulo };
+      where.titulo = {
+        contains: filtros.titulo,
+      };
     }
 
     if (filtros?.data) {
@@ -169,14 +202,20 @@ export class ServicoProjeto {
 
     return prisma.ticket.findMany({
       where,
-      orderBy: { criadoEm: "desc" },
+      orderBy: {
+        criadoEm: "desc",
+      },
     });
   }
 
   async listarAtivos() {
     return prisma.projeto.findMany({
-      where: { ativo: true },
-      orderBy: { criadoEm: "desc" },
+      where: {
+        ativo: true,
+      },
+      orderBy: {
+        criadoEm: "desc",
+      },
       include: {
         cliente: {
           select: {
@@ -207,7 +246,9 @@ export class ServicoProjeto {
 
   async listarTicketsPorProjeto(projetoId: string) {
     const tickets = await prisma.ticket.findMany({
-      where: { projetoId },
+      where: {
+        projetoId,
+      },
     });
 
     return [...tickets].sort((a, b) => {
