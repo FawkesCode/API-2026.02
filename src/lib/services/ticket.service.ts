@@ -321,15 +321,18 @@ export class ServicoTicket {
   }
 
   async alocarEquipe(ticketId: string, equipeId: string) {
-    return prisma.ticketEquipe.create({
-      data: {
-        ticketId,
-        equipeId,
-      },
-      include: {
-        equipe: true,
-        ticket: true,
-      },
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return null;
+
+    await prisma.ticketEquipe.upsert({
+      where: { ticketId_equipeId: { ticketId, equipeId } },
+      create: { ticketId, equipeId },
+      update: {},
+    });
+
+    return prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
+      include: RELACOES_TICKET,
     });
   }
 }
