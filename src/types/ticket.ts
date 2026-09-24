@@ -52,7 +52,7 @@ export interface TicketView {
   timeRemaining: string;
   createdBy: string;
   createdById: string;
-  teams: Array<string | undefined>;
+  teams: Array<{ id: string; nome: string }>;
   status: string;
   priority: string;
   description: string;

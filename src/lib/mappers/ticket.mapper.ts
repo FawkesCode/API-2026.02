@@ -9,6 +9,10 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export function toTicketDTO(info: TicketComRelacoes): TicketView {
+  const teamsArray = [];
+  for (const [key, equipes] of Object.entries(info.equipesAlocadas)) {
+    teamsArray.push({ id: equipes.equipe.id, nome: equipes.equipe.nome });
+  }
   return {
     id: info.id,
     title: info.titulo,
@@ -23,7 +27,7 @@ export function toTicketDTO(info: TicketComRelacoes): TicketView {
     }),
     createdBy: info.abertoPor?.nome ?? "Não definido",
     createdById: info.abertoPorId,
-    teams: info.equipesAlocadas.map((alocacao) => alocacao.equipe.nome),
+    teams: teamsArray,
     status: TicketStatusLabel[info.status] ?? "Não definido",
     priority: TicketPriorityLabel[info.prioridade] ?? "Não definido",
     description: info.descricao,
