@@ -11,10 +11,14 @@ import {
 import { ChevronsLeft, Ticket } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { PriorityBadge } from "./priority-badge";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { cn } from "cn";
 import { TeamLogView, TicketView } from "@/types/ticket";
 import { Button } from "./ui/button";
+import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
+import { addMyTeamAction, removeMyTeamAction } from "@/lib/actions/ticket";
+import { usePathname } from "next/navigation";
+import { toast } from "./ui/toast";
 
 interface TicketCardProps {
   ticket: TicketView;
@@ -32,14 +36,43 @@ const TicketPriorityMap: Record<string, PriorityLevel> = {
 };
 
 function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
+  const [curTicket, setCurTicket] = useState(ticket);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const pathname = usePathname();
+
   // TODO: Trocar o id pelo recebido pelo mock de usuário
   const loggedUserTeam = "10aba42f-f057-42b7-a9f7-a9760e241524";
 
-  const handleAddTeam = (id: string) => {
-    console.log(`Adicionada equipe de id: ${id}`);
-  };
-  const handleRemoveTeam = (id: string) => {
-    console.log(`Retirada equipe de id: ${id}`);
+  const handleManageTeam = async (id: string, type?: string) => {
+    setIsLoading(true);
+
+    try {
+      const res =
+        type === "add"
+          ? await addMyTeamAction(curTicket.id, id, pathname)
+          : await removeMyTeamAction(curTicket.id, id, pathname);
+
+      if (!res.success) {
+        toast.add({
+          type: "error",
+          description: res.error,
+          priority: "high",
+        });
+        return;
+      }
+
+      const updatedTicket = toTicketDTO(res.data);
+      setCurTicket(updatedTicket);
+    } catch (err) {
+      toast.add({
+        type: "error",
+        description: `Erro de conexão com o servidor: ${err}`,
+        priority: "high",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,53 +84,55 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
         <CardHeader>
           <CardTitle className="flex justify-between">
             <div className="text-xl flex gap-2 items-center font-bold">
-              <Ticket aria-hidden={true} size="20" /> {ticket.title}{" "}
-              {ticket.type !== "" && "| "}
-              {ticket.type}
+              <Ticket aria-hidden={true} size="20" /> {curTicket.title}{" "}
+              {curTicket.type !== "" && "| "}
+              {curTicket.type}
             </div>
           </CardTitle>
           <CardDescription className="border-b pb-4 text-foreground font-medium flex flex-col gap-2">
             <div className="flex flex-col sm:flex-row items-start md:items-center gap-3">
               <span className="text-accent">
-                Tempo restante: {ticket.timeRemaining}
+                Tempo restante: {curTicket.timeRemaining}
               </span>
 
               <p className="text-foreground font-normal">
-                Aberto em {ticket.openedAt} por
-                <span className=" italic"> {ticket.createdBy}</span>
+                Aberto em {curTicket.openedAt} por
+                <span className=" italic"> {curTicket.createdBy}</span>
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:gap-0 sm:flex-row  justify-between">
               <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
-                {ticket.teams && ticket.teams.length > 0 ? (
-                  ticket.teams.map((team) => (
+                {curTicket.teams && curTicket.teams.length > 0 ? (
+                  curTicket.teams.map((team) => (
                     <TeamsBadge key={team.id}>{team.nome}</TeamsBadge>
                   ))
                 ) : (
-                  <span>Times atribuídos não definidos</span>
+                  <span className="text-xs text-muted-foreground">
+                    Times atribuídos não definidos
+                  </span>
                 )}
-                {ticket.teams.some((team) => team.id === loggedUserTeam) ? (
+                {curTicket.teams.some((team) => team.id === loggedUserTeam) ? (
                   <TeamAddButton
                     style="outline"
-                    onClick={() => handleRemoveTeam(loggedUserTeam)}
+                    onClick={() => handleManageTeam(loggedUserTeam)}
                   >
-                    Desatribuir Equipe
+                    {isLoading ? "Desatribuindo" : "Desatribuir Equipe"}
                   </TeamAddButton>
                 ) : (
                   <TeamAddButton
                     style="secondary"
-                    onClick={() => handleAddTeam(loggedUserTeam)}
+                    onClick={() => handleManageTeam(loggedUserTeam, "add")}
                   >
-                    Atribuir Equipe
+                    {isLoading ? "Atribuindo" : "Atribuir Equipe"}
                   </TeamAddButton>
                 )}
               </div>
               <div className="flex justify-between  items-center gap-2">
                 <span className="underline text-muted-foreground text-xs">
-                  {ticket.status}
+                  {curTicket.status}
                 </span>
-                <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
-                  {ticket.priority}
+                <PriorityBadge priority={TicketPriorityMap[curTicket.priority]}>
+                  {curTicket.priority}
                 </PriorityBadge>
               </div>
             </div>
@@ -105,7 +140,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
         </CardHeader>
 
         <CardContent className="text-muted-foreground">
-          <p>{ticket.description}</p>
+          <p>{curTicket.description}</p>
         </CardContent>
         <CardFooter className="flex justify-between">
           <div
@@ -118,7 +153,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
               LOGS Recentes
             </h4>
             <div className="flex flex-col gap-2 mask-[linear-gradient(to_top,transparent,black_2.5rem)]">
-              {ticket.recentLogs?.map((log) => (
+              {curTicket.recentLogs?.map((log) => (
                 <TeamLog
                   key={`${log.title}-${log.sentAt}`}
                   title={log.title}

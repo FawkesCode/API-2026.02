@@ -7,7 +7,9 @@ import type {
 
 export class ErroConflitoPrioridade extends Error {
   constructor() {
-    super("A prioridade do ticket foi alterada por outra requisição enquanto esta era processada.");
+    super(
+      "A prioridade do ticket foi alterada por outra requisição enquanto esta era processada.",
+    );
     this.name = "ErroConflitoPrioridade";
   }
 }
@@ -29,7 +31,9 @@ export const RELACOES_TICKET = {
   },
 } satisfies Prisma.TicketInclude;
 
-export type TicketComRelacoes = Prisma.TicketGetPayload<{ include: typeof RELACOES_TICKET }>;
+export type TicketComRelacoes = Prisma.TicketGetPayload<{
+  include: typeof RELACOES_TICKET;
+}>;
 
 const RANKING_PRIORIDADE: Record<Prioridade, number> = {
   [Prioridade.CRITICA]: 0,
@@ -39,10 +43,11 @@ const RANKING_PRIORIDADE: Record<Prioridade, number> = {
 };
 
 export class ServicoTicket {
-
   async criar(dados: CriarTicketSchema) {
     return prisma.$transaction(async (tx) => {
-      const projeto = await tx.projeto.findUnique({ where: { id: dados.projetoId } });
+      const projeto = await tx.projeto.findUnique({
+        where: { id: dados.projetoId },
+      });
       if (!projeto) {
         throw new ProjetoNaoEncontradoError();
       }
@@ -110,7 +115,10 @@ export class ServicoTicket {
     return tickets;
   }
 
-  async atualizarPrioridade(ticketId: string, dados: AtualizarPrioridadeComAutor) {
+  async atualizarPrioridade(
+    ticketId: string,
+    dados: AtualizarPrioridadeComAutor,
+  ) {
     return this.banco.$transaction(async (tx) => {
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
@@ -118,7 +126,9 @@ export class ServicoTicket {
       });
       if (!ticket) return null;
 
-      const gestor = await tx.usuario.findUnique({ where: { id: dados.usuarioId } });
+      const gestor = await tx.usuario.findUnique({
+        where: { id: dados.usuarioId },
+      });
       if (
         !gestor ||
         !gestor.ativo ||
@@ -169,7 +179,6 @@ export class ServicoTicket {
     });
   }
 
-
   async listarPorProjeto(projetoId: string) {
     const tickets = await prisma.ticket.findMany({
       where: { projetoId },
@@ -198,6 +207,20 @@ export class ServicoTicket {
       where: { ticketId_equipeId: { ticketId, equipeId } },
       create: { ticketId, equipeId },
       update: {},
+    });
+
+    return prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
+      include: RELACOES_TICKET,
+    });
+  }
+
+  async desalocarEquipe(ticketId: string, equipeId: string) {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return null;
+
+    await prisma.ticketEquipe.deleteMany({
+      where: { ticketId, equipeId },
     });
 
     return prisma.ticket.findUniqueOrThrow({
