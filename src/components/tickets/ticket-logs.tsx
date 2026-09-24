@@ -6,11 +6,8 @@ import { LogEditor } from "@/components/tickets/log-editor";
 import { LogState, type LogStatus } from "@/components/tickets/log-states";
 import { LogSuggestion } from "@/components/tickets/log-suggestions";
 import UserMessages from "@/components/tickets/user-messages";
-import {
-  EventoLog,
-  toLogItem,
-  type LogResposta,
-} from "@/lib/mappers/historico.mapper";
+import { EventoLog, toLogItem } from "@/lib/mappers/historico.mapper";
+import { logRespostaSchema } from "@/schemas/historico.schema";
 
 interface Autor {
   id: string;
@@ -56,6 +53,11 @@ function mensagemDeErro(status: number, resposta: RespostaDeErro | null) {
 
   if (status === 400 && detalhe) return detalhe;
   if (status === 400 && resposta?.erro) return resposta.erro;
+  if (status === 403) {
+    return (
+      resposta?.erro ?? "Você não tem acesso para registrar logs neste ticket."
+    );
+  }
   if (status === 404) {
     return "Ticket não encontrado. Atualize a página e tente novamente.";
   }
@@ -78,7 +80,14 @@ async function publicarLog(ticketId: string, log: NovoLog) {
     throw new Error(mensagemDeErro(res.status, resposta));
   }
 
-  return toLogItem(resposta as LogResposta);
+  const logCriado = logRespostaSchema.safeParse(resposta);
+  if (!logCriado.success) {
+    throw new Error(
+      "O log foi registrado, mas não pôde ser exibido. Atualize a página para visualizá-lo.",
+    );
+  }
+
+  return toLogItem(logCriado.data);
 }
 
 interface TicketLogsProps {

@@ -17,6 +17,12 @@ export type LogTicketComUsuario = Prisma.HistoricoTicketGetPayload<{
   include: typeof incluirUsuario;
 }>;
 
+export class UsuarioSemAcessoAoTicketError extends Error {
+  constructor() {
+    super("Você não tem acesso para registrar logs neste ticket.");
+  }
+}
+
 export class ServicoHistoricoTicket {
   async listarPorTicket(ticketId: string) {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
@@ -32,6 +38,29 @@ export class ServicoHistoricoTicket {
   async criar(ticketId: string, dados: CriarLogTicketSchema) {
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return null;
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: dados.usuarioId },
+      select: { ativo: true, equipeId: true },
+    });
+
+    if (!usuario?.ativo || !usuario.equipeId) {
+      throw new UsuarioSemAcessoAoTicketError();
+    }
+
+    const ticketDaEquipe = await prisma.ticket.count({
+      where: {
+        id: ticketId,
+        OR: [
+          { equipesAlocadas: { some: { equipeId: usuario.equipeId } } },
+          { projeto: { equipeId: usuario.equipeId } },
+        ],
+      },
+    });
+
+    if (ticketDaEquipe === 0) {
+      throw new UsuarioSemAcessoAoTicketError();
+    }
 
     return prisma.historicoTicket.create({
       data: {

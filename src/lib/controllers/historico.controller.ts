@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
-import { servicoHistoricoTicket } from "@/lib/services/historico.service";
+import {
+  servicoHistoricoTicket,
+  UsuarioSemAcessoAoTicketError,
+} from "@/lib/services/historico.service";
 import { criarLogTicketSchema } from "@/schemas/historico.schema";
 
 async function extrairJson(requisicao: Request) {
@@ -19,6 +22,10 @@ async function extrairJson(requisicao: Request) {
 }
 
 function tratarErroInesperado(erro: unknown) {
+  if (erro instanceof UsuarioSemAcessoAoTicketError) {
+    return NextResponse.json({ erro: erro.message }, { status: 403 });
+  }
+
   if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2003") {
     return NextResponse.json(
       { erro: "Referência inválida: usuarioId não existe." },

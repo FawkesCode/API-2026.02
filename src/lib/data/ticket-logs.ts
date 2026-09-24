@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { servicoHistoricoTicket } from "../services/historico.service";
+import { servicoProjeto } from "../services/projeto.service";
 import { servicoTicket } from "../services/ticket.service";
 import { servicoUsuario } from "../services/usuario.service";
 import { toAutor, toLogItem } from "../mappers/historico.mapper";
@@ -30,10 +31,13 @@ export async function getLogAuthor(ticketId: string) {
 
   try {
     const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
-    if (ticket) {
-      usuario = await servicoUsuario.buscarPorId(
-        ticket.responsavel?.id ?? ticket.abertoPor.id,
-      );
+    const projeto = ticket
+      ? await servicoProjeto.buscarDetalhePorId(ticket.projetoId)
+      : null;
+    const autorId = ticket?.responsavel?.id ?? projeto?.gestorId;
+
+    if (autorId) {
+      usuario = await servicoUsuario.buscarPorId(autorId);
     }
   } catch (error) {
     console.error(`[getLogAuthor] Erro ao buscar o autor dos logs: ${error}`);
