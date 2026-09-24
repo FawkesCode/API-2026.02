@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
+import { obterSessaoDaRequisicao } from "@/lib/auth/sessao";
 import {
   ErroConflitoPrioridade,
   ProjetoNaoEncontradoError,
