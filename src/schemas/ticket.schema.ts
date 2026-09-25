@@ -15,7 +15,10 @@ export const criarTicketSchema = z.object({
   // NOVO — equipes adicionais (além da equipe herdada do Projeto) que
   // devem atuar no ticket. Opcional para não quebrar quem já chama
   // este endpoint sem enviar esse campo.
-  equipeIds: z.array(z.uuid("Cada id de equipe deve ser um UUID válido.")).optional(),
+  equipeIds: z
+    .array(z.uuid("Cada id de equipe deve ser um UUID válido."))
+    .optional()
+    .transform((ids) => (ids ? [...new Set(ids)] : ids)),
 });
 
 export const alocarEquipeTicketSchema = z.object({

@@ -93,3 +93,100 @@ describe("ServicoTicket.atualizarPrioridade", () => {
     expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
   });
 });
+
+describe("ServicoTicket equipes", () => {
+  it("persiste as equipes selecionadas ao criar ticket, sem duplicar IDs repetidos", async () => {
+    const ticket = { id: ticketId };
+    const criar = vi.fn().mockResolvedValue(ticket);
+    const servico = new ServicoTicket({
+      ticket: { create: criar },
+    } as unknown as BancoTicket);
+
+    await servico.criar({
+      titulo: "Falha no equipamento",
+      descricao: "O equipamento precisa de manutenção.",
+      categoria: "MANUTENCAO",
+      prioridade: Prioridade.MEDIA,
+      slaEm: new Date("2030-01-01T00:00:00.000Z"),
+      projetoId: "550e8400-e29b-41d4-a716-446655440000",
+      abertoPorId: gestorId,
+      equipeIds: [equipeId, equipeId],
+    });
+
+    expect(criar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          equipesAlocadas: {
+            create: [{ equipeId }],
+          },
+        }),
+      }),
+    );
+  });
+
+  it("atribui equipe de forma idempotente", async () => {
+    const ticket = { id: ticketId };
+    const upsert = vi.fn();
+    const servico = new ServicoTicket({
+      ticket: {
+        findUnique: vi.fn().mockResolvedValue(ticket),
+        findUniqueOrThrow: vi.fn().mockResolvedValue(ticket),
+      },
+      ticketEquipe: { upsert },
+    } as unknown as BancoTicket);
+
+    await servico.alocarEquipe(ticketId, equipeId);
+
+    expect(upsert).toHaveBeenCalledWith({
+      where: { ticketId_equipeId: { ticketId, equipeId } },
+      create: { ticketId, equipeId },
+      update: {},
+    });
+  });
+});
+
+describe("ordenação das listas de tickets", () => {
+  const dataNova = new Date("2026-09-25T12:00:00.000Z");
+  const dataAntiga = new Date("2026-09-24T12:00:00.000Z");
+  const tickets = [
+    { id: "media", prioridade: Prioridade.MEDIA, criadoEm: dataNova },
+    { id: "baixa", prioridade: Prioridade.BAIXA, criadoEm: dataNova },
+    { id: "critica-antiga", prioridade: Prioridade.CRITICA, criadoEm: dataAntiga },
+    { id: "critica-nova", prioridade: Prioridade.CRITICA, criadoEm: dataNova },
+    { id: "alta", prioridade: Prioridade.ALTA, criadoEm: dataNova },
+  ];
+
+  it("mantém a lista geral em ordem de criação mais recente", async () => {
+    const servico = new ServicoTicket({
+      ticket: { findMany: vi.fn().mockResolvedValue(tickets) },
+    } as unknown as BancoTicket);
+
+    const resultado = await servico.listarTodos();
+
+    expect(resultado.map((ticket) => ticket.id)).toEqual(
+      tickets.map((ticket) => ticket.id),
+    );
+  });
+
+  it("ordena a lista da equipe pela mesma regra", async () => {
+    const servico = new ServicoTicket({
+      usuario: {
+        findUnique: vi.fn().mockResolvedValue({
+          ativo: true,
+          equipe: { id: equipeId, nome: "Suporte", ativo: true },
+        }),
+      },
+      ticket: { findMany: vi.fn().mockResolvedValue(tickets) },
+    } as unknown as BancoTicket);
+
+    const resultado = await servico.listarPorEquipeDoUsuario(gestorId);
+
+    expect(resultado.map((ticket) => ticket.id)).toEqual([
+      "critica-nova",
+      "critica-antiga",
+      "alta",
+      "media",
+      "baixa",
+    ]);
+  });
+});

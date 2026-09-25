@@ -4,12 +4,14 @@ import {
   Categoria,
   Prioridade,
   Prisma,
+  PrismaClient,
   StatusTicket,
 } from "@/lib/generated/prisma/client";
 import type {
   CriarTicketSchema,
   AtualizarPrioridadeComAutor,
 } from "@/schemas/ticket.schema";
+import { ordenarTicketsPorPrioridade } from "@/lib/services/ticket-order";
 
 export class ErroConflitoPrioridade extends Error {
   constructor(message: string) {
@@ -149,6 +151,12 @@ const RANKING_PRIORIDADE: Record<Prioridade, number> = {
 };
 
 const includeListagem = {
+  abertoPor: {
+    select: {
+      id: true,
+      nome: true,
+    },
+  },
   projeto: {
     select: {
       id: true,
@@ -168,8 +176,11 @@ const includeListagem = {
 } satisfies Prisma.TicketInclude;
 
 export class ServicoTicket {
+  constructor(private readonly db: PrismaClient = prisma) {}
+
   async criar(dados: CriarTicketSchema) {
-    const ticket = await prisma.ticket.create({
+    const equipeIds = [...new Set(dados.equipeIds ?? [])];
+    const ticket = await this.db.ticket.create({
       data: {
         titulo: dados.titulo,
         descricao: dados.descricao,
@@ -179,9 +190,9 @@ export class ServicoTicket {
         abertoPorId: dados.abertoPorId,
         slaEm: dados.slaEm,
 
-        equipesAlocadas: dados.equipeIds?.length
+        equipesAlocadas: equipeIds.length
           ? {
-            create: dados.equipeIds.map((equipeId) => ({
+            create: equipeIds.map((equipeId) => ({
               equipeId,
             })),
           }
@@ -194,7 +205,7 @@ export class ServicoTicket {
   }
 
   async buscarTicketsDaEquipeDoUsuario(usuarioId: string) {
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await this.db.usuario.findUnique({
       where: { id: usuarioId },
       select: {
         ativo: true,
@@ -212,7 +223,7 @@ export class ServicoTicket {
       return { equipe: null, tickets: [] };
     }
 
-    const tickets = await prisma.ticket.findMany({
+    const tickets = await this.db.ticket.findMany({
       // Um ticket pode estar alocado a equipes diferentes da equipe do projeto.
       // A listagem deve considerar a alocação do ticket, não a equipe do projeto.
       where: {
@@ -224,7 +235,10 @@ export class ServicoTicket {
       include: RELACOES_TICKET,
     });
 
-    return { equipe: usuario.equipe, tickets };
+    return {
+      equipe: usuario.equipe,
+      tickets: ordenarTicketsPorPrioridade(tickets),
+    };
   }
 
   async listarPorEquipeDoUsuario(usuarioId: string) {
@@ -236,7 +250,7 @@ export class ServicoTicket {
     ticketId: string,
     dados: AtualizarPrioridadeComAutor,
   ) {
-    return prisma.$transaction(async (tx) => {
+    return this.db.$transaction(async (tx) => {
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
         include: { projeto: { select: { equipeId: true } } },
@@ -292,7 +306,7 @@ export class ServicoTicket {
   }
 
   async listarTodos(filtros?: FiltrosTicket) {
-    return prisma.ticket.findMany({
+    return this.db.ticket.findMany({
       where: montarWhere(filtros),
       orderBy: {
         criadoEm: "desc",
@@ -302,7 +316,7 @@ export class ServicoTicket {
   }
 
   async buscarDetalhePorId(ticketId: string) {
-    return prisma.ticket.findUnique({
+    return this.db.ticket.findUnique({
       where: {
         id: ticketId,
       },
@@ -311,7 +325,7 @@ export class ServicoTicket {
   }
 
   async listarPorProjeto(projetoId: string) {
-    return prisma.ticket.findMany({
+    return this.db.ticket.findMany({
       where: {
         projetoId,
       },
@@ -323,30 +337,30 @@ export class ServicoTicket {
   }
 
   async alocarEquipe(ticketId: string, equipeId: string) {
-    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    const ticket = await this.db.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return null;
 
-    await prisma.ticketEquipe.upsert({
+    await this.db.ticketEquipe.upsert({
       where: { ticketId_equipeId: { ticketId, equipeId } },
       create: { ticketId, equipeId },
       update: {},
     });
 
-    return prisma.ticket.findUniqueOrThrow({
+    return this.db.ticket.findUniqueOrThrow({
       where: { id: ticketId },
       include: RELACOES_TICKET,
     });
   }
 
   async desalocarEquipe(ticketId: string, equipeId: string) {
-    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    const ticket = await this.db.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return null;
 
-    await prisma.ticketEquipe.deleteMany({
+    await this.db.ticketEquipe.deleteMany({
       where: { ticketId, equipeId },
     });
 
-    return prisma.ticket.findUniqueOrThrow({
+    return this.db.ticket.findUniqueOrThrow({
       where: { id: ticketId },
       include: RELACOES_TICKET,
     });

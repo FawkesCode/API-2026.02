@@ -166,12 +166,6 @@ export function AbrirTicketDialog({
     }
 
     setEnviando(true);
-    console.log("USUARIO ATUAL:", usuario);
-    console.log("ID DO USUARIO:", usuario.id);
-    console.log("payload ticket:", {
-      projetoId: resultado.data.projetoId,
-      abertoPorId: usuario.id,
-    });
     try {
       // Payload no formato que criarTicketSchema (backend) espera.
       const resposta = await fetch("/api/tickets", {
@@ -232,8 +226,8 @@ export function AbrirTicketDialog({
               <FormLabel required>Vincular Projeto</FormLabel>
               <Select
                 value={campos.projetoId}
-                onValueChange={(valor: string) =>
-                  atualizarCampo("projetoId", valor)
+                onValueChange={(valor) =>
+                  atualizarCampo("projetoId", valor ?? "")
                 }
                 items={projetos.map((p) => ({ label: p.nome, value: p.id }))}
               >
@@ -277,8 +271,8 @@ export function AbrirTicketDialog({
                 <FormLabel required>SLA estimado</FormLabel>
                 <Select
                   value={campos.slaPreset}
-                  onValueChange={(valor: string) =>
-                    atualizarCampo("slaPreset", valor)
+                  onValueChange={(valor) =>
+                    atualizarCampo("slaPreset", valor ?? "")
                   }
                 >
                   <SelectTrigger
@@ -311,7 +305,7 @@ export function AbrirTicketDialog({
               <Select
                 value={campos.categoria}
                 onValueChange={(valor) =>
-                  atualizarCampo("categoria", valor as Categoria)
+                  atualizarCampo("categoria", (valor ?? "") as Categoria | "")
                 }
               >
                 <SelectTrigger
@@ -344,13 +338,6 @@ export function AbrirTicketDialog({
               error={erros.prioridade}
             />
 
-            {/*
-            "Equipes" agora é enviado como `equipeIds` no POST — mas só
-            terá efeito depois que schema.prisma (relação
-            equipesResponsaveis), a migration e lib/services/ticket.service.ts
-            forem atualizados (ver backend-reference/). Até lá, o backend
-            simplesmente ignora esse campo (é opcional no schema).
-          */}
             <div className="flex flex-col gap-1.5">
               <FormLabel>Equipes Responsáveis</FormLabel>
               <EquipesMultiSelect

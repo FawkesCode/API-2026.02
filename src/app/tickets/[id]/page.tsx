@@ -4,7 +4,7 @@ import { getTicket } from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
 import Link from "next/link";
 
-async function page({ params }: PageProps<"/equipe/[id]">) {
+async function page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ticket: TicketView = await getTicket(id);
 

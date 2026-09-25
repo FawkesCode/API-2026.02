@@ -4,6 +4,7 @@ import PageHeader from "@/components/page-header";
 import { getProjectById, getTicket } from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
 import TicketsLogsView from "@/components/tickets/ticket-logs-view";
+import { notFound } from "next/navigation";
 
 export default async function TicketLogsPage({
   params,
@@ -11,6 +12,10 @@ export default async function TicketLogsPage({
   const { id, ticketId } = await params;
   const { title } = await getProjectById(id);
   const ticket: TicketView = await getTicket(ticketId);
+
+  if (ticket.projectId !== id) {
+    notFound();
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col pb-6">

@@ -14,8 +14,6 @@ const slaValues = SLA_OPTIONS.map((opcao) => opcao.value) as [
  *   dois com "*"), embora `prioridade` seja opcional no backend.
  * - `slaPreset` substitui `slaEm`; a conversão para uma data futura
  *   acontece no submit (ver `calcularSlaEm`).
- * "Equipes" não faz parte deste schema pois não existe no model Ticket
- * (ver nota em access-control.ts / no componente do diálogo).
  */
 export const ticketFormSchema = z.object({
   projetoId: z.uuid("Selecione um projeto válido."),

@@ -101,7 +101,7 @@ export function toTicketDTO(info: TicketRes): TicketView {
 
     createdById: ticketComRelacoes ? info.abertoPorId : "",
 
-    teams: ticketComRelacoes ? teamsArray : null,
+    teams: ticketComRelacoes ? teamsArray : [],
 
     status:
       TicketStatusLabel[info.status as keyof typeof TicketStatusLabel] ??

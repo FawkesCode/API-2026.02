@@ -23,6 +23,7 @@ import {
 } from "@/lib/actions/ticket";
 import { usePathname } from "next/navigation";
 import { toast } from "./ui/toast";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface TicketCardProps {
   ticket: TicketView;
@@ -45,9 +46,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
   const [isLogLoading, setIsLogLoading] = useState(false);
 
   const pathname = usePathname();
-
-  // TODO: Trocar o id pelo recebido pelo mock de usuário
-  const loggedUserTeam = "10aba42f-f057-42b7-a9f7-a9760e241524";
+  const loggedUserTeam = useCurrentUser().equipeId;
 
   const handleManageTeam = async (id: string, type?: string) => {
     setIsLoading(true);
@@ -139,21 +138,21 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
                     Times atribuídos não definidos
                   </span>
                 )}
-                {curTicket.teams?.some((team) => team.id === loggedUserTeam) ? (
+                {loggedUserTeam && curTicket.teams?.some((team) => team.id === loggedUserTeam) ? (
                   <TeamAddButton
                     style="outline"
                     onClick={() => handleManageTeam(loggedUserTeam)}
                   >
                     {isLoading ? "Desatribuindo" : "Desatribuir Equipe"}
                   </TeamAddButton>
-                ) : (
+                ) : loggedUserTeam ? (
                   <TeamAddButton
                     style="secondary"
                     onClick={() => handleManageTeam(loggedUserTeam, "add")}
                   >
                     {isLoading ? "Atribuindo" : "Atribuir Equipe"}
                   </TeamAddButton>
-                )}
+                ) : null}
               </div>
               <div className="flex justify-between  items-center gap-2">
                 <span className="underline text-muted-foreground text-xs">

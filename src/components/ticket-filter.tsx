@@ -332,7 +332,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
                 id="equipe"
                 type="select"
                 value={equipeId}
-                onValueChange={(valor) => updateParam("equipeId", valor)}
+                onValueChange={(valor) => updateParam("equipeId", valor || undefined)}
                 onClear={() => updateParam("equipeId", undefined)}
                 items={equipeItems}
               />
@@ -343,7 +343,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
               id="tipo"
               type="select"
               value={tipo}
-              onValueChange={(valor) => updateParam("tipo", valor)}
+              onValueChange={(valor) => updateParam("tipo", valor || undefined)}
               onClear={() => updateParam("tipo", undefined)}
               selectOptions="Instalação,INSTALACAO|Manutenção,MANUTENCAO"
             />
@@ -352,7 +352,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
               id="priority"
               type="select"
               value={prioridade}
-              onValueChange={(valor) => updateParam("prioridade", valor)}
+              onValueChange={(valor) => updateParam("prioridade", valor || undefined)}
               onClear={() => updateParam("prioridade", undefined)}
               selectOptions="Crítica,CRITICA|Alta,ALTA|Média,MEDIA|Baixa,BAIXA"
             />
@@ -361,9 +361,9 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
               id="status"
               type="select"
               value={status}
-              onValueChange={(valor) => updateParam("status", valor)}
+              onValueChange={(valor) => updateParam("status", valor || undefined)}
               onClear={() => updateParam("status", undefined)}
-              selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Encerrado,ENCERRADO"
+              selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Solicitação de encerramento,SOLICITACAO_ENCERRAMENTO|Em revisão,EM_REVISAO|Encerrado,ENCERRADO"
             />
           </div>
           {algumFiltroAtivo && (
@@ -385,7 +385,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
             id="priority"
             type="select"
             value={prioridade}
-            onValueChange={(valor) => updateParam("prioridade", valor)}
+            onValueChange={(valor) => updateParam("prioridade", valor || undefined)}
             onClear={() => updateParam("prioridade", undefined)}
             selectOptions="Crítica,CRITICA|Alta,ALTA|Média,MEDIA|Baixa,BAIXA"
           />
@@ -394,9 +394,9 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
             id="status"
             type="select"
             value={status}
-            onValueChange={(valor) => updateParam("status", valor)}
+            onValueChange={(valor) => updateParam("status", valor || undefined)}
             onClear={() => updateParam("status", undefined)}
-            selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Encerrado,ENCERRADO"
+            selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Solicitação de encerramento,SOLICITACAO_ENCERRAMENTO|Em revisão,EM_REVISAO|Encerrado,ENCERRADO"
           />
           <FilterInput
             title="Título"
@@ -452,7 +452,7 @@ interface FilterInputProps {
   items?: SelectItemsOptions[];
   value?: string;
   onChange?: (evento: React.ChangeEvent<HTMLInputElement>) => void;
-  onValueChange?: (valor: string) => void;
+  onValueChange?: (valor: string | null) => void;
   onClear?: () => void;
 }
 
