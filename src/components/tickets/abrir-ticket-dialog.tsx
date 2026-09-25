@@ -20,6 +20,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDivider,
+  DialogDescription,
+  DialogBody,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -86,12 +89,12 @@ export function AbrirTicketDialog({
   const [erros, setErros] = React.useState<
     Partial<Record<keyof CamposFormulario, string>>
   >({});
-  const [erroSubmissao, setErroSubmissao] = React.useState<string | null>(
-    null,
-  );
+  const [erroSubmissao, setErroSubmissao] = React.useState<string | null>(null);
   const [enviando, setEnviando] = React.useState(false);
   const { equipes, indisponivel: equipesIndisponivel } = useEquipes();
-  const [equipesSelecionadas, setEquipesSelecionadas] = React.useState<string[]>([]);
+  const [equipesSelecionadas, setEquipesSelecionadas] = React.useState<
+    string[]
+  >([]);
 
   // Reseta o formulário sempre que o diálogo é reaberto — mantém os
   // campos preenchidos apenas durante uma mesma tentativa de envio.
@@ -120,11 +123,11 @@ export function AbrirTicketDialog({
   const opcoesDeEquipe = equipesIndisponivel
     ? projetoSelecionado
       ? [
-        {
-          id: projetoSelecionado.equipeId,
-          nome: projetoSelecionado.equipe?.nome ?? "Equipe do projeto",
-        },
-      ]
+          {
+            id: projetoSelecionado.equipeId,
+            nome: projetoSelecionado.equipe?.nome ?? "Equipe do projeto",
+          },
+        ]
       : []
     : equipes;
 
@@ -155,7 +158,10 @@ export function AbrirTicketDialog({
 
     const slaEm = calcularSlaEm(resultado.data.slaPreset);
     if (!slaEm) {
-      setErros((atual) => ({ ...atual, slaPreset: "Selecione um SLA válido." }));
+      setErros((atual) => ({
+        ...atual,
+        slaPreset: "Selecione um SLA válido.",
+      }));
       return;
     }
 
@@ -211,143 +217,173 @@ export function AbrirTicketDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle className="text-accent">Abrir Ticket</DialogTitle>
+      <DialogContent className="h-[60vh]! min-h-min  max-w-xl  flex flex-col gap-5">
+        <DialogHeader className="h-fit">
+          <DialogTitle>Abrir Ticket</DialogTitle>
+          <DialogDivider />
+          <DialogDescription>
+            Os campos com (*) são obrigatórios.
+          </DialogDescription>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground">
-          Os campos com (*) são obrigatórios.
-        </p>
 
-        <form onSubmit={aoSubmeter} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-1.5">
-            <FormLabel required>Vincular Projeto</FormLabel>
-            <Select
-              value={campos.projetoId}
-              onValueChange={(valor: string) => atualizarCampo("projetoId", valor)}
-            >
-              <SelectTrigger aria-invalid={!!erros.projetoId}>
-                <SelectValue placeholder="Selecione uma opção" />
-              </SelectTrigger>
-              <SelectContent>
-                {projetos.map((projeto) => (
-                  <SelectItem key={projeto.id} value={projeto.id}>
-                    {projeto.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {erros.projetoId && (
-              <p role="alert" className="text-xs font-medium text-destructive">
-                {erros.projetoId}
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormInput
-              label="Título"
-              required
-              placeholder="Digite o que o input pede..."
-              value={campos.titulo}
-              onChange={(evento) =>
-                atualizarCampo("titulo", evento.target.value)
-              }
-              error={erros.titulo}
-            />
-
+        <form onSubmit={aoSubmeter} className="max-h-min" noValidate>
+          <DialogBody className=" min-h-[30vh] max-h-[60vh] pr-2 pl-2 overflow-y-auto scrollbar-none">
             <div className="flex flex-col gap-1.5">
-              <FormLabel required>SLA estimado</FormLabel>
+              <FormLabel required>Vincular Projeto</FormLabel>
               <Select
-                value={campos.slaPreset}
-                onValueChange={(valor: string) => atualizarCampo("slaPreset", valor)}
+                value={campos.projetoId}
+                onValueChange={(valor: string) =>
+                  atualizarCampo("projetoId", valor)
+                }
+                items={projetos.map((p) => ({ label: p.nome, value: p.id }))}
               >
-                <SelectTrigger aria-invalid={!!erros.slaPreset}>
+                <SelectTrigger
+                  aria-invalid={!!erros.projetoId}
+                  className="w-full"
+                >
                   <SelectValue placeholder="Selecione uma opção" />
                 </SelectTrigger>
-                <SelectContent>
-                  {SLA_OPTIONS.map((opcao) => (
-                    <SelectItem key={opcao.value} value={opcao.value}>
-                      {opcao.label}
+                <SelectContent alignItemWithTrigger={false}>
+                  {projetos.map((projeto) => (
+                    <SelectItem key={projeto.id} value={projeto.id}>
+                      {projeto.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {erros.slaPreset && (
-                <p role="alert" className="text-xs font-medium text-destructive">
-                  {erros.slaPreset}
+              {erros.projetoId && (
+                <p
+                  role="alert"
+                  className="text-xs font-medium text-destructive"
+                >
+                  {erros.projetoId}
                 </p>
               )}
             </div>
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <FormLabel required>Tipo</FormLabel>
-            <Select
-              value={campos.categoria}
-              onValueChange={(valor) =>
-                atualizarCampo("categoria", valor as Categoria)
-              }
-            >
-              <SelectTrigger aria-invalid={!!erros.categoria}>
-                <SelectValue placeholder="Selecione uma opção" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.values(Categoria).map((categoria) => (
-                  <SelectItem key={categoria} value={categoria}>
-                    {CATEGORIA_LABELS[categoria]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {erros.categoria && (
-              <p role="alert" className="text-xs font-medium text-destructive">
-                {erros.categoria}
-              </p>
-            )}
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput
+                label="Título"
+                required
+                placeholder="Digite o título..."
+                value={campos.titulo}
+                onChange={(evento) =>
+                  atualizarCampo("titulo", evento.target.value)
+                }
+                error={erros.titulo}
+              />
 
-          <PrioritySelectField
-            value={campos.prioridade || undefined}
-            onChange={(valor) => atualizarCampo("prioridade", valor)}
-            error={erros.prioridade}
-          />
+              <div className="flex flex-col gap-1.5">
+                <FormLabel required>SLA estimado</FormLabel>
+                <Select
+                  value={campos.slaPreset}
+                  onValueChange={(valor: string) =>
+                    atualizarCampo("slaPreset", valor)
+                  }
+                >
+                  <SelectTrigger
+                    aria-invalid={!!erros.slaPreset}
+                    className="w-full"
+                  >
+                    <SelectValue placeholder="Selecione uma opção" />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    {SLA_OPTIONS.map((opcao) => (
+                      <SelectItem key={opcao.value} value={opcao.value}>
+                        {opcao.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {erros.slaPreset && (
+                  <p
+                    role="alert"
+                    className="text-xs font-medium text-destructive"
+                  >
+                    {erros.slaPreset}
+                  </p>
+                )}
+              </div>
+            </div>
 
-          {/*
+            <div className="flex flex-col gap-1.5">
+              <FormLabel required>Tipo</FormLabel>
+              <Select
+                value={campos.categoria}
+                onValueChange={(valor) =>
+                  atualizarCampo("categoria", valor as Categoria)
+                }
+              >
+                <SelectTrigger
+                  aria-invalid={!!erros.categoria}
+                  className="w-full"
+                >
+                  <SelectValue placeholder="Selecione uma opção" />
+                </SelectTrigger>
+                <SelectContent alignItemWithTrigger={false}>
+                  {Object.values(Categoria).map((categoria) => (
+                    <SelectItem key={categoria} value={categoria}>
+                      {CATEGORIA_LABELS[categoria]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {erros.categoria && (
+                <p
+                  role="alert"
+                  className="text-xs font-medium text-destructive"
+                >
+                  {erros.categoria}
+                </p>
+              )}
+            </div>
+
+            <PrioritySelectField
+              value={campos.prioridade || undefined}
+              onChange={(valor) => atualizarCampo("prioridade", valor)}
+              error={erros.prioridade}
+            />
+
+            {/*
             "Equipes" agora é enviado como `equipeIds` no POST — mas só
             terá efeito depois que schema.prisma (relação
             equipesResponsaveis), a migration e lib/services/ticket.service.ts
             forem atualizados (ver backend-reference/). Até lá, o backend
             simplesmente ignora esse campo (é opcional no schema).
           */}
-          <div className="flex flex-col gap-1.5">
-            <FormLabel>Equipes Responsáveis</FormLabel>
-            <EquipesMultiSelect
-              opcoes={opcoesDeEquipe}
-              selecionadas={equipesSelecionadas}
-              onChange={setEquipesSelecionadas}
-            />
-          </div>
+            <div className="flex flex-col gap-1.5">
+              <FormLabel>Equipes Responsáveis</FormLabel>
+              <EquipesMultiSelect
+                opcoes={opcoesDeEquipe}
+                selecionadas={equipesSelecionadas}
+                onChange={setEquipesSelecionadas}
+              />
+            </div>
 
-          <FormTextarea
-            label="Descrição do Problema"
-            required
-            placeholder="Digite o que o input pede..."
-            value={campos.descricao}
-            onChange={(evento) =>
-              atualizarCampo("descricao", evento.target.value)
-            }
-            error={erros.descricao}
-          />
+            <FormTextarea
+              label="Descrição do Problema"
+              required
+              placeholder="Digite uma descrição..."
+              value={campos.descricao}
+              onChange={(evento) =>
+                atualizarCampo("descricao", evento.target.value)
+              }
+              error={erros.descricao}
+            />
+          </DialogBody>
 
           {erroSubmissao && (
-            <p role="alert" className="text-sm font-medium text-destructive">
+            <p role="alert" className="text-xs font-medium text-destructive">
               {erroSubmissao}
             </p>
           )}
 
-          <DialogFooter>
-            <Button type="submit" disabled={enviando} className="bg-accent text-white">
+          <DialogFooter className="">
+            <Button
+              type="submit"
+              disabled={enviando}
+              className="bg-accent text-white"
+            >
               {enviando ? "Enviando..." : "Finalizar"}
             </Button>
           </DialogFooter>

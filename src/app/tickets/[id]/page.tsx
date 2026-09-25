@@ -12,8 +12,8 @@ async function page({ params }: PageProps<"/equipe/[id]">) {
     <div className="flex h-full min-h-0 flex-col pb-6">
       <div className="shrink-0">
         <PageHeader>
-          <Link href={`/equipe`} className="hover:underline">
-            Minha Equipe
+          <Link href={`/tickets`} className="hover:underline">
+            Tickets
           </Link>
           {` > Ticket ${!ticket ? "Sem título" : ticket.title + " : " + ticket.type}`}
         </PageHeader>

@@ -26,6 +26,7 @@ import UserSidebar from "./user-sidebar";
 import LogoSidebar from "./logo-sidebar";
 import { cn } from "cn";
 import LogoFawkes from "./logo-fawkes";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface NavItem {
   title: string;
@@ -36,6 +37,7 @@ interface NavItem {
 export function AppSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
+  const loggedUser = useCurrentUser();
 
   const items: NavItem[] = [
     {
@@ -59,7 +61,7 @@ export function AppSidebar() {
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="flex flex-col gap-6 pt-4 pb-4">
         <LogoSidebar />
-        <UserSidebar />
+        <UserSidebar user={loggedUser} />
       </SidebarHeader>
       <div className="sidebar-divider"></div>
       <SidebarContent>

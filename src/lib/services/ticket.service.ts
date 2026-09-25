@@ -243,7 +243,9 @@ export class ServicoTicket {
       });
       if (!ticket) return null;
 
-      const gestor = await tx.usuario.findUnique({ where: { id: dados.usuarioId } });
+      const gestor = await tx.usuario.findUnique({
+        where: { id: dados.usuarioId },
+      });
       if (
         !gestor ||
         !gestor.ativo ||
@@ -328,6 +330,20 @@ export class ServicoTicket {
       where: { ticketId_equipeId: { ticketId, equipeId } },
       create: { ticketId, equipeId },
       update: {},
+    });
+
+    return prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
+      include: RELACOES_TICKET,
+    });
+  }
+
+  async desalocarEquipe(ticketId: string, equipeId: string) {
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return null;
+
+    await prisma.ticketEquipe.deleteMany({
+      where: { ticketId, equipeId },
     });
 
     return prisma.ticket.findUniqueOrThrow({

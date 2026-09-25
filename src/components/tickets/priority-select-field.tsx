@@ -36,7 +36,7 @@ export function PrioritySelectField({
     <div className="flex flex-col gap-1.5">
       <FormLabel required>Prioridade e SLA</FormLabel>
       <div
-        className="flex flex-wrap gap-2"
+        className="flex flex-wrap gap-2 justify-center"
         role="radiogroup"
         aria-describedby={error ? errorId : undefined}
       >
@@ -49,6 +49,7 @@ export function PrioritySelectField({
               selected={value === prioridade}
               aria-pressed={value === prioridade}
               onClick={() => onChange(prioridade)}
+              className="min-w-28 cursor-pointer text-sm"
             >
               {PRIORITY_LABELS[priority]}
             </PriorityButton>
@@ -56,7 +57,11 @@ export function PrioritySelectField({
         })}
       </div>
       {error && (
-        <p id={errorId} role="alert" className="text-xs font-medium text-destructive">
+        <p
+          id={errorId}
+          role="alert"
+          className="text-xs font-medium text-destructive"
+        >
           {error}
         </p>
       )}

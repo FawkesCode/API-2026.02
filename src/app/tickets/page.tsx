@@ -40,11 +40,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
 
   return (
     <div>
-      <PageHeader>Tickets</PageHeader>
-
-      <div className="mb-4 flex justify-end">
-        <NovoTicketButton />
-      </div>
+      <PageHeader other={<NovoTicketButton />}>Tickets</PageHeader>
 
       <section className="flex flex-col gap-4 pb-8">
         <Suspense fallback={null}>
@@ -55,8 +51,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
             <TicketCard
               key={ticket.id}
               ticket={ticket}
-              projectId={ticket.projectId ?? ""}
-              woLogs={ticket.recentLogs?.length === 0 ? true : false}
+              ticketUrl={`/tickets/${ticket.id}`}
             />
           ))
         ) : (

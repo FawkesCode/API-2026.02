@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
   title: "Controle de Tickets Altave",
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <TooltipProvider>{children}</TooltipProvider>
             </div>
           </main>
+          <Toaster />
         </SidebarProvider>
       </body>
     </html>

@@ -41,7 +41,7 @@ export const TicketStatusLabel: Record<TicketStatus, string> = {
 export interface TeamLogView {
   title: string;
   sentBy: string;
-  sentAt: string;
+  sentAt: Date;
 }
 
 export interface TicketView {
@@ -52,7 +52,7 @@ export interface TicketView {
   timeRemaining: string;
   createdBy: string;
   createdById: string;
-  teams: Array<string | undefined>;
+  teams: Array<{ id: string; nome: string }> | null;
   status: string;
   priority: string;
   description: string;
