@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { cookies } from "next/headers";
 import { z } from "zod";
 
 const sessaoSchema = z.object({
@@ -47,11 +48,10 @@ function extrairToken(requisicao: Request) {
 }
 
 /**
- * Retorna a identidade comprovada por um token de sessão assinado pelo servidor.
- * O ID do usuário nunca é aceito do corpo da requisição.
+ * Valida um token de sessão assinado pelo servidor e retorna a identidade
+ * comprovada por ele. O ID do usuário nunca é aceito do corpo da requisição.
  */
-export function obterSessaoDaRequisicao(requisicao: Request) {
-  const token = extrairToken(requisicao);
+function verificarToken(token: string | undefined | null) {
   if (!token) return null;
 
   const [cabecalhoCodificado, payloadCodificado, assinatura, ...restante] = token.split(".");
@@ -84,6 +84,24 @@ export function obterSessaoDaRequisicao(requisicao: Request) {
   }
 
   return { usuarioId: resultado.data.usuarioId };
+}
+
+/**
+ * Retorna a identidade comprovada por um token de sessão assinado pelo servidor.
+ * O ID do usuário nunca é aceito do corpo da requisição.
+ */
+export function obterSessaoDaRequisicao(requisicao: Request) {
+  return verificarToken(extrairToken(requisicao));
+}
+
+/**
+ * Mesma verificação de `obterSessaoDaRequisicao`, mas para uso em Server
+ * Components / Server Actions, onde não há um `Request` disponível e o
+ * cookie precisa ser lido via `next/headers`.
+ */
+export async function obterSessaoAtual() {
+  const cookieStore = await cookies();
+  return verificarToken(cookieStore.get("session")?.value);
 }
 
 /** Cria o token que deve ser gravado pelo fluxo de login em cookie HttpOnly. */

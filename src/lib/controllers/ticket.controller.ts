@@ -4,6 +4,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { obterSessaoDaRequisicao } from "@/lib/auth/sessao";
 import {
   ErroConflitoPrioridade,
+  ErroNaoAutorizadoParaAlterarPrioridade,
   ProjetoNaoEncontradoError,
   servicoTicket,
 } from "@/lib/services/ticket.service";
@@ -45,6 +46,10 @@ function validarCorpo<T>(schema: z.ZodType<T>, corpo: unknown) {
 function tratarErroInesperado(erro: unknown) {
   if (erro instanceof ErroConflitoPrioridade) {
     return NextResponse.json({ erro: erro.message }, { status: 409 });
+  }
+
+  if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {
+    return NextResponse.json({ erro: erro.message }, { status: 403 });
   }
 
   if (erro instanceof ProjetoNaoEncontradoError) {

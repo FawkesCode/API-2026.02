@@ -1,6 +1,7 @@
 import Link from "next/link";
 import PageHeader from "@/components/page-header";
 import { PriorityBadge } from "@/components/priority-badge";
+import { PriorityEditor } from "@/components/tickets/priority-editor";
 import { Badge } from "@/components/ui/badge";
 import { TicketLogs } from "@/components/tickets/ticket-logs";
 
@@ -9,6 +10,8 @@ import {
   getTicket,
 } from "@/lib/data/project-ticket";
 import { getLogAuthor, getTicketLogs } from "@/lib/data/ticket-logs";
+import { getUsuarioLogado } from "@/lib/data/sessao";
+import { Cargo } from "@/lib/generated/prisma/client";
 import { TicketView } from "@/types/ticket";
 
 type PriorityLevel = "critical" | "high" | "medium" | "low";
@@ -29,10 +32,13 @@ export default async function TicketLogsPage({
   const ticket: TicketView = await getTicket(ticketId);
 
   // TODO: autor vem da sessão do usuário logado quando existir autenticação
-  const [autor, logs] = await Promise.all([
+  const [autor, logs, usuarioLogado] = await Promise.all([
     getLogAuthor(ticketId),
     getTicketLogs(ticketId),
+    getUsuarioLogado(),
   ]);
+
+  const podeAlterarPrioridade = usuarioLogado?.cargo === Cargo.GESTOR;
 
   return (
     <div className="flex h-full min-h-0 flex-col pb-6">
@@ -56,9 +62,13 @@ export default async function TicketLogsPage({
                 <span className="text-xs text-muted-foreground underline">
                   {ticket.status}
                 </span>
-                <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
-                  {ticket.priority}
-                </PriorityBadge>
+                {podeAlterarPrioridade ? (
+                  <PriorityEditor ticketId={ticketId} priority={ticket.priority} />
+                ) : (
+                  <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
+                    {ticket.priority}
+                  </PriorityBadge>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-between pt-3">
