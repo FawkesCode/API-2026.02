@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PriorityButton } from "@/components/priority-button";
 import {
+  PRIORITY_ENUM_TO_LEVEL,
   PRIORITY_LABEL_TO_LEVEL,
   PRIORITY_LABELS,
   PRIORITY_LEVEL_TO_ENUM,
@@ -20,23 +21,25 @@ interface PriorityEditorProps {
 }
 
 function PriorityEditor({ ticketId, priority }: PriorityEditorProps) {
-  const nivelInicial = PRIORITY_LABEL_TO_LEVEL[priority] ?? "medium";
-  const [nivelAtual, setNivelAtual] = useState<Priority>(nivelInicial);
-  const [selecionado, setSelecionado] = useState<Priority>(nivelInicial);
+  const nivelInicial =
+    PRIORITY_LABEL_TO_LEVEL[priority] ?? PRIORITY_ENUM_TO_LEVEL[priority] ?? null;
+  const [nivelAtual, setNivelAtual] = useState<Priority | null>(nivelInicial);
+  const [selecionado, setSelecionado] = useState<Priority | null>(nivelInicial);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
 
-  const alterou = selecionado !== nivelAtual;
+  const alterou = selecionado !== null && selecionado !== nivelAtual;
 
   async function salvar() {
+    if (!selecionado || !alterou) return;
     setSalvando(true);
     setErro(null);
     setSalvo(false);
 
     try {
       const res = await fetch(`/api/tickets/${ticketId}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prioridade: PRIORITY_LEVEL_TO_ENUM[selecionado] }),
       });
@@ -86,6 +89,12 @@ function PriorityEditor({ ticketId, priority }: PriorityEditorProps) {
           </PriorityButton>
         ))}
       </div>
+
+      {nivelAtual === null && selecionado === null && (
+        <p role="alert" className="text-xs font-medium text-destructive">
+          Prioridade atual desconhecida. Selecione uma opção.
+        </p>
+      )}
 
       <div className="flex items-center gap-2">
         {erro && (

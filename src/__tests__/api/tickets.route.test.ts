@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "@/app/api/tickets/route";
-import { PATCH } from "@/app/api/tickets/[id]/route";
+import { PUT } from "@/app/api/tickets/[id]/route";
 import { criarTokenDeSessao } from "@/lib/auth/sessao";
 import {
   ErroNaoAutorizadoParaAlterarPrioridade,
@@ -18,9 +18,14 @@ const tokenDaSessao = criarTokenDeSessao({
   exp: Math.floor(Date.now() / 1000) + 60,
 });
 
-function requisicao(url: string, corpo: unknown, token?: string) {
+function requisicao(
+  url: string,
+  corpo: unknown,
+  token?: string,
+  metodo: "POST" | "PUT" = "POST",
+) {
   return new Request(url, {
-    method: "POST",
+    method: metodo,
     headers: {
       "content-type": "application/json",
       ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -99,11 +104,12 @@ describe("rotas de tickets", () => {
 
   it("rejeita uma prioridade inválida antes de atualizar o ticket", async () => {
     const atualizar = vi.spyOn(servicoTicket, "atualizarPrioridade");
-    const resposta = await PATCH(
+    const resposta = await PUT(
       requisicao(
         `http://localhost/api/tickets/${ticketId}`,
         { prioridade: "URGENTE", usuarioId: usuarioForjadoId },
         tokenDaSessao,
+        "PUT",
       ),
       { params: Promise.resolve({ id: ticketId }) },
     );
@@ -119,11 +125,12 @@ describe("rotas de tickets", () => {
       .spyOn(servicoTicket, "atualizarPrioridade")
       .mockResolvedValue(ticketAtualizado);
 
-    const resposta = await PATCH(
+    const resposta = await PUT(
       requisicao(
         `http://localhost/api/tickets/${ticketId}`,
         { prioridade: "CRITICA", usuarioId: usuarioForjadoId },
         tokenDaSessao,
+        "PUT",
       ),
       { params: Promise.resolve({ id: ticketId }) },
     );
@@ -142,8 +149,13 @@ describe("rotas de tickets", () => {
 
   it("rejeita a atualização sem uma sessão autenticada", async () => {
     const atualizar = vi.spyOn(servicoTicket, "atualizarPrioridade");
-    const resposta = await PATCH(
-      requisicao(`http://localhost/api/tickets/${ticketId}`, { prioridade: "CRITICA" }),
+    const resposta = await PUT(
+      requisicao(
+        `http://localhost/api/tickets/${ticketId}`,
+        { prioridade: "CRITICA" },
+        undefined,
+        "PUT",
+      ),
       { params: Promise.resolve({ id: ticketId }) },
     );
 
@@ -155,11 +167,12 @@ describe("rotas de tickets", () => {
     const atualizar = vi.spyOn(servicoTicket, "atualizarPrioridade");
     const ultimoCaractere = tokenDaSessao.at(-1);
     const tokenAdulterado = `${tokenDaSessao.slice(0, -1)}${ultimoCaractere === "a" ? "b" : "a"}`;
-    const resposta = await PATCH(
+    const resposta = await PUT(
       requisicao(
         `http://localhost/api/tickets/${ticketId}`,
         { prioridade: "CRITICA" },
         tokenAdulterado,
+        "PUT",
       ),
       { params: Promise.resolve({ id: ticketId }) },
     );
@@ -173,11 +186,12 @@ describe("rotas de tickets", () => {
       new ErroNaoAutorizadoParaAlterarPrioridade(),
     );
 
-    const resposta = await PATCH(
+    const resposta = await PUT(
       requisicao(
         `http://localhost/api/tickets/${ticketId}`,
         { prioridade: "CRITICA" },
         tokenDaSessao,
+        "PUT",
       ),
       { params: Promise.resolve({ id: ticketId }) },
     );

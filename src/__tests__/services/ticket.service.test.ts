@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Prioridade } from "@/lib/generated/prisma/client";
+import { Cargo, Prioridade } from "@/lib/generated/prisma/client";
 import {
   ErroNaoAutorizadoParaAlterarPrioridade,
   ServicoTicket,
@@ -78,6 +78,25 @@ describe("ServicoTicket.atualizarPrioridade", () => {
     const { banco, transacao } = criarBanco({
       ...gestorDaEquipe,
       equipeId: "550e8400-e29b-41d4-a716-446655440004",
+    });
+    transacao.ticket.findUnique.mockResolvedValue(ticketDaEquipe);
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    await expect(
+      servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.CRITICA,
+        usuarioId: gestorId,
+      }),
+    ).rejects.toBeInstanceOf(ErroNaoAutorizadoParaAlterarPrioridade);
+
+    expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
+    expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
+  it("não altera a prioridade quando o usuário não é gestor", async () => {
+    const { banco, transacao } = criarBanco({
+      ...gestorDaEquipe,
+      cargo: Cargo.TECNICO,
     });
     transacao.ticket.findUnique.mockResolvedValue(ticketDaEquipe);
     const servico = new ServicoTicket(banco as unknown as BancoTicket);
