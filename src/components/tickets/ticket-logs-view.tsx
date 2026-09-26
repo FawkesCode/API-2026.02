@@ -1,14 +1,13 @@
-import Link from "next/link";
-import PageHeader from "@/components/page-header";
 import { PriorityBadge } from "@/components/priority-badge";
+import { PriorityEditor } from "@/components/tickets/priority-editor";
 import { Badge } from "@/components/ui/badge";
 import { TicketLogs } from "@/components/tickets/ticket-logs";
 
 import { getTicket } from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
 import { getLogAuthor, getTicketLogs } from "@/lib/data/ticket-logs";
-
-// TODO: vem da sessão do usuário logado quando existir autenticação
+import { getUsuarioLogado } from "@/lib/data/sessao";
+import { Cargo } from "@/lib/generated/prisma/client";
 
 type PriorityLevel = "critical" | "high" | "medium" | "low";
 
@@ -19,15 +18,15 @@ const TicketPriorityMap: Record<string, PriorityLevel> = {
   Crítica: "critical",
 };
 
-// TODO: Trazer a lógica de tickets na branch de conexão dos endpoints com o front para ca
-
 export default async function TicketsLogsView({ id }: { id: string }) {
   const ticket: TicketView = await getTicket(id);
 
-  const [autor, logs] = await Promise.all([
+  const [autor, logs, usuarioLogado] = await Promise.all([
     getLogAuthor(id),
     getTicketLogs(id),
+    getUsuarioLogado(),
   ]);
+  const podeAlterarPrioridade = usuarioLogado?.cargo === Cargo.GESTOR;
 
   return (
     <>
@@ -42,9 +41,13 @@ export default async function TicketsLogsView({ id }: { id: string }) {
                 <span className="text-xs text-muted-foreground underline">
                   {ticket.status}
                 </span>
-                <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
-                  {ticket.priority}
-                </PriorityBadge>
+                {podeAlterarPrioridade ? (
+                  <PriorityEditor ticketId={id} priority={ticket.priority} />
+                ) : (
+                  <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
+                    {ticket.priority}
+                  </PriorityBadge>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-between pt-3">

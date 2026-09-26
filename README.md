@@ -23,6 +23,8 @@ O resultado são ruídos de comunicação entre times, falta de visibilidade em 
 
 Nesse contexto, o desafio é construir uma plataforma unificada de tickets com interface intuitiva, centralizando os processos - desde o envio de demandas até o rastreamento completo de cada serviço.
 
+Na tela do ticket, gestores podem alterar a prioridade dos tickets da própria equipe por `PUT /api/tickets/:id`. A alteração é registrada no histórico do ticket.
+
 <br>
 
 ---

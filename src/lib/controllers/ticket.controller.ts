@@ -55,6 +55,10 @@ function tratarErroInesperado(erro: unknown) {
     return NextResponse.json({ erro: erro.message }, { status: 409 });
   }
 
+  if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {
+    return NextResponse.json({ erro: erro.message }, { status: 403 });
+  }
+
   if (erro instanceof ProjetoNaoEncontradoError) {
     return NextResponse.json({ erro: erro.message }, { status: 400 });
   }
