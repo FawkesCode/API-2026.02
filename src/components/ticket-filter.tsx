@@ -172,7 +172,8 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const variantResolvida = variant ?? (pathname.startsWith("/tickets") ? "tickets" : "projetos");
+  const variantResolvida =
+    variant ?? (pathname.startsWith("/tickets") ? "tickets" : "projetos");
   const mostrarFiltrosDeTicket = variantResolvida === "tickets";
 
   const { projetos } = useProjetosDisponiveis();
@@ -185,15 +186,15 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
   const data = dataParam ? new Date(`${dataParam}T00:00:00`) : undefined;
 
   // --- Filtros exclusivos da tela de tickets ---
-  const tipo = mostrarFiltrosDeTicket ? searchParams.get("tipo") ?? "" : "";
+  const tipo = mostrarFiltrosDeTicket ? (searchParams.get("tipo") ?? "") : "";
   const projetoId = mostrarFiltrosDeTicket
-    ? searchParams.get("projetoId") ?? ""
+    ? (searchParams.get("projetoId") ?? "")
     : "";
   const equipeId = mostrarFiltrosDeTicket
-    ? searchParams.get("equipeId") ?? ""
+    ? (searchParams.get("equipeId") ?? "")
     : "";
   const localInstalacao = mostrarFiltrosDeTicket
-    ? searchParams.get("localInstalacao") ?? ""
+    ? (searchParams.get("localInstalacao") ?? "")
     : "";
 
   const [tituloInput, setTituloInput] = useState(titulo);
@@ -271,33 +272,6 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
             <FilterInput
-              title="Tipo"
-              id="tipo"
-              type="select"
-              value={tipo}
-              onValueChange={(valor) => updateParam("tipo", valor)}
-              onClear={() => updateParam("tipo", undefined)}
-              selectOptions="Instalação,INSTALACAO|Manutenção,MANUTENCAO"
-            />
-            <FilterInput
-              title="Prioridade"
-              id="priority"
-              type="select"
-              value={prioridade}
-              onValueChange={(valor) => updateParam("prioridade", valor)}
-              onClear={() => updateParam("prioridade", undefined)}
-              selectOptions="Crítica,CRITICA|Alta,ALTA|Média,MEDIA|Baixa,BAIXA"
-            />
-            <FilterInput
-              title="Status"
-              id="status"
-              type="select"
-              value={status}
-              onValueChange={(valor) => updateParam("status", valor)}
-              onClear={() => updateParam("status", undefined)}
-              selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Encerrado,ENCERRADO"
-            />
-            <FilterInput
               title="Título"
               id="titulo"
               value={tituloInput}
@@ -313,17 +287,6 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
               onSelect={(id) => updateParam("projetoId", id)}
               onClear={() => updateParam("projetoId", undefined)}
             />
-            {!equipesIndisponivel && (
-              <FilterInput
-                title="Time"
-                id="equipe"
-                type="select"
-                value={equipeId}
-                onValueChange={(valor) => updateParam("equipeId", valor)}
-                onClear={() => updateParam("equipeId", undefined)}
-                items={equipeItems}
-              />
-            )}
             <FilterInput
               title="Local de instalação"
               id="localInstalacao"
@@ -334,6 +297,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
                 updateParam("localInstalacao", undefined);
               }}
             />
+
             <Field className="relative">
               <DatePicker
                 value={data}
@@ -344,12 +308,12 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
                   )
                 }
               />
-              <FieldLabel
+              {/* <FieldLabel
                 htmlFor="data-abertura"
                 className="text-gray-500 text-xs absolute top-[-8] left-3 bg-white max-w-min whitespace-nowrap pl-2 pr-2"
               >
                 Data de abertura
-              </FieldLabel>
+              </FieldLabel> */}
               {data && (
                 <button
                   type="button"
@@ -361,6 +325,46 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
                 </button>
               )}
             </Field>
+
+            {!equipesIndisponivel && (
+              <FilterInput
+                title="Time"
+                id="equipe"
+                type="select"
+                value={equipeId}
+                onValueChange={(valor) => updateParam("equipeId", valor || undefined)}
+                onClear={() => updateParam("equipeId", undefined)}
+                items={equipeItems}
+              />
+            )}
+
+            <FilterInput
+              title="Tipo"
+              id="tipo"
+              type="select"
+              value={tipo}
+              onValueChange={(valor) => updateParam("tipo", valor || undefined)}
+              onClear={() => updateParam("tipo", undefined)}
+              selectOptions="Instalação,INSTALACAO|Manutenção,MANUTENCAO"
+            />
+            <FilterInput
+              title="Prioridade"
+              id="priority"
+              type="select"
+              value={prioridade}
+              onValueChange={(valor) => updateParam("prioridade", valor || undefined)}
+              onClear={() => updateParam("prioridade", undefined)}
+              selectOptions="Crítica,CRITICA|Alta,ALTA|Média,MEDIA|Baixa,BAIXA"
+            />
+            <FilterInput
+              title="Status"
+              id="status"
+              type="select"
+              value={status}
+              onValueChange={(valor) => updateParam("status", valor || undefined)}
+              onClear={() => updateParam("status", undefined)}
+              selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Solicitação de encerramento,SOLICITACAO_ENCERRAMENTO|Em revisão,EM_REVISAO|Encerrado,ENCERRADO"
+            />
           </div>
           {algumFiltroAtivo && (
             <div className="flex justify-end">
@@ -381,7 +385,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
             id="priority"
             type="select"
             value={prioridade}
-            onValueChange={(valor) => updateParam("prioridade", valor)}
+            onValueChange={(valor) => updateParam("prioridade", valor || undefined)}
             onClear={() => updateParam("prioridade", undefined)}
             selectOptions="Crítica,CRITICA|Alta,ALTA|Média,MEDIA|Baixa,BAIXA"
           />
@@ -390,9 +394,9 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
             id="status"
             type="select"
             value={status}
-            onValueChange={(valor) => updateParam("status", valor)}
+            onValueChange={(valor) => updateParam("status", valor || undefined)}
             onClear={() => updateParam("status", undefined)}
-            selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Encerrado,ENCERRADO"
+            selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Solicitação de encerramento,SOLICITACAO_ENCERRAMENTO|Em revisão,EM_REVISAO|Encerrado,ENCERRADO"
           />
           <FilterInput
             title="Título"
@@ -448,7 +452,7 @@ interface FilterInputProps {
   items?: SelectItemsOptions[];
   value?: string;
   onChange?: (evento: React.ChangeEvent<HTMLInputElement>) => void;
-  onValueChange?: (valor: string) => void;
+  onValueChange?: (valor: string | null) => void;
   onClear?: () => void;
 }
 
@@ -483,10 +487,7 @@ function FilterInput({
             >
               <SelectValue placeholder="Selecione uma opção" />
             </SelectTrigger>
-            <SelectContent
-              alignItemWithTrigger={false}
-              className="rounded-xl"
-            >
+            <SelectContent alignItemWithTrigger={false} className="rounded-xl">
               <SelectGroup>
                 {items.map((item) => (
                   <SelectItem key={item.value} value={item.value}>

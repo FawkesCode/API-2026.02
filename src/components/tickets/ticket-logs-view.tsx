@@ -1,56 +1,13 @@
-import Link from "next/link";
-import PageHeader from "@/components/page-header";
 import { PriorityBadge } from "@/components/priority-badge";
+import { PriorityEditor } from "@/components/tickets/priority-editor";
 import { Badge } from "@/components/ui/badge";
-import {
-  TicketLogs,
-  type Autor,
-  type LogItem,
-} from "@/components/tickets/ticket-logs";
+import { TicketLogs } from "@/components/tickets/ticket-logs";
 
 import { getTicket } from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
-
-// TODO: vem da sessão do usuário logado quando existir autenticação
-const autor: Autor = {
-  id: "u-1",
-  nome: "Ana Ribeiro",
-  equipe: "Infraestrutura",
-  setor: "Redes",
-};
-
-const logsIniciais: Array<LogItem> = [
-  {
-    id: "1",
-    tipo: "aviso",
-    status: "iniciado",
-    titulo: "Equipe Infraestrutura começou a trabalhar no ticket",
-    descricao: "Ana Ribeiro deu início a atividade",
-  },
-  {
-    id: "2",
-    tipo: "manual",
-    autorId: "u-2",
-    autorNome: "Carlos Menezes",
-    equipe: "Elétrica",
-    setor: "Campo",
-    titulo: "Troca de disjuntor",
-    descricao:
-      "Descrição do que foi feito. Descrição do que foi feito. Descrição do que foi feito.",
-    criadoEm: new Date("2026-09-16T09:00:00"),
-  },
-  {
-    id: "3",
-    tipo: "manual",
-    autorId: "u-1",
-    autorNome: "Ana Ribeiro",
-    equipe: "Infraestrutura",
-    setor: "Redes",
-    titulo: "Recabeamento do rack",
-    descricao: "Descrição do que foi feito. Descrição do que foi feito.",
-    criadoEm: new Date("2026-09-16T11:30:00"),
-  },
-];
+import { getLogAuthor, getTicketLogs } from "@/lib/data/ticket-logs";
+import { getUsuarioLogado } from "@/lib/data/sessao";
+import { Cargo } from "@/lib/generated/prisma/client";
 
 type PriorityLevel = "critical" | "high" | "medium" | "low";
 
@@ -61,29 +18,18 @@ const TicketPriorityMap: Record<string, PriorityLevel> = {
   Crítica: "critical",
 };
 
-// TODO: Trazer a lógica de tickets na branch de conexão dos endpoints com o front para ca
-
-export default async function TicketsLogsView({
-  id,
-  backPageUrl,
-}: {
-  id: string;
-  backPageUrl: string;
-}) {
+export default async function TicketsLogsView({ id }: { id: string }) {
   const ticket: TicketView = await getTicket(id);
 
-  return (
-    <div className="flex h-full min-h-0 flex-col pb-6">
-      <div className="shrink-0">
-        <PageHeader>
-          <Link href={`/${backPageUrl}`} className="hover:underline">
-            {backPageUrl === "equipe" && "Minha Equipe "}
-            {backPageUrl === "tickets" && "Tickets "}
-          </Link>
-          {` > Ticket ${!ticket ? "Sem título" : ticket.title + " : " + ticket.type}`}
-        </PageHeader>
-      </div>
+  const [autor, logs, usuarioLogado] = await Promise.all([
+    getLogAuthor(id),
+    getTicketLogs(id),
+    getUsuarioLogado(),
+  ]);
+  const podeAlterarPrioridade = usuarioLogado?.cargo === Cargo.GESTOR;
 
+  return (
+    <>
       <section className="shrink-0 rounded-t-xl border -mt-6 border-gray-200 bg-white p-6">
         {ticket ? (
           <>
@@ -95,9 +41,13 @@ export default async function TicketsLogsView({
                 <span className="text-xs text-muted-foreground underline">
                   {ticket.status}
                 </span>
-                <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
-                  {ticket.priority}
-                </PriorityBadge>
+                {podeAlterarPrioridade ? (
+                  <PriorityEditor ticketId={id} priority={ticket.priority} />
+                ) : (
+                  <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
+                    {ticket.priority}
+                  </PriorityBadge>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-between pt-3">
@@ -107,21 +57,25 @@ export default async function TicketsLogsView({
                 <span className="italic">{ticket.createdBy}</span>
               </p>
               <div className="flex gap-2">
-                {ticket.teams.map((team) => (
-                  <Badge
-                    key={team}
-                    className="border-muted-foreground bg-transparent text-xs text-muted-foreground"
-                  >
-                    {team}
-                  </Badge>
-                ))}
+                {ticket.teams.length !== 0 ? (
+                  ticket.teams.map((team) => (
+                    <Badge
+                      key={team.id}
+                      className="border-muted-foreground bg-transparent text-xs text-muted-foreground"
+                    >
+                      {team.nome}
+                    </Badge>
+                  ))
+                ) : (
+                  <span>Times ainda não atribuídos.</span>
+                )}
               </div>
             </div>
           </>
         ) : null}
       </section>
 
-      <TicketLogs logsIniciais={logsIniciais} autor={autor} />
-    </div>
+      <TicketLogs ticketId={id} logsIniciais={logs} autor={autor} />
+    </>
   );
 }

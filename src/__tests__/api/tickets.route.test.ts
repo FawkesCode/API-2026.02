@@ -12,6 +12,7 @@ process.env.SESSION_SECRET = "segredo-de-teste-com-32-caracteres";
 const ticketId = "550e8400-e29b-41d4-a716-446655440010";
 const usuarioDaSessaoId = "550e8400-e29b-41d4-a716-446655440002";
 const usuarioForjadoId = "550e8400-e29b-41d4-a716-446655440009";
+const equipeId = "550e8400-e29b-41d4-a716-446655440003";
 const tokenDaSessao = criarTokenDeSessao({
   usuarioId: usuarioDaSessaoId,
   exp: Math.floor(Date.now() / 1000) + 60,
@@ -37,7 +38,30 @@ function dadosValidosParaCriacao() {
     slaEm: new Date(Date.now() + 60_000).toISOString(),
     projetoId: "550e8400-e29b-41d4-a716-446655440000",
     abertoPorId: "550e8400-e29b-41d4-a716-446655440001",
+    equipeIds: [equipeId],
   };
+}
+
+function ticketComRelacoes(id = ticketId, prioridade = "CRITICA") {
+  return {
+    id,
+    titulo: "Falha no equipamento",
+    descricao: "O equipamento precisa de manutenção.",
+    categoria: "MANUTENCAO",
+    prioridade,
+    status: "NAO_INICIADO",
+    slaEm: new Date(Date.now() + 60_000),
+    criadoEm: new Date("2026-09-24T10:00:00.000Z"),
+    atualizadoEm: new Date("2026-09-24T10:00:00.000Z"),
+    encerradoEm: null,
+    projetoId: "550e8400-e29b-41d4-a716-446655440000",
+    abertoPorId: "550e8400-e29b-41d4-a716-446655440001",
+    responsavelId: null,
+    abertoPor: { id: "550e8400-e29b-41d4-a716-446655440001", nome: "Gestor Teste" },
+    responsavel: null,
+    projeto: { id: "550e8400-e29b-41d4-a716-446655440000", nome: "Projeto Teste" },
+    equipesAlocadas: [{ equipe: { id: equipeId, nome: "Equipe Suporte" } }],
+  } as unknown as Awaited<ReturnType<typeof servicoTicket.criar>>;
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -58,14 +82,19 @@ describe("rotas de tickets", () => {
   });
 
   it("valida e encaminha uma prioridade crítica para a persistência na criação", async () => {
-    const ticketCriado = { id: ticketId } as unknown as Awaited<ReturnType<typeof servicoTicket.criar>>;
+    const ticketCriado = ticketComRelacoes();
     const criar = vi.spyOn(servicoTicket, "criar").mockResolvedValue(ticketCriado);
     const resposta = await POST(requisicao("http://localhost/api/tickets", dadosValidosParaCriacao()));
 
     expect(resposta.status).toBe(201);
     expect(criar).toHaveBeenCalledWith(
-      expect.objectContaining({ prioridade: "CRITICA" }),
+      expect.objectContaining({ prioridade: "CRITICA", equipeIds: [equipeId] }),
     );
+    expect(await resposta.json()).toMatchObject({
+      id: ticketId,
+      createdBy: "Gestor Teste",
+      teams: [{ id: equipeId, nome: "Equipe Suporte" }],
+    });
   });
 
   it("rejeita uma prioridade inválida antes de atualizar o ticket", async () => {
@@ -85,10 +114,7 @@ describe("rotas de tickets", () => {
   });
 
   it("usa o usuário da sessão, e não um usuarioId enviado pelo cliente", async () => {
-    const ticket = { id: ticketId, prioridade: "CRITICA" };
-    const ticketAtualizado = ticket as unknown as Awaited<
-      ReturnType<typeof servicoTicket.atualizarPrioridade>
-    >;
+    const ticketAtualizado = ticketComRelacoes();
     const atualizar = vi
       .spyOn(servicoTicket, "atualizarPrioridade")
       .mockResolvedValue(ticketAtualizado);
@@ -103,9 +129,10 @@ describe("rotas de tickets", () => {
     );
 
     expect(resposta.status).toBe(200);
-    expect(await resposta.json()).toEqual({
-      mensagem: "Prioridade atualizada com sucesso.",
-      ticket,
+    expect(await resposta.json()).toMatchObject({
+      id: ticketId,
+      priority: "Crítica",
+      createdBy: "Gestor Teste",
     });
     expect(atualizar).toHaveBeenCalledWith(ticketId, {
       prioridade: "CRITICA",

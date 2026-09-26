@@ -7,6 +7,7 @@ import {
 } from "@/lib/generated/prisma/client";
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
 import { RELACOES_TICKET } from "@/lib/services/ticket.service";
+import { ordenarTicketsPorPrioridade } from "@/lib/services/ticket-order";
 
 const DIAS_SLA_INSTALACAO_PADRAO = 7;
 
@@ -200,12 +201,17 @@ export class ServicoProjeto {
       };
     }
 
-    return prisma.ticket.findMany({
+    const tickets = await prisma.ticket.findMany({
       where,
       orderBy: {
         criadoEm: "desc",
       },
+      // A tela do projeto também precisa renderizar as equipes persistidas;
+      // sem este include, o mapper recebia tickets sem equipes e exibia vazio.
+      include: RELACOES_TICKET,
     });
+
+    return ordenarTicketsPorPrioridade(tickets);
   }
 
   async listarAtivos() {

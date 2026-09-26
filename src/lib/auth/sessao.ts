@@ -64,6 +64,7 @@ function verificarToken(token: string | undefined | null) {
     const assinaturaRecebida = Buffer.from(assinatura, "base64url");
     const assinaturaEsperadaBuffer = Buffer.from(assinaturaEsperada, "base64url");
     if (
+      assinaturaRecebida.toString("base64url") !== assinatura ||
       assinaturaRecebida.length !== assinaturaEsperadaBuffer.length ||
       !timingSafeEqual(assinaturaRecebida, assinaturaEsperadaBuffer)
     ) {

@@ -8,23 +8,9 @@
  * (`UsuarioAtual`, `useCurrentUser()`) pode continuar a mesma para não
  * quebrar quem já consome este hook.
  */
-import { Cargo } from "@/lib/ticket-enums";
+import { USUARIO_MOCK, type UsuarioAtual } from "@/lib/auth/mock-user";
 
-export interface UsuarioAtual {
-  id: string;
-  nome: string;
-  email: string;
-  cargo: Cargo;
-  equipeId: string | null;
-}
-
-const USUARIO_MOCK: UsuarioAtual = {
-  id: "3c14cfc8-b3ae-11f1-9aeb-0ea8acf6b539",
-  nome: "Nome do Usuário",
-  email: "email@gmail.com",
-  cargo: Cargo.SUPORTE,
-  equipeId: null,
-};
+export type { UsuarioAtual };
 
 export function useCurrentUser(): UsuarioAtual {
   return USUARIO_MOCK;
