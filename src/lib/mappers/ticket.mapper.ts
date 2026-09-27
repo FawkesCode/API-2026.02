@@ -7,6 +7,7 @@ import {
 } from "@/types/ticket";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toLogItem } from "./historico.mapper";
 
 // Ticket "puro" (sem include)
 type TicketSemProjeto = Prisma.TicketGetPayload<Record<string, never>>;
@@ -49,6 +50,18 @@ type TicketComRelacoes = Prisma.TicketGetPayload<{
           select: {
             id: true;
             nome: true;
+          };
+        };
+      };
+    };
+    historico: {
+      include: {
+        usuario: {
+          select: {
+            id: true;
+            nome: true;
+            cargo: true;
+            equipe: { select: { nome: true } };
           };
         };
       };
@@ -113,7 +126,13 @@ export function toTicketDTO(info: TicketRes): TicketView {
       ] ?? "Não definido",
 
     description: info.descricao,
-    recentLogs: [],
+    recentLogs: "historico" in info && Array.isArray(info.historico)
+      ? info.historico.map((log: any) => toLogItem(log)).slice(0, 2).map((log: any) => ({
+          title: log.titulo,
+          sentBy: log.tipo === "manual" ? log.autorNome : "Sistema",
+          sentAt: log.criadoEm,
+        }))
+      : [],
     projectId: extrairProjectId(info),
   };
 }
