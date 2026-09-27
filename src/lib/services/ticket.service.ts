@@ -137,6 +137,20 @@ export const RELACOES_TICKET = {
       },
     },
   },
+  historico: {
+    orderBy: { criadoEm: "desc" },
+    take: 2,
+    include: {
+      usuario: {
+        select: {
+          id: true,
+          nome: true,
+          cargo: true,
+          equipe: { select: { nome: true } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.TicketInclude;
 
 export type TicketComRelacoes = Prisma.TicketGetPayload<{
@@ -169,6 +183,20 @@ const includeListagem = {
         select: {
           id: true,
           nome: true,
+        },
+      },
+    },
+  },
+  historico: {
+    orderBy: { criadoEm: "desc" },
+    take: 2,
+    include: {
+      usuario: {
+        select: {
+          id: true,
+          nome: true,
+          cargo: true,
+          equipe: { select: { nome: true } },
         },
       },
     },

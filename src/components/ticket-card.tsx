@@ -18,7 +18,6 @@ import { Button } from "./ui/button";
 import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
 import {
   addMyTeamAction,
-  getRecentLogs,
   removeMyTeamAction,
 } from "@/lib/actions/ticket";
 import { usePathname } from "next/navigation";
@@ -43,7 +42,6 @@ const TicketPriorityMap: Record<string, PriorityLevel> = {
 function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
   const [curTicket, setCurTicket] = useState(ticket);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLogLoading, setIsLogLoading] = useState(false);
 
   const pathname = usePathname();
   const loggedUserTeam = useCurrentUser().equipeId;
@@ -82,25 +80,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
     }
   };
 
-  useEffect(() => {
-    async function fetchLogs() {
-      setIsLogLoading(true);
-      try {
-        const logs = await getRecentLogs(curTicket.id);
-        setCurTicket((state) =>
-          state ? { ...state, recentLogs: logs } : state,
-        );
-      } catch (err) {
-        console.error("Erro ao carregar logs:", err);
-      } finally {
-        setIsLogLoading(false);
-      }
-    }
-
-    if (curTicket.id) {
-      fetchLogs();
-    }
-  }, [curTicket.id]);
+  // Logs are fetched efficiently during Server Component initial query
 
   return (
     <Link
@@ -179,9 +159,6 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
                 "hidden!",
             )}
           >
-            {isLogLoading ? (
-              "Carregando logs"
-            ) : (
               <>
                 <h4 className="text-card-foreground font-bold text-md mb-3">
                   LOGS Recentes
@@ -200,7 +177,6 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
                   Ver mais
                 </span>
               </>
-            )}
           </div>
         </CardFooter>
       </Card>
