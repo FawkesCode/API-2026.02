@@ -15,6 +15,19 @@ export class ServicoUsuario {
     });
   }
 
+  /**
+   * Primeiro gestor ativo, usado pelo emissor de sessão de desenvolvimento
+   * (`lib/controllers/sessao-dev.controller.ts`) quando nenhum usuário é
+   * informado. Pode sair junto com ele quando o login real existir.
+   */
+  async buscarPrimeiroGestorAtivo() {
+    return prisma.usuario.findFirst({
+      where: { ativo: true, cargo: Cargo.GESTOR },
+      select: { id: true, nome: true, cargo: true },
+      orderBy: { criadoEm: "asc" },
+    });
+  }
+
   async buscarPorId(usuarioId: string) {
     return prisma.usuario.findUnique({
       where: { id: usuarioId },
