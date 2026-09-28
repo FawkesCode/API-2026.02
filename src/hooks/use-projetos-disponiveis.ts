@@ -42,7 +42,7 @@ export function useProjetosDisponiveis() {
           ? dados.filter((projeto) => projeto.equipeId === usuario.equipeId)
           : dados;
 
-        setProjetos(filtrados);
+        setProjetos(dados);
       } catch (erroCapturado) {
         if (!ativo) return;
         setErro(

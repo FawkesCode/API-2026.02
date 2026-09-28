@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import EmailManagerService from "./email.service";
 import {
   Cargo,
   Categoria,
@@ -373,6 +374,25 @@ export class ServicoTicket {
       create: { ticketId, equipeId },
       update: {},
     });
+
+   try {
+      const gestorDaEquipe = await this.db.usuario.findFirst({
+        where: {
+          equipeId: equipeId,
+          cargo: "GESTOR",
+        },
+        select: { id: true },
+      });
+
+      if (gestorDaEquipe) {
+        const emailService = new EmailManagerService(gestorDaEquipe.id, ticketId);
+        await emailService.sendMail();
+      } else {
+        console.warn(`Nenhum gestor encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`);
+      }
+    } catch (error) {
+      console.error("Erro ao tentar enviar e-mail de alocação de equipe:", error);
+    }
 
     return this.db.ticket.findUniqueOrThrow({
       where: { id: ticketId },
