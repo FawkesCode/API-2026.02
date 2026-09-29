@@ -101,7 +101,7 @@ O objetivo é padronizar o processo, eliminar a necessidade de vários softwares
 
 | Sprint          |    Período    |                    Documentação                     | Incremento |
 | --------------- | :-----------: | :-------------------------------------------------: | :--------: |
-| 🏃🏻 **Sprint 1** | 07/09 – 27/09 | [Sprint 1 docs](./docs/sprints/sprint-backlog-1.md) |            |
+| 🏃🏻 **Sprint 1** | 07/09 – 27/09 | [Sprint 1 docs](./docs/sprints/sprint-backlog-1.md) |      [Vídeo do Incremento entregue](https://youtu.be/NIUIERW4_Vs)      |
 | 🏃🏻 **Sprint 2** | 05/10 – 25/10 | [Sprint 2 docs](./docs/sprints/sprint-backlog-2.md) |            |
 | 🏃🏻 **Sprint 3** | 02/11 – 22/11 | [Sprint 3 docs](./docs/sprints/sprint-backlog-3.md) |            |
 
