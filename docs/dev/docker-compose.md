@@ -1,8 +1,8 @@
-# Manual de desenvolvimento: Docker Compose e Prisma
+# 📖 Manual de desenvolvimento: Docker Compose e Prisma
 
 Este manual configura o MySQL local do backend e explica como conectar a aplicação e o Prisma ao banco.
 
-## Pré-requisitos
+## 🛠️ Pré-requisitos
 
 - Docker Desktop em execução;
 - Bun ou NodeJs instalado;
@@ -10,29 +10,30 @@ Este manual configura o MySQL local do backend e explica como conectar a aplica�
 
 Os comandos abaixo devem ser executados a partir de `src`, onde estão o `docker-compose.yml`, o `.env` e o projeto Prisma.
 
-## Configurar o ambiente
+## 1. Configurar o ambiente
 
 Copie o arquivo de exemplo:
 
 ```powershell
 Copy-Item .env.example .env
 ```
-ou se quiser ser preguiçoso:
+
+ou:
 
 Copia direto no editor de código e cola em cima, vai criar um .env.example.copy que você irá renomear para .env
 
 O `.env` não deve ser versionado. Ajuste as variáveis conforme a tabela:
 
-| Variável | Uso | Exemplo local |
-| --- | --- | --- |
-| `MYSQL_HOST` | Host usado pela aplicação para encontrar o MySQL. Como a aplicação roda fora do container, use `localhost`. | `localhost` |
-| `MYSQL_PORT` | Porta do computador publicada para o MySQL. Dentro do container, o MySQL continua escutando na `3306`. Use outra porta se já houver um MySQL local nessa porta. | `3307` |
-| `MYSQL_USER` | Usuário comum usado pela aplicação durante a execução normal. | `altave` |
-| `MYSQL_PASSWORD` | Senha do usuário comum. | `123456` |
-| `MYSQL_DATABASE` | Banco criado pelo container e usado pela aplicação. | `test` |
-| `MYSQL_ROOT_PASSWORD` | Senha do usuário administrativo `root` do MySQL. Também é usada pelo Prisma nas migrations. | `123456` |
-| `production` | Indica se o ambiente é de produção. Atualmente não é usada pelo `docker-compose.yml` nem pelo cliente Prisma; mantenha `false` no desenvolvimento. | `false` |
-| `DATABASE_URL` | URL usada pelo Prisma CLI, incluindo `migrate`. Ela deve apontar para o mesmo host, porta e banco configurados acima. | `mysql://root:123456@localhost:3307/test` |
+| Variável              | Uso                                                                                                                                                             | Exemplo local                             |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `MYSQL_HOST`          | Host usado pela aplicação para encontrar o MySQL. Como a aplicação roda fora do container, use `localhost`.                                                     | `localhost`                               |
+| `MYSQL_PORT`          | Porta do computador publicada para o MySQL. Dentro do container, o MySQL continua escutando na `3306`. Use outra porta se já houver um MySQL local nessa porta. | `3307`                                    |
+| `MYSQL_USER`          | Usuário comum usado pela aplicação durante a execução normal.                                                                                                   | `altave`                                  |
+| `MYSQL_PASSWORD`      | Senha do usuário comum.                                                                                                                                         | `123456`                                  |
+| `MYSQL_DATABASE`      | Banco criado pelo container e usado pela aplicação.                                                                                                             | `test`                                    |
+| `MYSQL_ROOT_PASSWORD` | Senha do usuário administrativo `root` do MySQL. Também é usada pelo Prisma nas migrations.                                                                     | `123456`                                  |
+| `production`          | Indica se o ambiente é de produção. Atualmente não é usada pelo `docker-compose.yml` nem pelo cliente Prisma; mantenha `false` no desenvolvimento.              | `false`                                   |
+| `DATABASE_URL`        | URL usada pelo Prisma CLI, incluindo `migrate`. Ela deve apontar para o mesmo host, porta e banco configurados acima.                                           | `mysql://root:123456@localhost:3307/test` |
 
 ### Evitar conflito com um MySQL na porta 3306
 
@@ -53,7 +54,7 @@ O mapeamento do Compose é `${MYSQL_PORT}:3306`: a porta à esquerda é a porta 
 
 Se o usuário ou a senha tiverem caracteres especiais, faça o escape deles na `DATABASE_URL` como parte de uma URL. Para desenvolvimento, prefira credenciais simples e locais para evitar problemas de codificação.
 
-## Subir e parar o banco
+## 2. Subir e parar o banco
 
 Suba o MySQL em segundo plano:
 
@@ -76,13 +77,14 @@ docker compose down
 
 O Compose atual não declara volume para os dados. Remover o container com `docker compose down` remove o banco criado nele; em desenvolvimento, recrie o serviço com `docker compose up -d` quando necessário.
 
-## Gerar o cliente Prisma
+## 3. Gerar o cliente Prisma
 
 Depois de instalar dependências ou alterar o schema, gere o cliente:
 
 ```powershell
 bunx prisma generate
 ```
+
 ou
 
 ```powershell
@@ -91,7 +93,7 @@ npx prisma generate
 
 O cliente é gerado em `lib/generated/prisma`, conforme definido em `prisma/schema.prisma`.
 
-## Executar migrations
+## 4. Executar migrations
 
 O Prisma CLI lê `DATABASE_URL` pelo arquivo `prisma7.config.ts`. Para criar e aplicar uma migration durante o desenvolvimento:
 
@@ -148,7 +150,6 @@ bun run dev
 ```
 
 ou
-
 
 ```powershell
 cd src
