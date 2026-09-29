@@ -18,7 +18,7 @@ Copie o arquivo de exemplo:
 Copy-Item .env.example .env
 ```
 
-ou se quiser ser preguiçoso:
+ou:
 
 Copia direto no editor de código e cola em cima, vai criar um .env.example.copy que você irá renomear para .env
 

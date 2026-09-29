@@ -1,6 +1,3 @@
--- DropTable
-DROP TABLE `Teste`;
-
 -- CreateTable
 CREATE TABLE `usuarios` (
     `id` CHAR(36) NOT NULL,
@@ -49,6 +46,7 @@ CREATE TABLE `projetos` (
     `id` CHAR(36) NOT NULL,
     `nome` VARCHAR(150) NOT NULL,
     `local_instalacao` VARCHAR(255) NOT NULL,
+    `descricao` TEXT NULL,
     `ativo` BOOLEAN NOT NULL DEFAULT true,
     `criado_em` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `atualizado_em` DATETIME(3) NOT NULL,
@@ -69,7 +67,7 @@ CREATE TABLE `tickets` (
     `descricao` TEXT NOT NULL,
     `categoria` ENUM('MANUTENCAO', 'INSTALACAO') NOT NULL,
     `prioridade` ENUM('BAIXA', 'MEDIA', 'ALTA', 'CRITICA') NOT NULL DEFAULT 'MEDIA',
-    `status` ENUM('ABERTO', 'EM_ANDAMENTO', 'ENCERRADO') NOT NULL DEFAULT 'ABERTO',
+    `status` ENUM('NAO_INICIADO', 'EM_ANDAMENTO', 'SOLICITACAO_ENCERRAMENTO', 'ENCERRADO', 'EM_REVISAO') NOT NULL DEFAULT 'NAO_INICIADO',
     `sla_em` DATETIME(3) NOT NULL,
     `encerrado_em` DATETIME(3) NULL,
     `criado_em` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -82,6 +80,18 @@ CREATE TABLE `tickets` (
     INDEX `ix_tickets_sla`(`status`, `sla_em`),
     INDEX `ix_tickets_aberto_por`(`aberto_por_id`),
     INDEX `ix_tickets_responsavel`(`responsavel_id`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ticket_equipes` (
+    `id` CHAR(36) NOT NULL,
+    `criado_em` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `ticket_id` CHAR(36) NOT NULL,
+    `equipe_id` CHAR(36) NOT NULL,
+
+    INDEX `ix_ticket_equipes_equipe`(`equipe_id`),
+    UNIQUE INDEX `uq_ticket_equipes_ticket_equipe`(`ticket_id`, `equipe_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -135,6 +145,12 @@ ALTER TABLE `tickets` ADD CONSTRAINT `tickets_aberto_por_id_fkey` FOREIGN KEY (`
 
 -- AddForeignKey
 ALTER TABLE `tickets` ADD CONSTRAINT `tickets_responsavel_id_fkey` FOREIGN KEY (`responsavel_id`) REFERENCES `usuarios`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ticket_equipes` ADD CONSTRAINT `ticket_equipes_ticket_id_fkey` FOREIGN KEY (`ticket_id`) REFERENCES `tickets`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ticket_equipes` ADD CONSTRAINT `ticket_equipes_equipe_id_fkey` FOREIGN KEY (`equipe_id`) REFERENCES `equipes`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `relatorios` ADD CONSTRAINT `relatorios_ticket_id_fkey` FOREIGN KEY (`ticket_id`) REFERENCES `tickets`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

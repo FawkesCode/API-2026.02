@@ -8,19 +8,25 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LogOut, LucideIcon, Settings, Ticket, Users } from "lucide-react";
+import {
+  ClipboardList,
+  LogOut,
+  LucideIcon,
+  Settings,
+  Ticket,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import UserSidebar from "./user-sidebar";
 import LogoSidebar from "./logo-sidebar";
 import { cn } from "cn";
 import LogoFawkes from "./logo-fawkes";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface NavItem {
   title: string;
@@ -31,12 +37,13 @@ interface NavItem {
 export function AppSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
+  const loggedUser = useCurrentUser();
 
   const items: NavItem[] = [
     {
       title: "Projetos",
       url: "/projetos",
-      icon: Settings,
+      icon: ClipboardList,
     },
     {
       title: "Tickets",
@@ -54,7 +61,7 @@ export function AppSidebar() {
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="flex flex-col gap-6 pt-4 pb-4">
         <LogoSidebar />
-        <UserSidebar />
+        <UserSidebar user={loggedUser} />
       </SidebarHeader>
       <div className="sidebar-divider"></div>
       <SidebarContent>
@@ -62,7 +69,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => {
-                const isActive = pathname === item.url;
+                const isActive = pathname.includes(item.url);
 
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -71,7 +78,7 @@ export function AppSidebar() {
                       tooltip={item.title}
                       render={<Link href={item.url} />}
                     >
-                      <item.icon />
+                      <item.icon aria-hidden={true} />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -87,7 +94,7 @@ export function AppSidebar() {
             tooltip="Sair"
             className="flex cursor-pointer justify-center"
           >
-            <LogOut className="ml-1" />
+            <LogOut aria-hidden={true} className="ml-1" />
             <span>SAIR</span>
           </SidebarMenuButton>
         </SidebarMenuItem>

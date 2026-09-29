@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import PageHeader from "@/components/page-header";
+import { Toaster } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
   title: "Controle de Tickets Altave",
@@ -15,17 +15,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={cn("h-full", "antialiased", "font-sans")}>
-      <body className="min-h-full h-screen flex flex-col bg-zinc-50">
+    <html lang="pt-BR" className={cn("h-full", "antialiased", "font-sans")}>
+      <body className="min-h-full h-screen flex flex-col">
         <SidebarProvider>
           <AppSidebar />
           <main className="flex flex-col w-full overflow-auto">
             <SidebarTrigger className="cursor-pointer" />
-            <div className="h-full pl-10 pr-10 flex flex-col">
-              <PageHeader />
+            <div className="h-full xl:pl-15 xl:pr-15 flex flex-col md:pr-8 md:pl-8 pr-5 pl-5 ">
               <TooltipProvider>{children}</TooltipProvider>
             </div>
           </main>
+          <Toaster />
         </SidebarProvider>
       </body>
     </html>

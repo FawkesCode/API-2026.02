@@ -1,14 +1,16 @@
-"use client";
-import { usePathname } from "next/navigation";
-
-function PageHeader() {
-  const pathname = usePathname();
-
+function PageHeader({
+  children,
+  other,
+}: {
+  children: React.ReactNode;
+  other?: React.ReactNode;
+}) {
   return (
-    <div className="border-b-2 border-blue-900 pb-2 mb-5">
-      <h1 className="text-2xl text-card-foreground font-semibold italic capitalize">
-        {pathname !== "/equipe" ? pathname.split("/") : "Minha Equipe"}
+    <div className="border-b-2 border-blue-900 pb-2 mb-13 flex justify-between items-center">
+      <h1 className="text-2xl text-card-foreground font-semibold italic capitalize flex  gap-2">
+        {children}
       </h1>
+      {other}
     </div>
   );
 }
