@@ -28,42 +28,56 @@ export async function getTicketLogs(ticketId: string) {
 }
 
 /**
- * Autor dos logs = usuário logado. É ele quem assina os logs enviados e quem
- * define o lado do chat (suas mensagens ficam à direita, as dos outros à esquerda).
- *
- * Se não houver sessão (ou o usuário da sessão não for encontrado), cai no
- * comportamento anterior: responsável do ticket ou gestor do projeto.
+ * Usuário da sessão. Qualquer falha (sessão indisponível, erro na consulta)
+ * vira `null` para que o fallback do autor seja sempre tentado.
  */
-export async function getLogAuthor(ticketId: string) {
-  let usuario;
-
+async function buscarUsuarioLogado() {
   try {
     const usuarioLogado = await getUsuarioLogado();
+    if (!usuarioLogado?.id) return null;
 
-    if (usuarioLogado?.id) {
-      usuario = await servicoUsuario.buscarPorId(usuarioLogado.id);
-    }
-
-    if (!usuario) {
-      console.warn(
-        "[getLogAuthor] Sem usuário logado válido; usando responsável/gestor do ticket.",
-      );
-
-      const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
-      const projeto = ticket
-        ? await servicoProjeto.buscarDetalhePorId(ticket.projetoId)
-        : null;
-      const autorId = ticket?.responsavel?.id ?? projeto?.gestorId;
-
-      if (autorId) {
-        usuario = await servicoUsuario.buscarPorId(autorId);
-      }
-    }
+    return await servicoUsuario.buscarPorId(usuarioLogado.id);
   } catch (error) {
-    console.error(`[getLogAuthor] Erro ao buscar o autor dos logs: ${error}`);
-    throw new Error(
-      "Não foi possível carregar o usuário responsável pelo ticket.",
+    console.warn(
+      `[getLogAuthor] Não foi possível obter o usuário logado: ${error}`,
     );
+    return null;
+  }
+}
+
+async function buscarResponsavelOuGestor(ticketId: string) {
+  const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
+  const projeto = ticket
+    ? await servicoProjeto.buscarDetalhePorId(ticket.projetoId)
+    : null;
+  const autorId = ticket?.responsavel?.id ?? projeto?.gestorId;
+
+  return autorId ? servicoUsuario.buscarPorId(autorId) : null;
+}
+
+/**
+ * Autor dos logs = usuário logado. É ele quem assina os logs enviados e quem
+ * define o lado do chat.
+ *
+ * Se não houver usuário logado válido (sem sessão ou erro ao consultá-la),
+ * usa o responsável do ticket ou, na falta dele, o gestor do projeto.
+ */
+export async function getLogAuthor(ticketId: string) {
+  let usuario = await buscarUsuarioLogado();
+
+  if (!usuario) {
+    console.warn(
+      "[getLogAuthor] Sem usuário logado válido; usando responsável/gestor do ticket.",
+    );
+
+    try {
+      usuario = await buscarResponsavelOuGestor(ticketId);
+    } catch (error) {
+      console.error(`[getLogAuthor] Erro ao buscar o autor dos logs: ${error}`);
+      throw new Error(
+        "Não foi possível carregar o usuário responsável pelo ticket.",
+      );
+    }
   }
 
   if (!usuario) {

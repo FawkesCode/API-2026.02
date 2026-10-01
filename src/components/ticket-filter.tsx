@@ -308,11 +308,15 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
     value: equipe.id,
   }));
 
+  // Mesmo com parâmetros de data inválidos na URL (ex.: só dataFim), o botão
+  // de limpar precisa aparecer para o usuário conseguir remover o filtro.
+  const temDataNaUrl = !!(dataParam || inicioParam || fimParam);
+
   // Campo de data (dia específico ou período), usado nos dois layouts.
   const filtroData = (
     <Field className="relative min-w-[10rem] flex-1">
       <DateRangePicker value={intervalo} onChange={aplicarIntervalo} />
-      {intervalo.inicio && (
+      {temDataNaUrl && (
         <button
           type="button"
           onClick={limparData}
