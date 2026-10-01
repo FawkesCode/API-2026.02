@@ -4,6 +4,7 @@ import { servicoProjeto } from "../services/projeto.service";
 import { servicoTicket } from "../services/ticket.service";
 import { servicoUsuario } from "../services/usuario.service";
 import { toAutor, toLogItem } from "../mappers/historico.mapper";
+import { getUsuarioLogado } from "./sessao";
 
 export async function getTicketLogs(ticketId: string) {
   if (!ticketId) {
@@ -26,18 +27,37 @@ export async function getTicketLogs(ticketId: string) {
   return data.map((log) => toLogItem(log));
 }
 
+/**
+ * Autor dos logs = usuário logado. É ele quem assina os logs enviados e quem
+ * define o lado do chat (suas mensagens ficam à direita, as dos outros à esquerda).
+ *
+ * Se não houver sessão (ou o usuário da sessão não for encontrado), cai no
+ * comportamento anterior: responsável do ticket ou gestor do projeto.
+ */
 export async function getLogAuthor(ticketId: string) {
   let usuario;
 
   try {
-    const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
-    const projeto = ticket
-      ? await servicoProjeto.buscarDetalhePorId(ticket.projetoId)
-      : null;
-    const autorId = ticket?.responsavel?.id ?? projeto?.gestorId;
+    const usuarioLogado = await getUsuarioLogado();
 
-    if (autorId) {
-      usuario = await servicoUsuario.buscarPorId(autorId);
+    if (usuarioLogado?.id) {
+      usuario = await servicoUsuario.buscarPorId(usuarioLogado.id);
+    }
+
+    if (!usuario) {
+      console.warn(
+        "[getLogAuthor] Sem usuário logado válido; usando responsável/gestor do ticket.",
+      );
+
+      const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
+      const projeto = ticket
+        ? await servicoProjeto.buscarDetalhePorId(ticket.projetoId)
+        : null;
+      const autorId = ticket?.responsavel?.id ?? projeto?.gestorId;
+
+      if (autorId) {
+        usuario = await servicoUsuario.buscarPorId(autorId);
+      }
     }
   } catch (error) {
     console.error(`[getLogAuthor] Erro ao buscar o autor dos logs: ${error}`);

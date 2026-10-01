@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { X } from "lucide-react";
-import DatePicker from "./datepicker";
+import DateRangePicker, { type IntervaloData } from "./date-range-picker";
 import { Field, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import {
@@ -182,8 +182,18 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
   const prioridade = searchParams.get("prioridade") ?? "";
   const status = searchParams.get("status") ?? "";
   const titulo = searchParams.get("titulo") ?? "";
+
+  // --- Data: um dia específico (?data=) ou um período (?dataInicio=&dataFim=) ---
   const dataParam = searchParams.get("data");
-  const data = dataParam ? new Date(`${dataParam}T00:00:00`) : undefined;
+  const inicioParam = searchParams.get("dataInicio");
+  const fimParam = searchParams.get("dataFim");
+
+  const paraData = (valor: string | null) =>
+    valor ? new Date(`${valor}T00:00:00`) : undefined;
+
+  const intervalo: IntervaloData = inicioParam
+    ? { inicio: paraData(inicioParam), fim: paraData(fimParam) }
+    : { inicio: paraData(dataParam) };
 
   // --- Filtros exclusivos da tela de tickets ---
   const tipo = mostrarFiltrosDeTicket ? (searchParams.get("tipo") ?? "") : "";
@@ -229,14 +239,43 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localInput]);
 
-  function updateParam(chave: string, valor: string | undefined) {
+  // Atualiza vários parâmetros de uma vez (chamar updateParam em sequência
+  // perderia a primeira alteração, pois ambas partem do mesmo searchParams).
+  function updateParams(alteracoes: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams.toString());
-    if (valor) {
-      params.set(chave, valor);
-    } else {
-      params.delete(chave);
-    }
+    Object.entries(alteracoes).forEach(([chave, valor]) => {
+      if (valor) {
+        params.set(chave, valor);
+      } else {
+        params.delete(chave);
+      }
+    });
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function updateParam(chave: string, valor: string | undefined) {
+    updateParams({ [chave]: valor });
+  }
+
+  // Um dia só -> ?data=...   |   Período -> ?dataInicio=...&dataFim=...
+  function aplicarIntervalo({ inicio, fim }: IntervaloData) {
+    const fmt = (d: Date) => format(d, "yyyy-MM-dd");
+    const diaUnico = !!inicio && (!fim || fmt(inicio) === fmt(fim));
+    const periodo = !!inicio && !!fim && !diaUnico;
+
+    updateParams({
+      data: diaUnico && inicio ? fmt(inicio) : undefined,
+      dataInicio: periodo && inicio ? fmt(inicio) : undefined,
+      dataFim: periodo && fim ? fmt(fim) : undefined,
+    });
+  }
+
+  function limparData() {
+    updateParams({
+      data: undefined,
+      dataInicio: undefined,
+      dataFim: undefined,
+    });
   }
 
   function limparFiltros() {
@@ -250,6 +289,8 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
     status ||
     titulo ||
     dataParam ||
+    inicioParam ||
+    fimParam ||
     tipo ||
     projetoId ||
     equipeId ||
@@ -260,6 +301,23 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
     label: equipe.nome,
     value: equipe.id,
   }));
+
+  // Campo de data (dia específico ou período), usado nos dois layouts.
+  const filtroData = (
+    <Field className="relative min-w-[10rem] flex-1">
+      <DateRangePicker value={intervalo} onChange={aplicarIntervalo} />
+      {intervalo.inicio && (
+        <button
+          type="button"
+          onClick={limparData}
+          aria-label="Limpar filtro de data"
+          className={CLEAR_BUTTON_CLASS}
+        >
+          <X className="size-3.5" />
+        </button>
+      )}
+    </Field>
+  );
 
   return (
     <Card className="col-span-full gap-4! overflow-visible">
@@ -298,33 +356,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
               }}
             />
 
-            <Field className="relative">
-              <DatePicker
-                value={data}
-                onChange={(novaData) =>
-                  updateParam(
-                    "data",
-                    novaData ? format(novaData, "yyyy-MM-dd") : undefined,
-                  )
-                }
-              />
-              {/* <FieldLabel
-                htmlFor="data-abertura"
-                className="text-gray-500 text-xs absolute top-[-8] left-3 bg-white max-w-min whitespace-nowrap pl-2 pr-2"
-              >
-                Data de abertura
-              </FieldLabel> */}
-              {data && (
-                <button
-                  type="button"
-                  onClick={() => updateParam("data", undefined)}
-                  aria-label="Limpar filtro de data"
-                  className={CLEAR_BUTTON_CLASS}
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </Field>
+            {filtroData}
 
             {!equipesIndisponivel && (
               <FilterInput
@@ -408,27 +440,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
               updateParam("titulo", undefined);
             }}
           />
-          <Field className="relative min-w-[10rem] flex-1">
-            <DatePicker
-              value={data}
-              onChange={(novaData) =>
-                updateParam(
-                  "data",
-                  novaData ? format(novaData, "yyyy-MM-dd") : undefined,
-                )
-              }
-            />
-            {data && (
-              <button
-                type="button"
-                onClick={() => updateParam("data", undefined)}
-                aria-label="Limpar filtro de data"
-                className={CLEAR_BUTTON_CLASS}
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </Field>
+          {filtroData}
           {algumFiltroAtivo && (
             <Button
               type="button"

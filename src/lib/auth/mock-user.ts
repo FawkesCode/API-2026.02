@@ -10,9 +10,9 @@ export interface UsuarioAtual {
 }
 
 export const USUARIO_MOCK: UsuarioAtual = {
-  id: "2f8faaf8-bb41-11f1-a26a-32c0198af045",
-  nome: "Vitor",
-  email: "vbomfimcunha@gmail.com",
+  id: "9f0155e7-bdcf-11f1-9ff7-eafd7d88e733",
+  nome: "Gestor Teste",
+  email: "gestor@teste.com",
   cargo: Cargo.GESTOR,
-  equipeId: "5a41e662-101b-4176-abdb-d755f05213d1",
+  equipeId: "37391a3c-bdd0-11f1-9ff7-eafd7d88e733",
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import { LogEditor } from "@/components/tickets/log-editor";
 import { LogState, type LogStatus } from "@/components/tickets/log-states";
@@ -107,6 +107,19 @@ function TicketLogs({
   const [enviandoAviso, setEnviandoAviso] = useState(false);
   const [erroAviso, setErroAviso] = useState<string | null>(null);
   const listaRef = useRef<HTMLElement>(null);
+  const jaRenderizou = useRef(false);
+
+  // Mantém a lista no final: abre já embaixo e desce quando entra um log novo.
+  useEffect(() => {
+    const lista = listaRef.current;
+    if (!lista) return;
+
+    lista.scrollTo({
+      top: lista.scrollHeight,
+      behavior: jaRenderizou.current ? "smooth" : "auto",
+    });
+    jaRenderizou.current = true;
+  }, [logs.length]);
 
   async function registrarLog(evento: string, descricao: string) {
     const log = await publicarLog(ticketId, {
@@ -115,8 +128,8 @@ function TicketLogs({
       usuarioId: autor.id,
     });
 
-    setLogs((anteriores) => [log, ...anteriores]);
-    listaRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    // Log novo vai para o final da lista (ordem cronológica, como em um chat).
+    setLogs((anteriores) => [...anteriores, log]);
   }
 
   async function enviarAviso(evento: string, descricao: string) {
@@ -152,7 +165,9 @@ function TicketLogs({
         ref={listaRef}
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-none border-x border-gray-200 bg-slate-100 p-6"
       >
-        <h3 className="font-bold text-card-foreground">LOGS DE ATIVIDADE</h3>
+        <h3 className="sticky top-0 z-10 -mx-6 -mt-6 bg-slate-100 px-6 py-3 font-bold text-card-foreground">
+          LOGS DE ATIVIDADE
+        </h3>
 
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground">
