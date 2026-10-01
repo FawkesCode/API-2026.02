@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { X } from "lucide-react";
 import DateRangePicker, { type IntervaloData } from "./date-range-picker";
 import { Field, FieldLabel } from "./ui/field";
@@ -188,8 +188,14 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
   const inicioParam = searchParams.get("dataInicio");
   const fimParam = searchParams.get("dataFim");
 
-  const paraData = (valor: string | null) =>
-    valor ? new Date(`${valor}T00:00:00`) : undefined;
+  // Parâmetros da URL podem vir inválidos (link antigo, edição manual):
+  // datas inválidas são ignoradas para não quebrar a renderização.
+  const paraData = (valor: string | null) => {
+    if (!valor) return undefined;
+
+    const data = new Date(`${valor}T00:00:00`);
+    return isValid(data) ? data : undefined;
+  };
 
   const intervalo: IntervaloData = inicioParam
     ? { inicio: paraData(inicioParam), fim: paraData(fimParam) }

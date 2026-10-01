@@ -108,18 +108,36 @@ function TicketLogs({
   const [erroAviso, setErroAviso] = useState<string | null>(null);
   const listaRef = useRef<HTMLElement>(null);
   const jaRenderizou = useRef(false);
+  const forcarRolagem = useRef(false);
+  const pertoDoFim = useRef(true);
 
-  // Mantém a lista no final: abre já embaixo e desce quando entra um log novo.
+  function aoRolar() {
+    const lista = listaRef.current;
+    if (!lista) return;
+
+    pertoDoFim.current =
+      lista.scrollHeight - lista.scrollTop - lista.clientHeight < 80;
+  }
+
+  // Abre a lista já no final. Depois disso, só desce quando o próprio usuário
+  // publica um log ou quando ele já estava lendo o fim da conversa; quem está
+  // lendo logs antigos não perde a posição.
   useEffect(() => {
     const lista = listaRef.current;
     if (!lista) return;
 
-    lista.scrollTo({
-      top: lista.scrollHeight,
-      behavior: jaRenderizou.current ? "smooth" : "auto",
-    });
+    const primeiraRenderizacao = !jaRenderizou.current;
+
+    if (primeiraRenderizacao || forcarRolagem.current || pertoDoFim.current) {
+      lista.scrollTo({
+        top: lista.scrollHeight,
+        behavior: primeiraRenderizacao ? "auto" : "smooth",
+      });
+    }
+
     jaRenderizou.current = true;
-  }, [logs.length]);
+    forcarRolagem.current = false;
+  }, [logs]);
 
   async function registrarLog(evento: string, descricao: string) {
     const log = await publicarLog(ticketId, {
@@ -129,6 +147,7 @@ function TicketLogs({
     });
 
     // Log novo vai para o final da lista (ordem cronológica, como em um chat).
+    forcarRolagem.current = true;
     setLogs((anteriores) => [...anteriores, log]);
   }
 
@@ -163,6 +182,7 @@ function TicketLogs({
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
       <section
         ref={listaRef}
+        onScroll={aoRolar}
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-none border-x border-gray-200 bg-slate-100 p-6"
       >
         <h3 className="sticky top-0 z-10 -mx-6 -mt-6 bg-slate-100 px-6 py-3 font-bold text-card-foreground">
