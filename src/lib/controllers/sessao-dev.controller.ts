@@ -17,7 +17,7 @@ import { servicoUsuario } from "@/lib/services/usuario.service";
  *
  * Não há interface — chame a rota no console do navegador:
  *
- *   await fetch("/api/dev/sessao", { method: "POST" })       // 1º gestor ativo
+ *   await fetch("/api/dev/sessao", { method: "POST" })       // gestor do seed
  *   await fetch("/api/dev/sessao", {                         // gestor específico
  *     method: "POST",
  *     headers: { "Content-Type": "application/json" },
@@ -30,7 +30,7 @@ import { servicoUsuario } from "@/lib/services/usuario.service";
  * correto.
  *
  * Quando o login real entrar (próxima sprint), apague este arquivo, a rota
- * `app/api/dev/sessao/` e `servicoUsuario.buscarPrimeiroGestorAtivo`. O
+ * `app/api/dev/sessao/`. O
  * `lib/auth/sessao.ts` e as regras de autorização não precisam mudar.
  */
 
@@ -72,13 +72,12 @@ export class ControladorSessaoDev {
     }
 
     try {
-      // Sem `usuarioId` explícito, assume o primeiro gestor ativo — é o papel
-      // que o mockup usa para editar prioridade, e o seed sempre cria um.
+      // Sem `usuarioId` explícito, usa o gestor da estratégia atual de seed.
       const usuario = resultado.data.usuarioId
         ? await servicoUsuario.buscarPorId(resultado.data.usuarioId)
-        : await servicoUsuario.buscarPrimeiroGestorAtivo();
+        : await servicoUsuario.buscarPorEmail("gestor.seed@example.com");
 
-      if (!usuario) {
+      if (!usuario?.ativo) {
         return NextResponse.json(
           { erro: "Usuário não encontrado. Rode o seed ou informe um usuarioId válido." },
           { status: 404 },
