@@ -1,4 +1,4 @@
-import { UsuarioAtual } from "@/hooks/use-current-user";
+import type { UsuarioAtual } from "@/types/usuario";
 import { SidebarMenu, SidebarMenuItem } from "./ui/sidebar";
 
 export const AccountTypeLabel: Record<string, string> = {

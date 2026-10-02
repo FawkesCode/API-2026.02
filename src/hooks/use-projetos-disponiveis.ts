@@ -38,8 +38,8 @@ export function useProjetosDisponiveis() {
         if (!ativo) return;
 
         // "que apareçam os que estejam atrelados à atual equipe"
-        const filtrados = usuario.equipeId
-          ? dados.filter((projeto) => projeto.equipeId === usuario.equipeId)
+        const filtrados = usuario?.equipeId
+          ? dados.filter((projeto) => projeto.equipeId === usuario?.equipeId)
           : dados;
 
         setProjetos(dados);
@@ -59,7 +59,7 @@ export function useProjetosDisponiveis() {
     return () => {
       ativo = false;
     };
-  }, [usuario.equipeId]);
+  }, [usuario?.equipeId]);
 
   return { projetos, carregando, erro };
 }

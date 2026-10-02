@@ -141,6 +141,10 @@ export function AbrirTicketDialog({
 
   async function aoSubmeter(evento: React.FormEvent) {
     evento.preventDefault();
+    if (!usuario) {
+      setErroSubmissao("Selecione um usuário para abrir o ticket.");
+      return;
+    }
     setErroSubmissao(null);
 
     // Validação de campo obrigatório / formato — critério de aceite:
