@@ -35,7 +35,7 @@ function criarBanco(gestor: unknown) {
 const ticketDaEquipe = {
   id: ticketId,
   prioridade: Prioridade.MEDIA,
-  projeto: { equipeId },
+  equipesAlocadas: [{ equipeId }],
 };
 
 const gestorDaEquipe = {
@@ -131,6 +131,24 @@ describe("ServicoTicket.atualizarPrioridade", () => {
         evento: "PRIORIDADE_ALTERADA",
       }),
     });
+  });
+
+  it("permite gestor alocado mesmo quando o projeto pertence a outra equipe", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue({ ...ticketDaEquipe, projeto: { equipeId: "outra-equipe" } });
+    transacao.ticket.updateMany.mockResolvedValue({ count: 1 });
+    transacao.ticket.findUniqueOrThrow.mockResolvedValue(ticketDaEquipe);
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+    await servico.atualizarPrioridade(ticketId, { prioridade: Prioridade.ALTA, usuarioId: gestorId });
+    expect(transacao.ticket.updateMany).toHaveBeenCalledOnce();
+  });
+
+  it("bloqueia gestor do projeto quando sua equipe não está alocada", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue({ ...ticketDaEquipe, equipesAlocadas: [], projeto: { equipeId } });
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+    await expect(servico.atualizarPrioridade(ticketId, { prioridade: Prioridade.ALTA, usuarioId: gestorId })).rejects.toBeInstanceOf(ErroNaoAutorizadoParaAlterarPrioridade);
+    expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
   });
 
   it("não altera a prioridade quando o gestor é de outra equipe", async () => {

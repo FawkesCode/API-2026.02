@@ -25,7 +25,7 @@ import { servicoUsuario } from "@/lib/services/usuario.service";
  *   })
  *   await fetch("/api/dev/sessao", { method: "DELETE" })     // sair
  *
- * Atenção: só o gestor da equipe do projeto do ticket pode alterar a
+ * Atenção: só gestores das equipes alocadas ao ticket podem alterar a
  * prioridade, então entrar com o gestor errado devolve 403 — e isso está
  * correto.
  *

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { priorityBadgeVariants } from "@/components/priority-badge";
 import { PriorityButton } from "@/components/priority-button";
 import {
   PRIORITY_ENUM_TO_LEVEL,
@@ -21,6 +24,8 @@ interface PriorityEditorProps {
 }
 
 function PriorityEditor({ ticketId, priority }: PriorityEditorProps) {
+  const router = useRouter();
+  const [aberto, setAberto] = useState(false);
   const nivelInicial =
     PRIORITY_LABEL_TO_LEVEL[priority] ?? PRIORITY_ENUM_TO_LEVEL[priority] ?? null;
   const [nivelAtual, setNivelAtual] = useState<Priority | null>(nivelInicial);
@@ -54,6 +59,8 @@ function PriorityEditor({ ticketId, priority }: PriorityEditorProps) {
 
       setNivelAtual(selecionado);
       setSalvo(true);
+      setAberto(false);
+      router.refresh();
     } catch (erroCapturado) {
       setErro(
         erroCapturado instanceof Error
@@ -66,7 +73,22 @@ function PriorityEditor({ ticketId, priority }: PriorityEditorProps) {
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <Dialog open={aberto} onOpenChange={(valor) => {
+      setAberto(valor);
+      if (valor) { setSelecionado(nivelAtual); setErro(null); }
+    }}>
+      <DialogTrigger
+        className={priorityBadgeVariants({
+          priority: nivelAtual,
+          className: "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2",
+        })}
+        aria-label={`Alterar prioridade: ${nivelAtual ? PRIORITY_LABELS[nivelAtual] : priority}`}
+      >
+        {nivelAtual ? PRIORITY_LABELS[nivelAtual] : priority}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Alterar prioridade</DialogTitle><DialogDescription>Selecione a nova prioridade do ticket e salve.</DialogDescription></DialogHeader>
+        <div className="flex flex-col items-end gap-2">
       <div
         role="radiogroup"
         aria-label="Prioridade do ticket"
@@ -114,7 +136,9 @@ function PriorityEditor({ ticketId, priority }: PriorityEditorProps) {
           {salvando ? "Salvando..." : "Salvar"}
         </button>
       </div>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

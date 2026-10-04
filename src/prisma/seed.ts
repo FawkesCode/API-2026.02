@@ -70,7 +70,7 @@ async function main() {
       where: { email: "gestor.seed@example.com" },
       create: {
         nome: "Kami-sama",
-        email: "gestor.kami@brahmamuhurta.com",
+        email: "gestor.seed@example.com",
         senhaHash: "senha-fake-para-teste",
         cargo: Cargo.GESTOR,
         equipeId: equipe.id,
