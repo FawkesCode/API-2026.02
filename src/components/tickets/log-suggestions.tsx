@@ -18,7 +18,6 @@ function LogSuggestion({
             : "border-gray-200 bg-gray-50 text-muted-foreground hover:bg-gray-100",
         "transition-colors disabled:pointer-events-none disabled:opacity-50",
         className,
-  tone = "neutral",
       )}
       {...props}
     />

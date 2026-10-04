@@ -198,7 +198,7 @@ describe("rotas de tickets", () => {
 
     expect(resposta.status).toBe(403);
     expect(await resposta.json()).toMatchObject({
-      erro: "Apenas gestores da equipe responsável pelo ticket podem alterar sua prioridade.",
+      erro: new ErroNaoAutorizadoParaAlterarPrioridade().message,
     });
   });
 

@@ -1,3 +1,4 @@
+import { EMAIL_MASSA_SEED } from "@/lib/dev-users";
 import { obterSessaoAtual } from "@/lib/auth/sessao";
 import { servicoUsuario } from "@/lib/services/usuario.service";
 
@@ -25,6 +26,6 @@ export async function getUsuarioAtual() {
     return null;
   }
 
-  const massa = await servicoUsuario.buscarPorEmail("fernando@massanori.japa");
+  const massa = await servicoUsuario.buscarPorEmail(EMAIL_MASSA_SEED);
   return massa?.ativo ? massa : null;
 }

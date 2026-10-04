@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { EMAIL_GESTOR_SEED, EMAIL_MASSA_SEED } from "../lib/dev-users";
 import { prisma } from "../lib/prisma";
 import {
   Cargo,
@@ -53,7 +54,7 @@ async function main() {
       update: {},
     });
 
-    const email = "fernando@massanori.japa";
+    const email = EMAIL_MASSA_SEED;
     const massa = await tx.usuario.upsert({
       where: { email },
       create: {
@@ -67,10 +68,10 @@ async function main() {
     });
 
     const gestor = await tx.usuario.upsert({
-      where: { email: "gestor.seed@example.com" },
+      where: { email: EMAIL_GESTOR_SEED },
       create: {
         nome: "Kami-sama",
-        email: "gestor.seed@example.com",
+        email: EMAIL_GESTOR_SEED,
         senhaHash: "senha-fake-para-teste",
         cargo: Cargo.GESTOR,
         equipeId: equipe.id,

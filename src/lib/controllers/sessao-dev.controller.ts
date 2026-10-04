@@ -1,3 +1,4 @@
+import { EMAIL_GESTOR_SEED } from "@/lib/dev-users";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { criarTokenDeSessao } from "@/lib/auth/sessao";
@@ -75,7 +76,7 @@ export class ControladorSessaoDev {
       // Sem `usuarioId` explícito, usa o gestor da estratégia atual de seed.
       const usuario = resultado.data.usuarioId
         ? await servicoUsuario.buscarPorId(resultado.data.usuarioId)
-        : await servicoUsuario.buscarPorEmail("gestor.seed@example.com");
+        : await servicoUsuario.buscarPorEmail(EMAIL_GESTOR_SEED);
 
       if (!usuario?.ativo) {
         return NextResponse.json(
