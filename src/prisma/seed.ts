@@ -63,7 +63,7 @@ async function main() {
         cargo: Cargo.TECNICO,
         equipeId: equipe.id,
       },
-      update: { equipeId: equipe.id },
+      update: { ativo: true, equipeId: equipe.id },
     });
 
     const gestor = await tx.usuario.upsert({
@@ -75,7 +75,7 @@ async function main() {
         cargo: Cargo.GESTOR,
         equipeId: equipe.id,
       },
-      update: { cargo: Cargo.GESTOR, equipeId: equipe.id },
+      update: { ativo: true, cargo: Cargo.GESTOR, equipeId: equipe.id },
     });
 
     const cliente = await tx.cliente.upsert({
