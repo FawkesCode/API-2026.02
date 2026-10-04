@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/lib/generated/prisma/client";
+import { Cargo, StatusTicket, type Prisma, type PrismaClient } from "@/lib/generated/prisma/client";
 import type { CriarLogTicketSchema } from "@/schemas/historico.schema";
 
 const incluirUsuario = {
@@ -23,12 +23,22 @@ export class UsuarioSemAcessoAoTicketError extends Error {
   }
 }
 
+export class TransicaoTicketInvalidaError extends Error {}
+
+const TRANSICOES: Record<string, { origens: StatusTicket[]; destino: StatusTicket }> = {
+  ATIVIDADE_INICIADA: { origens: [StatusTicket.NAO_INICIADO, StatusTicket.EM_REVISAO], destino: StatusTicket.EM_ANDAMENTO },
+  ENCERRAMENTO_SOLICITADO: { origens: [StatusTicket.EM_ANDAMENTO, StatusTicket.EM_REVISAO], destino: StatusTicket.SOLICITACAO_ENCERRAMENTO },
+  ENCERRAMENTO_APROVADO: { origens: [StatusTicket.SOLICITACAO_ENCERRAMENTO], destino: StatusTicket.ENCERRADO },
+  ENCERRAMENTO_NEGADO: { origens: [StatusTicket.SOLICITACAO_ENCERRAMENTO], destino: StatusTicket.EM_REVISAO },
+};
+
 export class ServicoHistoricoTicket {
+  constructor(private readonly db: PrismaClient = prisma) {}
   async listarPorTicket(ticketId: string) {
-    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    const ticket = await this.db.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return null;
 
-    return prisma.historicoTicket.findMany({
+    return this.db.historicoTicket.findMany({
       where: { ticketId },
       orderBy: { criadoEm: "desc" },
       include: incluirUsuario,
@@ -36,40 +46,42 @@ export class ServicoHistoricoTicket {
   }
 
   async criar(ticketId: string, dados: CriarLogTicketSchema) {
-    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
-    if (!ticket) return null;
+    return this.db.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+        include: { equipesAlocadas: { select: { equipeId: true } } },
+      });
+      if (!ticket) return null;
 
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: dados.usuarioId },
-      select: { ativo: true, equipeId: true },
-    });
-
-    if (!usuario?.ativo || !usuario.equipeId) {
-      throw new UsuarioSemAcessoAoTicketError();
-    }
-
-    const ticketDaEquipe = await prisma.ticket.count({
-      where: {
-        id: ticketId,
-        OR: [
-          { equipesAlocadas: { some: { equipeId: usuario.equipeId } } },
-          { projeto: { equipeId: usuario.equipeId } },
-        ],
-      },
-    });
-
-    if (ticketDaEquipe === 0) {
-      throw new UsuarioSemAcessoAoTicketError();
-    }
-
-    return prisma.historicoTicket.create({
-      data: {
-        ticketId,
-        evento: dados.evento,
-        descricao: dados.descricao,
-        usuarioId: dados.usuarioId,
-      },
-      include: incluirUsuario,
+      const usuario = await tx.usuario.findUnique({
+        where: { id: dados.usuarioId },
+        select: { ativo: true, equipeId: true, cargo: true },
+      });
+      if (!usuario?.ativo || !usuario.equipeId ||
+          !ticket.equipesAlocadas.some((alocacao) => alocacao.equipeId === usuario.equipeId)) {
+        throw new UsuarioSemAcessoAoTicketError();
+      }
+      const decisao = ["ENCERRAMENTO_APROVADO", "ENCERRAMENTO_NEGADO"].includes(dados.evento);
+      if ((decisao && usuario.cargo !== Cargo.GESTOR) || dados.evento === "PRIORIDADE_ALTERADA") {
+        throw new UsuarioSemAcessoAoTicketError();
+      }
+      const transicao = Object.hasOwn(TRANSICOES, dados.evento) ? TRANSICOES[dados.evento] : undefined;
+      if (transicao) {
+        if (!transicao.origens.includes(ticket.status)) {
+          throw new TransicaoTicketInvalidaError("Esta ação não é permitida no status atual do ticket.");
+        }
+        const { count } = await tx.ticket.updateMany({
+          where: { id: ticketId, status: ticket.status },
+          data: { status: transicao.destino, encerradoEm: transicao.destino === StatusTicket.ENCERRADO ? new Date() : null },
+        });
+        if (count === 0) {
+          throw new TransicaoTicketInvalidaError("O status foi alterado por outro usuário. Atualize a página.");
+        }
+      }
+      return tx.historicoTicket.create({
+        data: { ticketId, evento: dados.evento, descricao: dados.descricao, usuarioId: dados.usuarioId },
+        include: incluirUsuario,
+      });
     });
   }
 }

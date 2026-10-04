@@ -4,7 +4,9 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import {
   servicoHistoricoTicket,
   UsuarioSemAcessoAoTicketError,
+  TransicaoTicketInvalidaError,
 } from "@/lib/services/historico.service";
+import { obterSessaoDaRequisicao } from "@/lib/auth/sessao";
 import { criarLogTicketSchema } from "@/schemas/historico.schema";
 
 async function extrairJson(requisicao: Request) {
@@ -22,6 +24,9 @@ async function extrairJson(requisicao: Request) {
 }
 
 function tratarErroInesperado(erro: unknown) {
+  if (erro instanceof TransicaoTicketInvalidaError) {
+    return NextResponse.json({ erro: erro.message }, { status: 409 });
+  }
   if (erro instanceof UsuarioSemAcessoAoTicketError) {
     return NextResponse.json({ erro: erro.message }, { status: 403 });
   }
@@ -65,10 +70,13 @@ export class ControladorHistoricoTicket {
       return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
     }
 
+    const sessao = obterSessaoDaRequisicao(requisicao);
+    if (!sessao) return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
-    const resultado = criarLogTicketSchema.safeParse(corpo);
+    const resultado = criarLogTicketSchema.omit({ usuarioId: true }).safeParse(corpo);
     if (!resultado.success) {
       return NextResponse.json(
         { erro: "Dados inválidos.", detalhes: z.flattenError(resultado.error).fieldErrors },
@@ -77,7 +85,7 @@ export class ControladorHistoricoTicket {
     }
 
     try {
-      const log = await servicoHistoricoTicket.criar(idValidado.data, resultado.data);
+      const log = await servicoHistoricoTicket.criar(idValidado.data, { ...resultado.data, usuarioId: sessao.usuarioId });
       if (!log) {
         return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
       }

@@ -282,7 +282,7 @@ export class ServicoTicket {
     return this.db.$transaction(async (tx) => {
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
-        include: { projeto: { select: { equipeId: true } } },
+        include: { equipesAlocadas: { select: { equipeId: true } } },
       });
       if (!ticket) return null;
 
@@ -293,7 +293,8 @@ export class ServicoTicket {
         !gestor ||
         !gestor.ativo ||
         gestor.cargo !== Cargo.GESTOR ||
-        gestor.equipeId !== ticket.projeto.equipeId
+        !gestor.equipeId ||
+        !ticket.equipesAlocadas.some((alocacao) => alocacao.equipeId === gestor.equipeId)
       ) {
         throw new ErroNaoAutorizadoParaAlterarPrioridade();
       }

@@ -1,3 +1,4 @@
+import { EMAIL_GESTOR_SEED } from "@/lib/dev-users";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { criarTokenDeSessao } from "@/lib/auth/sessao";
@@ -17,7 +18,7 @@ import { servicoUsuario } from "@/lib/services/usuario.service";
  *
  * Não há interface — chame a rota no console do navegador:
  *
- *   await fetch("/api/dev/sessao", { method: "POST" })       // 1º gestor ativo
+ *   await fetch("/api/dev/sessao", { method: "POST" })       // gestor do seed
  *   await fetch("/api/dev/sessao", {                         // gestor específico
  *     method: "POST",
  *     headers: { "Content-Type": "application/json" },
@@ -25,12 +26,12 @@ import { servicoUsuario } from "@/lib/services/usuario.service";
  *   })
  *   await fetch("/api/dev/sessao", { method: "DELETE" })     // sair
  *
- * Atenção: só o gestor da equipe do projeto do ticket pode alterar a
+ * Atenção: só gestores das equipes alocadas ao ticket podem alterar a
  * prioridade, então entrar com o gestor errado devolve 403 — e isso está
  * correto.
  *
  * Quando o login real entrar (próxima sprint), apague este arquivo, a rota
- * `app/api/dev/sessao/` e `servicoUsuario.buscarPrimeiroGestorAtivo`. O
+ * `app/api/dev/sessao/`. O
  * `lib/auth/sessao.ts` e as regras de autorização não precisam mudar.
  */
 
@@ -72,13 +73,12 @@ export class ControladorSessaoDev {
     }
 
     try {
-      // Sem `usuarioId` explícito, assume o primeiro gestor ativo — é o papel
-      // que o mockup usa para editar prioridade, e o seed sempre cria um.
+      // Sem `usuarioId` explícito, usa o gestor da estratégia atual de seed.
       const usuario = resultado.data.usuarioId
         ? await servicoUsuario.buscarPorId(resultado.data.usuarioId)
-        : await servicoUsuario.buscarPrimeiroGestorAtivo();
+        : await servicoUsuario.buscarPorEmail(EMAIL_GESTOR_SEED);
 
-      if (!usuario) {
+      if (!usuario?.ativo) {
         return NextResponse.json(
           { erro: "Usuário não encontrado. Rode o seed ou informe um usuarioId válido." },
           { status: 404 },

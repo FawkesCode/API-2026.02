@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "cn";
 import { LogEditor } from "@/components/tickets/log-editor";
 import { LogState, type LogStatus } from "@/components/tickets/log-states";
@@ -40,7 +41,6 @@ type LogItem =
 interface NovoLog {
   evento: string;
   descricao: string;
-  usuarioId: string;
 }
 
 interface RespostaDeErro {
@@ -93,7 +93,10 @@ async function publicarLog(ticketId: string, log: NovoLog) {
 interface TicketLogsProps {
   ticketId: string;
   logsIniciais: Array<LogItem>;
-  autor: Autor;
+  autor: Autor | null;
+  status: string;
+  podeRegistrar: boolean;
+  podeDecidir: boolean;
   className?: string;
 }
 
@@ -102,7 +105,11 @@ function TicketLogs({
   logsIniciais,
   autor,
   className,
+  status,
+  podeRegistrar,
+  podeDecidir,
 }: TicketLogsProps) {
+  const router = useRouter();
   const [logs, setLogs] = useState(logsIniciais);
   const [enviandoAviso, setEnviandoAviso] = useState(false);
   const [erroAviso, setErroAviso] = useState<string | null>(null);
@@ -112,10 +119,10 @@ function TicketLogs({
     const log = await publicarLog(ticketId, {
       evento,
       descricao,
-      usuarioId: autor.id,
     });
 
     setLogs((anteriores) => [log, ...anteriores]);
+    router.refresh();
     listaRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -178,15 +185,15 @@ function TicketLogs({
               userName={log.autorNome}
               description={log.descricao}
               date={log.criadoEm}
-              align={log.autorId === autor.id ? "right" : "left"}
+              align={log.autorId === autor?.id ? "right" : "left"}
             />
           ),
         )}
       </section>
 
-      <section className="shrink-0 rounded-b-md border  border-gray-200 bg-white p-6">
+      {podeRegistrar && autor && <section className="shrink-0 rounded-b-md border  border-gray-200 bg-white p-6">
         <div className="flex flex-wrap gap-2 pb-4">
-          <LogSuggestion
+          {["Não iniciado", "Em revisão"].includes(status) && <LogSuggestion
             disabled={enviandoAviso}
             onClick={() =>
               enviarAviso(
@@ -196,8 +203,8 @@ function TicketLogs({
             }
           >
             Enviar &quot;Equipe Começou a trabalhar&quot;
-          </LogSuggestion>
-          <LogSuggestion
+          </LogSuggestion>}
+          {["Em andamento", "Em revisão"].includes(status) && <LogSuggestion
             disabled={enviandoAviso}
             onClick={() =>
               enviarAviso(
@@ -207,7 +214,11 @@ function TicketLogs({
             }
           >
             Enviar &quot;Solicito Encerramento do Ticket&quot;
-          </LogSuggestion>
+          </LogSuggestion>}
+          {podeDecidir && status === "Solicitação de encerramento" && <>
+            <LogSuggestion tone="approve" disabled={enviandoAviso} onClick={() => enviarAviso(EventoLog.EncerramentoAprovado, `${autor.nome} aprovou o encerramento`)}>Aprovar encerramento</LogSuggestion>
+            <LogSuggestion tone="deny" disabled={enviandoAviso} onClick={() => enviarAviso(EventoLog.EncerramentoNegado, `${autor.nome} negou o encerramento`)}>Negar encerramento</LogSuggestion>
+          </>}
         </div>
         {erroAviso && (
           <p role="alert" className="pb-4 text-sm font-medium text-destructive">
@@ -215,7 +226,7 @@ function TicketLogs({
           </p>
         )}
         <LogEditor onEnviar={enviarLogManual} />
-      </section>
+      </section>}
     </div>
   );
 }
