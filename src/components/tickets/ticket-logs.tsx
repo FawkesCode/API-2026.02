@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
 import { LogEditor } from "@/components/tickets/log-editor";
@@ -53,11 +53,13 @@ function mensagemDeErro(status: number, resposta: RespostaDeErro | null) {
 
   if (status === 400 && detalhe) return detalhe;
   if (status === 400 && resposta?.erro) return resposta.erro;
+
   if (status === 403) {
     return (
       resposta?.erro ?? "Você não tem acesso para registrar logs neste ticket."
     );
   }
+
   if (status === 404) {
     return "Ticket não encontrado. Atualize a página e tente novamente.";
   }
@@ -81,6 +83,7 @@ async function publicarLog(ticketId: string, log: NovoLog) {
   }
 
   const logCriado = logRespostaSchema.safeParse(resposta);
+
   if (!logCriado.success) {
     throw new Error(
       "O log foi registrado, mas não pôde ser exibido. Atualize a página para visualizá-lo.",
@@ -110,10 +113,49 @@ function TicketLogs({
   podeDecidir,
 }: TicketLogsProps) {
   const router = useRouter();
+
   const [logs, setLogs] = useState(logsIniciais);
   const [enviandoAviso, setEnviandoAviso] = useState(false);
   const [erroAviso, setErroAviso] = useState<string | null>(null);
+
   const listaRef = useRef<HTMLElement>(null);
+  const jaRenderizou = useRef(false);
+  const forcarRolagem = useRef(false);
+  const pertoDoFim = useRef(true);
+
+  function aoRolar() {
+    const lista = listaRef.current;
+
+    if (!lista) return;
+
+    pertoDoFim.current =
+      lista.scrollHeight - lista.scrollTop - lista.clientHeight < 80;
+  }
+
+  // Abre a lista já no final. Depois disso, só desce quando o próprio usuário
+  // publica um log ou quando ele já estava lendo o fim da conversa; quem está
+  // lendo logs antigos não perde a posição.
+  useEffect(() => {
+    const lista = listaRef.current;
+
+    if (!lista) return;
+
+    const primeiraRenderizacao = !jaRenderizou.current;
+
+    if (
+      primeiraRenderizacao ||
+      forcarRolagem.current ||
+      pertoDoFim.current
+    ) {
+      lista.scrollTo({
+        top: lista.scrollHeight,
+        behavior: primeiraRenderizacao ? "auto" : "smooth",
+      });
+    }
+
+    jaRenderizou.current = true;
+    forcarRolagem.current = false;
+  }, [logs]);
 
   async function registrarLog(evento: string, descricao: string) {
     const log = await publicarLog(ticketId, {
@@ -121,9 +163,11 @@ function TicketLogs({
       descricao,
     });
 
-    setLogs((anteriores) => [log, ...anteriores]);
+    // Log novo vai para o final da lista (ordem cronológica, como em um chat).
+    forcarRolagem.current = true;
+    setLogs((anteriores) => [...anteriores, log]);
+
     router.refresh();
-    listaRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function enviarAviso(evento: string, descricao: string) {
@@ -157,9 +201,12 @@ function TicketLogs({
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
       <section
         ref={listaRef}
+        onScroll={aoRolar}
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-none border-x border-gray-200 bg-slate-100 p-6"
       >
-        <h3 className="font-bold text-card-foreground">LOGS DE ATIVIDADE</h3>
+        <h3 className="sticky top-0 z-10 -mx-6 -mt-6 bg-slate-100 px-6 py-3 font-bold text-card-foreground">
+          LOGS DE ATIVIDADE
+        </h3>
 
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -191,44 +238,82 @@ function TicketLogs({
         )}
       </section>
 
-      {podeRegistrar && autor && <section className="shrink-0 rounded-b-md border  border-gray-200 bg-white p-6">
-        <div className="flex flex-wrap gap-2 pb-4">
-          {["Não iniciado", "Em revisão"].includes(status) && <LogSuggestion
-            disabled={enviandoAviso}
-            onClick={() =>
-              enviarAviso(
-                EventoLog.AtividadeIniciada,
-                `${autor.nome} deu início a atividade`,
-              )
-            }
-          >
-            Enviar &quot;Equipe Começou a trabalhar&quot;
-          </LogSuggestion>}
-          {["Em andamento", "Em revisão"].includes(status) && <LogSuggestion
-            disabled={enviandoAviso}
-            onClick={() =>
-              enviarAviso(
-                EventoLog.EncerramentoSolicitado,
-                `${autor.nome} realizou a solicitação`,
-              )
-            }
-          >
-            Enviar &quot;Solicito Encerramento do Ticket&quot;
-          </LogSuggestion>}
-          {podeDecidir && status === "Solicitação de encerramento" && <>
-            <LogSuggestion tone="approve" disabled={enviandoAviso} onClick={() => enviarAviso(EventoLog.EncerramentoAprovado, `${autor.nome} aprovou o encerramento`)}>Aprovar encerramento</LogSuggestion>
-            <LogSuggestion tone="deny" disabled={enviandoAviso} onClick={() => enviarAviso(EventoLog.EncerramentoNegado, `${autor.nome} negou o encerramento`)}>Negar encerramento</LogSuggestion>
-          </>}
-        </div>
-        {erroAviso && (
-          <p role="alert" className="pb-4 text-sm font-medium text-destructive">
-            {erroAviso}
-          </p>
-        )}
-        <LogEditor onEnviar={enviarLogManual} />
-      </section>}
+      {podeRegistrar && autor && (
+        <section className="shrink-0 rounded-b-md border border-gray-200 bg-white p-6">
+          <div className="flex flex-wrap gap-2 pb-4">
+            {["Não iniciado", "Em revisão"].includes(status) && (
+              <LogSuggestion
+                disabled={enviandoAviso}
+                onClick={() =>
+                  enviarAviso(
+                    EventoLog.AtividadeIniciada,
+                    `${autor.nome} deu início a atividade`,
+                  )
+                }
+              >
+                Enviar &quot;Equipe Começou a trabalhar&quot;
+              </LogSuggestion>
+            )}
+
+            {["Em andamento", "Em revisão"].includes(status) && (
+              <LogSuggestion
+                disabled={enviandoAviso}
+                onClick={() =>
+                  enviarAviso(
+                    EventoLog.EncerramentoSolicitado,
+                    `${autor.nome} realizou a solicitação`,
+                  )
+                }
+              >
+                Enviar &quot;Solicito Encerramento do Ticket&quot;
+              </LogSuggestion>
+            )}
+
+            {podeDecidir && status === "Solicitação de encerramento" && (
+              <>
+                <LogSuggestion
+                  tone="approve"
+                  disabled={enviandoAviso}
+                  onClick={() =>
+                    enviarAviso(
+                      EventoLog.EncerramentoAprovado,
+                      `${autor.nome} aprovou o encerramento`,
+                    )
+                  }
+                >
+                  Aprovar encerramento
+                </LogSuggestion>
+
+                <LogSuggestion
+                  tone="deny"
+                  disabled={enviandoAviso}
+                  onClick={() =>
+                    enviarAviso(
+                      EventoLog.EncerramentoNegado,
+                      `${autor.nome} negou o encerramento`,
+                    )
+                  }
+                >
+                  Negar encerramento
+                </LogSuggestion>
+              </>
+            )}
+          </div>
+
+          {erroAviso && (
+            <p
+              role="alert"
+              className="pb-4 text-sm font-medium text-destructive"
+            >
+              {erroAviso}
+            </p>
+          )}
+
+          <LogEditor onEnviar={enviarLogManual} />
+        </section>
+      )}
     </div>
   );
 }
 
-export { TicketLogs, type LogItem, type Autor };
+export default TicketLogs;

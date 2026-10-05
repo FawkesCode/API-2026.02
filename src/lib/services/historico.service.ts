@@ -40,7 +40,8 @@ export class ServicoHistoricoTicket {
 
     return this.db.historicoTicket.findMany({
       where: { ticketId },
-      orderBy: { criadoEm: "desc" },
+      // Ordem cronológica (mais antigo em cima, mais novo embaixo), como em um chat.
+      orderBy: { criadoEm: "asc" },
       include: incluirUsuario,
     });
   }
