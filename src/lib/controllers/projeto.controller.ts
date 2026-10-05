@@ -1,3 +1,5 @@
+import { obterSessaoDaRequisicao } from "@/lib/auth/sessao";
+import { servicoUsuario } from "@/lib/services/usuario.service";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
@@ -37,8 +39,16 @@ function tratarErroInesperado(erro: unknown) {
 }
 
 export class ControladorProjeto {
-  async listar(_requisicao: Request) {
+  async listar(requisicao: Request) {
+    const sessao = obterSessaoDaRequisicao(requisicao);
+    if (!sessao) {
+      return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+    }
     try {
+      const usuario = await servicoUsuario.buscarPorId(sessao.usuarioId);
+      if (!usuario?.ativo) {
+        return NextResponse.json({ erro: "Usuário sem acesso." }, { status: 403 });
+      }
       const projetos = await servicoProjeto.listarAtivos();
       return NextResponse.json(projetos, { status: 200 });
     } catch (erro) {

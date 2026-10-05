@@ -44,7 +44,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const pathname = usePathname();
-  const loggedUserTeam = useCurrentUser().equipeId;
+  const loggedUserTeam = useCurrentUser()?.equipeId;
 
   const handleManageTeam = async (id: string, type?: string) => {
     setIsLoading(true);

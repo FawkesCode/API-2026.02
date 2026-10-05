@@ -5,8 +5,9 @@ import { TicketLogs } from "@/components/tickets/ticket-logs";
 
 import { getTicket } from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
-import { getLogAuthor, getTicketLogs } from "@/lib/data/ticket-logs";
+import { getTicketLogs } from "@/lib/data/ticket-logs";
 import { getUsuarioLogado } from "@/lib/data/sessao";
+import { toAutor } from "@/lib/mappers/historico.mapper";
 import { Cargo } from "@/lib/generated/prisma/client";
 
 type PriorityLevel = "critical" | "high" | "medium" | "low";
@@ -21,12 +22,12 @@ const TicketPriorityMap: Record<string, PriorityLevel> = {
 export default async function TicketsLogsView({ id }: { id: string }) {
   const ticket: TicketView = await getTicket(id);
 
-  const [autor, logs, usuarioLogado] = await Promise.all([
-    getLogAuthor(id),
+  const [logs, usuarioLogado] = await Promise.all([
     getTicketLogs(id),
     getUsuarioLogado(),
   ]);
-  const podeAlterarPrioridade = usuarioLogado?.cargo === Cargo.GESTOR;
+  const daEquipe = !!usuarioLogado?.equipeId && ticket.teams.some((team) => team.id === usuarioLogado.equipeId);
+  const podeAlterarPrioridade = daEquipe && usuarioLogado?.cargo === Cargo.GESTOR;
 
   return (
     <>
@@ -75,7 +76,8 @@ export default async function TicketsLogsView({ id }: { id: string }) {
         ) : null}
       </section>
 
-      <TicketLogs ticketId={id} logsIniciais={logs} autor={autor} />
+      <TicketLogs ticketId={id} logsIniciais={logs} autor={usuarioLogado ? toAutor(usuarioLogado) : null}
+        status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade} />
     </>
   );
 }

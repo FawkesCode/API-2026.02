@@ -46,17 +46,13 @@ function validarCorpo<T>(schema: z.ZodType<T>, corpo: unknown) {
 function tratarErroInesperado(erro: unknown) {
   if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {
     return NextResponse.json(
-      { erro: "Apenas gestores da equipe responsável pelo ticket podem alterar sua prioridade." },
+      { erro: erro.message },
       { status: 403 },
     );
   }
 
   if (erro instanceof ErroConflitoPrioridade) {
     return NextResponse.json({ erro: erro.message }, { status: 409 });
-  }
-
-  if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {
-    return NextResponse.json({ erro: erro.message }, { status: 403 });
   }
 
   if (erro instanceof ProjetoNaoEncontradoError) {
