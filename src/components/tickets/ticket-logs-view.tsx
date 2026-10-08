@@ -1,13 +1,12 @@
 import { PriorityBadge } from "@/components/priority-badge";
 import { PriorityEditor } from "@/components/tickets/priority-editor";
 import { Badge } from "@/components/ui/badge";
-import TicketLogs from "@/components/tickets/ticket-logs";
-import { GerenciarEquipesTicket } from "@/components/tickets/gerenciar-equipes-ticket";
+import { TicketLogs } from "@/components/tickets/ticket-logs";
+
 import { getTicket } from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
-import { getTicketLogs } from "@/lib/data/ticket-logs";
+import { getLogAuthor, getTicketLogs } from "@/lib/data/ticket-logs";
 import { getUsuarioLogado } from "@/lib/data/sessao";
-import { toAutor } from "@/lib/mappers/historico.mapper";
 import { Cargo } from "@/lib/generated/prisma/client";
 
 type PriorityLevel = "critical" | "high" | "medium" | "low";
@@ -22,12 +21,12 @@ const TicketPriorityMap: Record<string, PriorityLevel> = {
 export default async function TicketsLogsView({ id }: { id: string }) {
   const ticket: TicketView = await getTicket(id);
 
-  const [logs, usuarioLogado] = await Promise.all([
+  const [autor, logs, usuarioLogado] = await Promise.all([
+    getLogAuthor(id),
     getTicketLogs(id),
     getUsuarioLogado(),
   ]);
-  const daEquipe = !!usuarioLogado?.equipeId && ticket.teams.some((team) => team.id === usuarioLogado.equipeId);
-  const podeAlterarPrioridade = daEquipe && usuarioLogado?.cargo === Cargo.GESTOR;
+  const podeAlterarPrioridade = usuarioLogado?.cargo === Cargo.GESTOR;
 
   return (
     <>
@@ -51,35 +50,32 @@ export default async function TicketsLogsView({ id }: { id: string }) {
                 )}
               </div>
             </div>
-            <div className="flex items-start gap-2">
-              {ticket.teams.length !== 0 ? (
-                ticket.teams.map((team) => (
-                  <Badge
-                    key={team.id}
-                    className="border-muted-foreground bg-transparent text-xs text-muted-foreground"
-                  >
-                    {team.nome}
-                  </Badge>
-                ))
-              ) : (
-                <span>Times ainda não atribuídos.</span>
-              )}
-              {podeAlterarPrioridade && (
-                <GerenciarEquipesTicket
-                  ticketId={id}
-                  equipesDoTicket={ticket.teams}
-                  equipeDoUsuarioId={usuarioLogado?.equipeId}
-                />
-              )}
+            <div className="flex items-center justify-between pt-3">
+              <p className="pt-1 text-xs text-muted-foreground">
+                Criado em {ticket.openedAt} • Tempo restante:{" "}
+                {ticket.timeRemaining.split("em")} • Aberto por{" "}
+                <span className="italic">{ticket.createdBy}</span>
+              </p>
+              <div className="flex gap-2">
+                {ticket.teams.length !== 0 ? (
+                  ticket.teams.map((team) => (
+                    <Badge
+                      key={team.id}
+                      className="border-muted-foreground bg-transparent text-xs text-muted-foreground"
+                    >
+                      {team.nome}
+                    </Badge>
+                  ))
+                ) : (
+                  <span>Times ainda não atribuídos.</span>
+                )}
+              </div>
             </div>
           </>
         ) : null}
       </section>
 
-
-
-      <TicketLogs ticketId={id} logsIniciais={logs} autor={usuarioLogado ? toAutor(usuarioLogado) : null}
-        status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade} />
+      <TicketLogs ticketId={id} logsIniciais={logs} autor={autor} />
     </>
   );
 }

@@ -6,8 +6,8 @@ import {
   Prisma,
 } from "@/lib/generated/prisma/client";
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
-import { RELACOES_TICKET } from "@/services/ticket.service";
-import { ordenarTicketsPorPrioridade } from "@/services/ticket-order";
+import { RELACOES_TICKET } from "@/lib/services/ticket.service";
+import { ordenarTicketsPorPrioridade } from "@/lib/services/ticket-order";
 
 const DIAS_SLA_INSTALACAO_PADRAO = 7;
 
@@ -87,10 +87,11 @@ export class ServicoProjeto {
         },
       });
 
-      const ticketInstalacaoComRelacoes = await tx.ticket.findUniqueOrThrow({
-        where: { id: ticketInstalacao.id },
-        include: RELACOES_TICKET,
-      });
+      const ticketInstalacaoComRelacoes =
+        await tx.ticket.findUniqueOrThrow({
+          where: { id: ticketInstalacao.id },
+          include: RELACOES_TICKET,
+        });
 
       return {
         projeto,
@@ -263,7 +264,8 @@ export class ServicoProjeto {
       }
 
       const diferencaPrioridade =
-        RANKING_PRIORIDADE[a.prioridade] - RANKING_PRIORIDADE[b.prioridade];
+        RANKING_PRIORIDADE[a.prioridade] -
+        RANKING_PRIORIDADE[b.prioridade];
 
       if (diferencaPrioridade !== 0) {
         return diferencaPrioridade;

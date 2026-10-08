@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Categoria, Prioridade } from "@/types/ticket-enums";
+import { Categoria, Prioridade } from "@/lib/ticket-enums";
 import { SLA_OPTIONS } from "@/lib/sla-options";
 
 const slaValues = SLA_OPTIONS.map((opcao) => opcao.value) as [

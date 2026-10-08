@@ -1,4 +1,4 @@
-import { controladorHistoricoTicket } from "@/controllers/historico.controller";
+import { controladorHistoricoTicket } from "@/lib/controllers/historico.controller";
 
 type ContextoRota = { params: Promise<{ id: string }> };
 

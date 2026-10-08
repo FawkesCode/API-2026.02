@@ -1,7 +1,4 @@
-import {
-  servicoTicket,
-  type FiltrosTicket,
-} from "../../services/ticket.service";
+import { servicoTicket, type FiltrosTicket } from "../services/ticket.service";
 import { toTicketDTO } from "../mappers/ticket.mapper";
 
 export type { FiltrosTicket };

@@ -1,4 +1,4 @@
-import { servicoProjeto } from "@/services/projeto.service";
+import { servicoProjeto } from "@/lib/services/projeto.service";
 import ProjectsView from "@/components/projects/projects-view";
 import { notFound } from "next/navigation";
 import { getClients, getUsers } from "@/lib/data/dropdown";

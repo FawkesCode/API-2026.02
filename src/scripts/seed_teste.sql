@@ -71,7 +71,7 @@ VALUES
 -- 3. Criar Gestores e Técnicos
 INSERT INTO usuarios (id, nome, email, senha_hash, cargo, ativo, senha_provisoria, criado_em, atualizado_em, equipe_id) 
 VALUES 
-(@gestor_id, 'Gestor Teste', 'gestor.seed@example.com', 'senha-fake-para-teste', 'GESTOR', TRUE, TRUE, NOW(), NOW(), @equipe_id),
+(@gestor_id, 'Vitor', 'vbomfimcunha@gmail.com', 'senha-fake-para-teste', 'GESTOR', TRUE, TRUE, NOW(), NOW(), @equipe_id),
 (@gestor2_id, 'Tais', 'tata.ssouz47@gmail.com', 'senha-fake-para-teste', 'GESTOR', TRUE, TRUE, NOW(), NOW(), @equipe2_id),
 (@gestor3_id, 'Gabriel', 'gabixp4@gmail.com', 'senha-fake-para-teste', 'GESTOR', TRUE, TRUE, NOW(), NOW(), @equipe3_id),
 (@tecnico1_id, 'Rafael Souza', 'rafael.souza@techmail.com', 'senha-fake-para-teste', 'TECNICO', TRUE, TRUE, NOW(), NOW(), @equipe_id),
@@ -150,3 +150,4 @@ INSERT INTO historico_ticket (id, evento, descricao, criado_em, ticket_id, usuar
 SELECT UUID(), 'Atualização de Diagnóstico', 'Realizada a vistoria preliminar. Os componentes físicos estão sendo testados e a configuração de software validada.', DATE_ADD(NOW(), INTERVAL -2 HOUR), id, aberto_por_id
 FROM tickets
 LIMIT 12;
+

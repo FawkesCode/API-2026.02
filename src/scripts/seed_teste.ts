@@ -14,7 +14,7 @@ async function main() {
   const gestor = await prisma.usuario.create({
     data: {
       nome: "Gestor Teste",
-      email: "gestor.seed@example.com",
+      email: "vbomfimcunha@gmail.com",
       senhaHash: "senha-fake-para-teste",
       cargo: Cargo.GESTOR,
       equipeId: equipe.id,

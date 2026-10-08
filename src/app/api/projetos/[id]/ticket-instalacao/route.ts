@@ -1,4 +1,4 @@
-import { controladorProjeto } from "@/controllers/projeto.controller";
+import { controladorProjeto } from "@/lib/controllers/projeto.controller";
 
 type ContextoRota = { params: Promise<{ id: string }> };
 

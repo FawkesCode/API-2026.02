@@ -1,4 +1,4 @@
-import { controladorSessaoDev } from "@/controllers/sessao-dev.controller";
+import { controladorSessaoDev } from "@/lib/controllers/sessao-dev.controller";
 
 export async function POST(requisicao: Request) {
   return controladorSessaoDev.entrar(requisicao);

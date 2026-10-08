@@ -1,9 +1,9 @@
 "use client";
 
-import { Prioridade } from "@/types/ticket-enums";
+import { Prioridade } from "@/lib/ticket-enums";
 import { PriorityButton } from "@/components/priority-button";
 import { FormLabel } from "@/components/form/form-label";
-import { PRIORITY_LABELS, type Priority } from "@/types/priority";
+import { PRIORITY_LABELS, type Priority } from "@/lib/priority";
 
 const PRIORIDADE_PARA_PRIORITY: Record<Prioridade, Priority> = {
   [Prioridade.BAIXA]: "low",

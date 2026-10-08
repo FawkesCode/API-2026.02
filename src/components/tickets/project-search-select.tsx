@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import {
   useProjetosDisponiveis,
   type ProjetoResumo,
-} from "@/hooks/use-available-projects";
+} from "@/hooks/use-projetos-disponiveis";
 
 interface ProjectSearchSelectProps {
   onSelect: (projeto: ProjetoResumo) => void;

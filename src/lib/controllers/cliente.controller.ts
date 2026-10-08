@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { servicoCliente } from "@/services/cliente.service";
+import { servicoCliente } from "@/lib/services/cliente.service";
 
 export class ControladorCliente {
   async listar(_requisicao: Request) {
@@ -8,10 +8,7 @@ export class ControladorCliente {
       return NextResponse.json(clientes, { status: 200 });
     } catch (erro) {
       console.error(erro);
-      return NextResponse.json(
-        { erro: "Erro interno ao listar clientes." },
-        { status: 500 },
-      );
+      return NextResponse.json({ erro: "Erro interno ao listar clientes." }, { status: 500 });
     }
   }
 }

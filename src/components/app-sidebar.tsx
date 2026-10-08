@@ -61,11 +61,7 @@ export function AppSidebar() {
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="flex flex-col gap-6 pt-4 pb-4">
         <LogoSidebar />
-        {loggedUser ? (
-          <UserSidebar user={loggedUser} />
-        ) : (
-          <p className="text-sm text-muted-foreground">Nenhum usuário selecionado.</p>
-        )}
+        <UserSidebar user={loggedUser} />
       </SidebarHeader>
       <div className="sidebar-divider"></div>
       <SidebarContent>

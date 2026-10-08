@@ -116,7 +116,7 @@ model Ticket {
   descricao    String       @db.Text
   categoria    Categoria
   prioridade   Prioridade   @default(MEDIA)
-  status       StatusTicket @default(EM_ANDAMENTO)
+  status       StatusTicket @default(NAO_INICIADO)
   slaEm        DateTime     @map("sla_em") @db.DateTime(3)
   encerradoEm  DateTime?    @map("encerrado_em") @db.DateTime(3)
   criadoEm     DateTime     @default(now()) @map("criado_em") @db.DateTime(3)

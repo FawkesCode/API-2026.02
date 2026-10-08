@@ -7,18 +7,21 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "../ui/card";
+} from "./ui/card";
 import { ChevronsLeft, Ticket } from "lucide-react";
-import { Badge } from "../ui/badge";
-import { PriorityBadge } from "../priority-badge";
+import { Badge } from "./ui/badge";
+import { PriorityBadge } from "./priority-badge";
 import { ReactNode, useEffect, useState } from "react";
 import { cn } from "cn";
 import { TeamLogView, TicketView } from "@/types/ticket";
-import { Button } from "../ui/button";
+import { Button } from "./ui/button";
 import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
-import { addMyTeamAction, removeMyTeamAction } from "@/lib/actions/ticket";
+import {
+  addMyTeamAction,
+  removeMyTeamAction,
+} from "@/lib/actions/ticket";
 import { usePathname } from "next/navigation";
-import { toast } from "../ui/toast";
+import { toast } from "./ui/toast";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface TicketCardProps {
@@ -41,7 +44,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const pathname = usePathname();
-  const loggedUserTeam = useCurrentUser()?.equipeId;
+  const loggedUserTeam = useCurrentUser().equipeId;
 
   const handleManageTeam = async (id: string, type?: string) => {
     setIsLoading(true);
@@ -115,8 +118,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
                     Times atribuídos não definidos
                   </span>
                 )}
-                {loggedUserTeam &&
-                curTicket.teams?.some((team) => team.id === loggedUserTeam) ? (
+                {loggedUserTeam && curTicket.teams?.some((team) => team.id === loggedUserTeam) ? (
                   <TeamAddButton
                     style="outline"
                     onClick={() => handleManageTeam(loggedUserTeam)}
@@ -157,24 +159,24 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
                 "hidden!",
             )}
           >
-            <>
-              <h4 className="text-card-foreground font-bold text-md mb-3">
-                LOGS Recentes
-              </h4>
-              <div className="flex flex-col gap-2 mask-[linear-gradient(to_top,transparent,black_1.5rem)]">
-                {curTicket.recentLogs?.map((log) => (
-                  <TeamLog
-                    key={`${log.title}-${log.sentAt}`}
-                    title={log.title}
-                    sentBy={log.sentBy}
-                    sentAt={log.sentAt}
-                  />
-                ))}
-              </div>
-              <span className="cursor-pointer font-bold text-xs bg-transparent text-center text-card-foreground hover:underline  hover:bg-transparent">
-                Ver mais
-              </span>
-            </>
+              <>
+                <h4 className="text-card-foreground font-bold text-md mb-3">
+                  LOGS Recentes
+                </h4>
+                <div className="flex flex-col gap-2 mask-[linear-gradient(to_top,transparent,black_1.5rem)]">
+                  {curTicket.recentLogs?.map((log) => (
+                    <TeamLog
+                      key={`${log.title}-${log.sentAt}`}
+                      title={log.title}
+                      sentBy={log.sentBy}
+                      sentAt={log.sentAt}
+                    />
+                  ))}
+                </div>
+                <span className="cursor-pointer font-bold text-xs bg-transparent text-center text-card-foreground hover:underline  hover:bg-transparent">
+                  Ver mais
+                </span>
+              </>
           </div>
         </CardFooter>
       </Card>

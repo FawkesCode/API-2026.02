@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { servicoProjeto } from "../../services/projeto.service";
-import { servicoTicket } from "../../services/ticket.service";
+import { servicoProjeto } from "../services/projeto.service";
+import { servicoTicket } from "../services/ticket.service";
 import { toTicketDTO } from "../mappers/ticket.mapper";
 import type { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 
@@ -36,7 +36,10 @@ export interface FiltrosTicket {
   data?: string;
 }
 
-export async function getProjectTickets(id: string, filtros?: FiltrosTicket) {
+export async function getProjectTickets(
+  id: string,
+  filtros?: FiltrosTicket,
+) {
   if (!id) {
     notFound();
   }

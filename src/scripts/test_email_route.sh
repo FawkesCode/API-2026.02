@@ -13,10 +13,10 @@ DB_PORT="3307"
 echo "Busca direta no banco de dados MySQL local na porta $DB_PORT..."
 
 # 1. Buscar o Gestor gerado pelo seed
-MANAGER_ID=$(mysql -u "$DB_USER" -p"$DB_PASS" -h "$DB_HOST" -P "$DB_PORT" -D "$DB_NAME" -sN -e "SELECT id FROM usuarios WHERE email='gestor.seed@example.com' LIMIT 1;")
+MANAGER_ID=$(mysql -u "$DB_USER" -p"$DB_PASS" -h "$DB_HOST" -P "$DB_PORT" -D "$DB_NAME" -sN -e "SELECT id FROM usuarios WHERE email='vbomfimcunha@gmail.com' LIMIT 1;")
 
 if [ -z "$MANAGER_ID" ]; then
-    echo "❌ Erro: Não foi possível encontrar o Gestor 'gestor.seed@example.com'."
+    echo "❌ Erro: Não foi possível encontrar o Gestor 'vbomfimcunha@gmail.com'."
     echo "Verifique se o banco está rodando na porta $DB_PORT e se o seed foi executado."
     exit 1
 fi

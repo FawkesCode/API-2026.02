@@ -1,8 +1,7 @@
-import { EMAIL_GESTOR_SEED } from "@/lib/dev-users";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { criarTokenDeSessao } from "@/auth/sessao";
-import { servicoUsuario } from "@/services/usuario.service";
+import { criarTokenDeSessao } from "@/lib/auth/sessao";
+import { servicoUsuario } from "@/lib/services/usuario.service";
 
 /**
  * TEMPORÁRIO — emissor de sessão para desenvolvimento.
@@ -18,7 +17,7 @@ import { servicoUsuario } from "@/services/usuario.service";
  *
  * Não há interface — chame a rota no console do navegador:
  *
- *   await fetch("/api/dev/sessao", { method: "POST" })       // gestor do seed
+ *   await fetch("/api/dev/sessao", { method: "POST" })       // 1º gestor ativo
  *   await fetch("/api/dev/sessao", {                         // gestor específico
  *     method: "POST",
  *     headers: { "Content-Type": "application/json" },
@@ -26,12 +25,12 @@ import { servicoUsuario } from "@/services/usuario.service";
  *   })
  *   await fetch("/api/dev/sessao", { method: "DELETE" })     // sair
  *
- * Atenção: só gestores das equipes alocadas ao ticket podem alterar a
+ * Atenção: só o gestor da equipe do projeto do ticket pode alterar a
  * prioridade, então entrar com o gestor errado devolve 403 — e isso está
  * correto.
  *
  * Quando o login real entrar (próxima sprint), apague este arquivo, a rota
- * `app/api/dev/sessao/`. O
+ * `app/api/dev/sessao/` e `servicoUsuario.buscarPrimeiroGestorAtivo`. O
  * `lib/auth/sessao.ts` e as regras de autorização não precisam mudar.
  */
 
@@ -42,9 +41,7 @@ const entrarSchema = z.object({
 });
 
 function ambienteDeDesenvolvimento() {
-  return (
-    process.env.NODE_ENV !== "production" && process.env.production !== "true"
-  );
+  return process.env.NODE_ENV !== "production" && process.env.production !== "true";
 }
 
 function bloqueadoEmProducao() {
@@ -69,25 +66,21 @@ export class ControladorSessaoDev {
     const resultado = entrarSchema.safeParse(corpo ?? {});
     if (!resultado.success) {
       return NextResponse.json(
-        {
-          erro: "Dados inválidos.",
-          detalhes: z.flattenError(resultado.error).fieldErrors,
-        },
+        { erro: "Dados inválidos.", detalhes: z.flattenError(resultado.error).fieldErrors },
         { status: 400 },
       );
     }
 
     try {
-      // Sem `usuarioId` explícito, usa o gestor da estratégia atual de seed.
+      // Sem `usuarioId` explícito, assume o primeiro gestor ativo — é o papel
+      // que o mockup usa para editar prioridade, e o seed sempre cria um.
       const usuario = resultado.data.usuarioId
         ? await servicoUsuario.buscarPorId(resultado.data.usuarioId)
-        : await servicoUsuario.buscarPorEmail(EMAIL_GESTOR_SEED);
+        : await servicoUsuario.buscarPrimeiroGestorAtivo();
 
-      if (!usuario?.ativo) {
+      if (!usuario) {
         return NextResponse.json(
-          {
-            erro: "Usuário não encontrado. Rode o seed ou informe um usuarioId válido.",
-          },
+          { erro: "Usuário não encontrado. Rode o seed ou informe um usuarioId válido." },
           { status: 404 },
         );
       }
@@ -110,10 +103,7 @@ export class ControladorSessaoDev {
       return resposta;
     } catch (erro) {
       console.error(erro);
-      return NextResponse.json(
-        { erro: "Erro interno ao criar a sessão." },
-        { status: 500 },
-      );
+      return NextResponse.json({ erro: "Erro interno ao criar a sessão." }, { status: 500 });
     }
   }
 

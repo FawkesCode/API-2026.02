@@ -1,4 +1,4 @@
-import { controladorTicket } from "@/controllers/ticket.controller";
+import { controladorTicket } from "@/lib/controllers/ticket.controller";
 
 export async function GET(requisicao: Request) {
   return controladorTicket.listar(requisicao);
