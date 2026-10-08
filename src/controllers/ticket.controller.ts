@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
-import { obterSessaoDaRequisicao } from "@/lib/auth/sessao";
+import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import {
   ErroConflitoPrioridade,
   ErroNaoAutorizadoParaAlterarPrioridade,
   ProjetoNaoEncontradoError,
   servicoTicket,
-} from "@/lib/services/ticket.service";
+} from "@/services/ticket.service";
 import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
 import {
   atualizarPrioridadeTicketSchema,
@@ -35,7 +35,10 @@ function validarCorpo<T>(schema: z.ZodType<T>, corpo: unknown) {
     return {
       dados: null,
       erro: NextResponse.json(
-        { erro: "Dados inválidos.", detalhes: z.flattenError(resultado.error).fieldErrors },
+        {
+          erro: "Dados inválidos.",
+          detalhes: z.flattenError(resultado.error).fieldErrors,
+        },
         { status: 400 },
       ),
     };
@@ -45,10 +48,7 @@ function validarCorpo<T>(schema: z.ZodType<T>, corpo: unknown) {
 
 function tratarErroInesperado(erro: unknown) {
   if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {
-    return NextResponse.json(
-      { erro: erro.message },
-      { status: 403 },
-    );
+    return NextResponse.json({ erro: erro.message }, { status: 403 });
   }
 
   if (erro instanceof ErroConflitoPrioridade) {
@@ -62,13 +62,18 @@ function tratarErroInesperado(erro: unknown) {
   if (erro instanceof Prisma.PrismaClientKnownRequestError) {
     if (erro.code === "P2003") {
       return NextResponse.json(
-        { erro: "Referência inválida: projetoId, abertoPorId, responsavelId ou equipeId não existem." },
+        {
+          erro: "Referência inválida: projetoId, abertoPorId, responsavelId ou equipeId não existem.",
+        },
         { status: 400 },
       );
     }
 
     if (erro.code === "P2025") {
-      return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+      return NextResponse.json(
+        { erro: "Ticket não encontrado." },
+        { status: 404 },
+      );
     }
 
     if (erro.code === "P2002") {
@@ -80,7 +85,10 @@ function tratarErroInesperado(erro: unknown) {
   }
 
   console.error(erro);
-  return NextResponse.json({ erro: "Erro interno ao processar o ticket." }, { status: 500 });
+  return NextResponse.json(
+    { erro: "Erro interno ao processar o ticket." },
+    { status: 500 },
+  );
 }
 
 export class ControladorTicket {
@@ -88,7 +96,10 @@ export class ControladorTicket {
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
-    const { dados, erro: erroDeValidacao } = validarCorpo(criarTicketSchema, corpo);
+    const { dados, erro: erroDeValidacao } = validarCorpo(
+      criarTicketSchema,
+      corpo,
+    );
     if (erroDeValidacao) return erroDeValidacao;
 
     try {
@@ -105,11 +116,16 @@ export class ControladorTicket {
     if (usuarioId !== null) {
       const idValidado = z.uuid().safeParse(usuarioId);
       if (!idValidado.success) {
-        return NextResponse.json({ erro: "usuarioId deve ser um UUID válido." }, { status: 400 });
+        return NextResponse.json(
+          { erro: "usuarioId deve ser um UUID válido." },
+          { status: 400 },
+        );
       }
 
       try {
-        const tickets = await servicoTicket.listarPorEquipeDoUsuario(idValidado.data);
+        const tickets = await servicoTicket.listarPorEquipeDoUsuario(
+          idValidado.data,
+        );
         return NextResponse.json(tickets, { status: 200 });
       } catch (erro) {
         return tratarErroInesperado(erro);
@@ -127,7 +143,10 @@ export class ControladorTicket {
   async atualizarPrioridade(requisicao: Request, ticketId: string) {
     const idValidado = z.uuid().safeParse(ticketId);
     if (!idValidado.success) {
-      return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
+      return NextResponse.json(
+        { erro: "ID do ticket inválido." },
+        { status: 400 },
+      );
     }
 
     const sessao = obterSessaoDaRequisicao(requisicao);
@@ -138,7 +157,10 @@ export class ControladorTicket {
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
-    const { dados, erro: erroDeValidacao } = validarCorpo(atualizarPrioridadeTicketSchema, corpo);
+    const { dados, erro: erroDeValidacao } = validarCorpo(
+      atualizarPrioridadeTicketSchema,
+      corpo,
+    );
     if (erroDeValidacao) return erroDeValidacao;
 
     try {
@@ -147,7 +169,10 @@ export class ControladorTicket {
         usuarioId: sessao.usuarioId,
       });
       if (!ticket) {
-        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+        return NextResponse.json(
+          { erro: "Ticket não encontrado." },
+          { status: 404 },
+        );
       }
       return NextResponse.json(toTicketDTO(ticket), { status: 200 });
     } catch (erro) {
@@ -159,31 +184,49 @@ export class ControladorTicket {
     try {
       const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
       if (!ticket) {
-        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+        return NextResponse.json(
+          { erro: "Ticket não encontrado." },
+          { status: 404 },
+        );
       }
       return NextResponse.json(toTicketDTO(ticket), { status: 200 });
     } catch (erro) {
       console.error(erro);
-      return NextResponse.json({ erro: "Erro interno ao buscar o ticket." }, { status: 500 });
+      return NextResponse.json(
+        { erro: "Erro interno ao buscar o ticket." },
+        { status: 500 },
+      );
     }
   }
 
   async alocarEquipe(requisicao: Request, ticketId: string) {
     const idValidado = z.uuid().safeParse(ticketId);
     if (!idValidado.success) {
-      return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
+      return NextResponse.json(
+        { erro: "ID do ticket inválido." },
+        { status: 400 },
+      );
     }
 
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
-    const { dados, erro: erroDeValidacao } = validarCorpo(alocarEquipeTicketSchema, corpo);
+    const { dados, erro: erroDeValidacao } = validarCorpo(
+      alocarEquipeTicketSchema,
+      corpo,
+    );
     if (erroDeValidacao) return erroDeValidacao;
 
     try {
-      const ticket = await servicoTicket.alocarEquipe(idValidado.data, dados.equipeId);
+      const ticket = await servicoTicket.alocarEquipe(
+        idValidado.data,
+        dados.equipeId,
+      );
       if (!ticket) {
-        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+        return NextResponse.json(
+          { erro: "Ticket não encontrado." },
+          { status: 404 },
+        );
       }
       return NextResponse.json(toTicketDTO(ticket), { status: 200 });
     } catch (erro) {

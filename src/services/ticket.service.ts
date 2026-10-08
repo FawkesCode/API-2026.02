@@ -12,7 +12,7 @@ import type {
   CriarTicketSchema,
   AtualizarPrioridadeComAutor,
 } from "@/schemas/ticket.schema";
-import { ordenarTicketsPorPrioridade } from "@/lib/services/ticket-order";
+import { ordenarTicketsPorPrioridade } from "@/services/ticket-order";
 
 export class ErroConflitoPrioridade extends Error {
   constructor(message: string) {
@@ -24,7 +24,9 @@ export class ErroConflitoPrioridade extends Error {
 // NOTE: se esta classe já existir em outro arquivo de erros do projeto,
 // remova esta definição local e importe a existente em vez de duplicá-la.
 export class ErroNaoAutorizadoParaAlterarPrioridade extends Error {
-  constructor(message = "Usuário não autorizado a alterar a prioridade deste ticket.") {
+  constructor(
+    message = "Usuário não autorizado a alterar a prioridade deste ticket.",
+  ) {
     super(message);
     this.name = "ErroNaoAutorizadoParaAlterarPrioridade";
   }
@@ -221,10 +223,10 @@ export class ServicoTicket {
 
         equipesAlocadas: equipeIds.length
           ? {
-            create: equipeIds.map((equipeId) => ({
-              equipeId,
-            })),
-          }
+              create: equipeIds.map((equipeId) => ({
+                equipeId,
+              })),
+            }
           : undefined,
       },
       include: RELACOES_TICKET,
@@ -294,7 +296,9 @@ export class ServicoTicket {
         !gestor.ativo ||
         gestor.cargo !== Cargo.GESTOR ||
         !gestor.equipeId ||
-        !ticket.equipesAlocadas.some((alocacao) => alocacao.equipeId === gestor.equipeId)
+        !ticket.equipesAlocadas.some(
+          (alocacao) => alocacao.equipeId === gestor.equipeId,
+        )
       ) {
         throw new ErroNaoAutorizadoParaAlterarPrioridade();
       }
@@ -376,7 +380,7 @@ export class ServicoTicket {
       update: {},
     });
 
-   try {
+    try {
       const gestorDaEquipe = await this.db.usuario.findFirst({
         where: {
           equipeId: equipeId,
@@ -386,13 +390,21 @@ export class ServicoTicket {
       });
 
       if (gestorDaEquipe) {
-        const emailService = new EmailManagerService(gestorDaEquipe.id, ticketId);
+        const emailService = new EmailManagerService(
+          gestorDaEquipe.id,
+          ticketId,
+        );
         await emailService.sendMail();
       } else {
-        console.warn(`Nenhum gestor encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`);
+        console.warn(
+          `Nenhum gestor encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`,
+        );
       }
     } catch (error) {
-      console.error("Erro ao tentar enviar e-mail de alocação de equipe:", error);
+      console.error(
+        "Erro ao tentar enviar e-mail de alocação de equipe:",
+        error,
+      );
     }
 
     return this.db.ticket.findUniqueOrThrow({

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { servicoHistoricoTicket } from "../services/historico.service";
-import { servicoProjeto } from "../services/projeto.service";
-import { servicoTicket } from "../services/ticket.service";
-import { servicoUsuario } from "../services/usuario.service";
+import { servicoHistoricoTicket } from "../../services/historico.service";
+import { servicoProjeto } from "../../services/projeto.service";
+import { servicoTicket } from "../../services/ticket.service";
+import { servicoUsuario } from "../../services/usuario.service";
 import { toAutor, toLogItem } from "../mappers/historico.mapper";
 import { getUsuarioLogado } from "./sessao";
 

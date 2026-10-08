@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
-import { servicoTicket } from "../services/ticket.service";
+import { servicoTicket } from "../../services/ticket.service";
 
 export async function getTeamsTickets(usuarioId: string) {
   if (!usuarioId) {

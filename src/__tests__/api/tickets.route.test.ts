@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "@/app/api/tickets/route";
 import { PUT } from "@/app/api/tickets/[id]/route";
-import { criarTokenDeSessao } from "@/lib/auth/sessao";
+import { criarTokenDeSessao } from "@/auth/sessao";
 import {
   ErroNaoAutorizadoParaAlterarPrioridade,
   servicoTicket,
-} from "@/lib/services/ticket.service";
+} from "@/services/ticket.service";
 
 process.env.SESSION_SECRET = "segredo-de-teste-com-32-caracteres";
 
@@ -62,9 +62,15 @@ function ticketComRelacoes(id = ticketId, prioridade = "CRITICA") {
     projetoId: "550e8400-e29b-41d4-a716-446655440000",
     abertoPorId: "550e8400-e29b-41d4-a716-446655440001",
     responsavelId: null,
-    abertoPor: { id: "550e8400-e29b-41d4-a716-446655440001", nome: "Gestor Teste" },
+    abertoPor: {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      nome: "Gestor Teste",
+    },
     responsavel: null,
-    projeto: { id: "550e8400-e29b-41d4-a716-446655440000", nome: "Projeto Teste" },
+    projeto: {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      nome: "Projeto Teste",
+    },
     equipesAlocadas: [{ equipe: { id: equipeId, nome: "Equipe Suporte" } }],
   } as unknown as Awaited<ReturnType<typeof servicoTicket.criar>>;
 }
@@ -88,8 +94,12 @@ describe("rotas de tickets", () => {
 
   it("valida e encaminha uma prioridade crítica para a persistência na criação", async () => {
     const ticketCriado = ticketComRelacoes();
-    const criar = vi.spyOn(servicoTicket, "criar").mockResolvedValue(ticketCriado);
-    const resposta = await POST(requisicao("http://localhost/api/tickets", dadosValidosParaCriacao()));
+    const criar = vi
+      .spyOn(servicoTicket, "criar")
+      .mockResolvedValue(ticketCriado);
+    const resposta = await POST(
+      requisicao("http://localhost/api/tickets", dadosValidosParaCriacao()),
+    );
 
     expect(resposta.status).toBe(201);
     expect(criar).toHaveBeenCalledWith(
@@ -212,12 +222,17 @@ describe("rotas de tickets", () => {
       status: "NAO_INICIADO",
       criadoEm: new Date("2026-09-24T10:00:00.000Z"),
       slaEm: new Date("2026-09-25T10:00:00.000Z"),
-      projeto: { id: "550e8400-e29b-41d4-a716-446655440000", localInstalacao: "Sala 1" },
+      projeto: {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        localInstalacao: "Sala 1",
+      },
       equipesAlocadas: [],
     };
     const listarTodos = vi
       .spyOn(servicoTicket, "listarTodos")
-      .mockResolvedValue([ticket] as unknown as Awaited<ReturnType<typeof servicoTicket.listarTodos>>);
+      .mockResolvedValue([ticket] as unknown as Awaited<
+        ReturnType<typeof servicoTicket.listarTodos>
+      >);
     const listarPorEquipe = vi.spyOn(servicoTicket, "listarPorEquipeDoUsuario");
 
     const resposta = await GET(new Request("http://localhost/api/tickets"));
@@ -225,7 +240,10 @@ describe("rotas de tickets", () => {
 
     expect(resposta.status).toBe(200);
     expect(corpo).toHaveLength(1);
-    expect(corpo[0]).toMatchObject({ id: ticketId, title: "Falha no equipamento" });
+    expect(corpo[0]).toMatchObject({
+      id: ticketId,
+      title: "Falha no equipamento",
+    });
     expect(listarTodos).toHaveBeenCalledWith();
     expect(listarPorEquipe).not.toHaveBeenCalled();
   });
@@ -234,12 +252,16 @@ describe("rotas de tickets", () => {
     const listarPorEquipe = vi
       .spyOn(servicoTicket, "listarPorEquipeDoUsuario")
       .mockResolvedValue(
-        [] as unknown as Awaited<ReturnType<typeof servicoTicket.listarPorEquipeDoUsuario>>,
+        [] as unknown as Awaited<
+          ReturnType<typeof servicoTicket.listarPorEquipeDoUsuario>
+        >,
       );
     const listarTodos = vi.spyOn(servicoTicket, "listarTodos");
 
     const resposta = await GET(
-      new Request(`http://localhost/api/tickets?usuarioId=${usuarioDaSessaoId}`),
+      new Request(
+        `http://localhost/api/tickets?usuarioId=${usuarioDaSessaoId}`,
+      ),
     );
 
     expect(resposta.status).toBe(200);
@@ -248,7 +270,9 @@ describe("rotas de tickets", () => {
   });
 
   it("rejeita um usuarioId inválido na listagem", async () => {
-    const resposta = await GET(new Request("http://localhost/api/tickets?usuarioId=not-a-uuid"));
+    const resposta = await GET(
+      new Request("http://localhost/api/tickets?usuarioId=not-a-uuid"),
+    );
 
     expect(resposta.status).toBe(400);
   });

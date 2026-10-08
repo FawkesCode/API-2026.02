@@ -4,7 +4,7 @@ import {
   ErroConflitoPrioridade,
   ErroNaoAutorizadoParaAlterarPrioridade,
   ServicoTicket,
-} from "@/lib/services/ticket.service";
+} from "@/services/ticket.service";
 
 type BancoTicket = ConstructorParameters<typeof ServicoTicket>[0];
 
@@ -24,8 +24,8 @@ function criarBanco(gestor: unknown) {
   };
   const banco = {
     ticket: { create: vi.fn() },
-    $transaction: vi.fn(
-      async (callback: (tx: typeof transacao) => unknown) => callback(transacao),
+    $transaction: vi.fn(async (callback: (tx: typeof transacao) => unknown) =>
+      callback(transacao),
     ),
   };
 
@@ -47,7 +47,10 @@ const gestorDaEquipe = {
 
 describe("ServicoTicket.atualizarPrioridade", () => {
   it("não altera prioridade nem histórico para gestor inativo", async () => {
-    const { banco, transacao } = criarBanco({ ...gestorDaEquipe, ativo: false });
+    const { banco, transacao } = criarBanco({
+      ...gestorDaEquipe,
+      ativo: false,
+    });
     transacao.ticket.findUnique.mockResolvedValue(ticketDaEquipe);
     const servico = new ServicoTicket(banco as unknown as BancoTicket);
 
@@ -66,10 +69,12 @@ describe("ServicoTicket.atualizarPrioridade", () => {
     transacao.ticket.findUnique.mockResolvedValue(null);
     const servico = new ServicoTicket(banco as unknown as BancoTicket);
 
-    expect(await servico.atualizarPrioridade(ticketId, {
-      prioridade: Prioridade.CRITICA,
-      usuarioId: gestorId,
-    })).toBeNull();
+    expect(
+      await servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.CRITICA,
+        usuarioId: gestorId,
+      }),
+    ).toBeNull();
     expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
     expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
   });
@@ -135,19 +140,34 @@ describe("ServicoTicket.atualizarPrioridade", () => {
 
   it("permite gestor alocado mesmo quando o projeto pertence a outra equipe", async () => {
     const { banco, transacao } = criarBanco(gestorDaEquipe);
-    transacao.ticket.findUnique.mockResolvedValue({ ...ticketDaEquipe, projeto: { equipeId: "outra-equipe" } });
+    transacao.ticket.findUnique.mockResolvedValue({
+      ...ticketDaEquipe,
+      projeto: { equipeId: "outra-equipe" },
+    });
     transacao.ticket.updateMany.mockResolvedValue({ count: 1 });
     transacao.ticket.findUniqueOrThrow.mockResolvedValue(ticketDaEquipe);
     const servico = new ServicoTicket(banco as unknown as BancoTicket);
-    await servico.atualizarPrioridade(ticketId, { prioridade: Prioridade.ALTA, usuarioId: gestorId });
+    await servico.atualizarPrioridade(ticketId, {
+      prioridade: Prioridade.ALTA,
+      usuarioId: gestorId,
+    });
     expect(transacao.ticket.updateMany).toHaveBeenCalledOnce();
   });
 
   it("bloqueia gestor do projeto quando sua equipe não está alocada", async () => {
     const { banco, transacao } = criarBanco(gestorDaEquipe);
-    transacao.ticket.findUnique.mockResolvedValue({ ...ticketDaEquipe, equipesAlocadas: [], projeto: { equipeId } });
+    transacao.ticket.findUnique.mockResolvedValue({
+      ...ticketDaEquipe,
+      equipesAlocadas: [],
+      projeto: { equipeId },
+    });
     const servico = new ServicoTicket(banco as unknown as BancoTicket);
-    await expect(servico.atualizarPrioridade(ticketId, { prioridade: Prioridade.ALTA, usuarioId: gestorId })).rejects.toBeInstanceOf(ErroNaoAutorizadoParaAlterarPrioridade);
+    await expect(
+      servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.ALTA,
+        usuarioId: gestorId,
+      }),
+    ).rejects.toBeInstanceOf(ErroNaoAutorizadoParaAlterarPrioridade);
     expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
   });
 
@@ -247,7 +267,11 @@ describe("ordenação das listas de tickets", () => {
   const tickets = [
     { id: "media", prioridade: Prioridade.MEDIA, criadoEm: dataNova },
     { id: "baixa", prioridade: Prioridade.BAIXA, criadoEm: dataNova },
-    { id: "critica-antiga", prioridade: Prioridade.CRITICA, criadoEm: dataAntiga },
+    {
+      id: "critica-antiga",
+      prioridade: Prioridade.CRITICA,
+      criadoEm: dataAntiga,
+    },
     { id: "critica-nova", prioridade: Prioridade.CRITICA, criadoEm: dataNova },
     { id: "alta", prioridade: Prioridade.ALTA, criadoEm: dataNova },
   ];
