@@ -36,12 +36,12 @@ import { FormInput, FormTextarea } from "@/components/form/form-field";
 import { FormLabel } from "@/components/form/form-label";
 import { PrioritySelectField } from "@/components/tickets/priority-select-field";
 import { EquipesMultiSelect } from "@/components/tickets/equipes-multi-select";
-import { useProjetosDisponiveis } from "@/hooks/use-projetos-disponiveis";
+import { useProjetosDisponiveis } from "@/hooks/use-available-projects";
 import { useEquipes } from "@/hooks/use-equipes";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { SLA_OPTIONS, calcularSlaEm } from "@/lib/sla-options";
 import { ticketFormSchema } from "@/schemas/ticket-form.schema";
-import { Categoria, Prioridade } from "@/lib/ticket-enums";
+import { Categoria, Prioridade } from "@/types/ticket-enums";
 
 const CATEGORIA_LABELS: Record<Categoria, string> = {
   [Categoria.INSTALACAO]: "Instalação",
@@ -141,6 +141,10 @@ export function AbrirTicketDialog({
 
   async function aoSubmeter(evento: React.FormEvent) {
     evento.preventDefault();
+    if (!usuario) {
+      setErroSubmissao("Selecione um usuário para abrir o ticket.");
+      return;
+    }
     setErroSubmissao(null);
 
     // Validação de campo obrigatório / formato — critério de aceite:

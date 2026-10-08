@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import PageHeader from "@/components/page-header";
-import TicketCard from "@/components/ticket-card";
-import TicketFilter from "@/components/ticket-filter";
+import TicketCard from "@/components/tickets/ticket-card";
+import TicketFilter from "@/components/tickets/ticket-filter";
 import { NovoTicketButton } from "@/components/tickets/novo-ticket-button";
 import { getAllTickets } from "@/lib/data/tickets";
 import { TicketView } from "@/types/ticket";

@@ -29,6 +29,11 @@ export function useProjetosDisponiveis() {
     async function carregar() {
       setCarregando(true);
       setErro(null);
+      setProjetos([]);
+      if (!usuario?.equipeId) {
+        setCarregando(false);
+        return;
+      }
       try {
         const resposta = await fetch("/api/projetos");
         if (!resposta.ok) {
@@ -38,11 +43,9 @@ export function useProjetosDisponiveis() {
         if (!ativo) return;
 
         // "que apareçam os que estejam atrelados à atual equipe"
-        const filtrados = usuario.equipeId
-          ? dados.filter((projeto) => projeto.equipeId === usuario.equipeId)
-          : dados;
+        const filtrados = dados.filter((projeto) => projeto.equipeId === usuario.equipeId);
 
-        setProjetos(dados);
+        setProjetos(filtrados);
       } catch (erroCapturado) {
         if (!ativo) return;
         setErro(
@@ -59,7 +62,13 @@ export function useProjetosDisponiveis() {
     return () => {
       ativo = false;
     };
-  }, [usuario.equipeId]);
+  }, [usuario?.equipeId]);
 
-  return { projetos, carregando, erro };
+  return {
+    projetos: usuario?.equipeId
+      ? projetos.filter((projeto) => projeto.equipeId === usuario.equipeId)
+      : [],
+    carregando: !!usuario?.equipeId && carregando,
+    erro: usuario?.equipeId ? erro : null,
+  };
 }

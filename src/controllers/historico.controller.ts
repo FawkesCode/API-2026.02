@@ -4,7 +4,9 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import {
   servicoHistoricoTicket,
   UsuarioSemAcessoAoTicketError,
-} from "@/lib/services/historico.service";
+  TransicaoTicketInvalidaError,
+} from "@/services/historico.service";
+import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import { criarLogTicketSchema } from "@/schemas/historico.schema";
 
 async function extrairJson(requisicao: Request) {
@@ -22,11 +24,17 @@ async function extrairJson(requisicao: Request) {
 }
 
 function tratarErroInesperado(erro: unknown) {
+  if (erro instanceof TransicaoTicketInvalidaError) {
+    return NextResponse.json({ erro: erro.message }, { status: 409 });
+  }
   if (erro instanceof UsuarioSemAcessoAoTicketError) {
     return NextResponse.json({ erro: erro.message }, { status: 403 });
   }
 
-  if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2003") {
+  if (
+    erro instanceof Prisma.PrismaClientKnownRequestError &&
+    erro.code === "P2003"
+  ) {
     return NextResponse.json(
       { erro: "Referência inválida: usuarioId não existe." },
       { status: 400 },
@@ -34,20 +42,31 @@ function tratarErroInesperado(erro: unknown) {
   }
 
   console.error(erro);
-  return NextResponse.json({ erro: "Erro interno ao processar o log do ticket." }, { status: 500 });
+  return NextResponse.json(
+    { erro: "Erro interno ao processar o log do ticket." },
+    { status: 500 },
+  );
 }
 
 export class ControladorHistoricoTicket {
   async listar(_requisicao: Request, ticketId: string) {
     const idValidado = z.uuid().safeParse(ticketId);
     if (!idValidado.success) {
-      return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
+      return NextResponse.json(
+        { erro: "ID do ticket inválido." },
+        { status: 400 },
+      );
     }
 
     try {
-      const logs = await servicoHistoricoTicket.listarPorTicket(idValidado.data);
+      const logs = await servicoHistoricoTicket.listarPorTicket(
+        idValidado.data,
+      );
       if (!logs) {
-        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+        return NextResponse.json(
+          { erro: "Ticket não encontrado." },
+          { status: 404 },
+        );
       }
       return NextResponse.json(logs, { status: 200 });
     } catch (erro) {
@@ -62,24 +81,42 @@ export class ControladorHistoricoTicket {
   async criar(requisicao: Request, ticketId: string) {
     const idValidado = z.uuid().safeParse(ticketId);
     if (!idValidado.success) {
-      return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
+      return NextResponse.json(
+        { erro: "ID do ticket inválido." },
+        { status: 400 },
+      );
     }
+
+    const sessao = obterSessaoDaRequisicao(requisicao);
+    if (!sessao)
+      return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
 
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
-    const resultado = criarLogTicketSchema.safeParse(corpo);
+    const resultado = criarLogTicketSchema
+      .omit({ usuarioId: true })
+      .safeParse(corpo);
     if (!resultado.success) {
       return NextResponse.json(
-        { erro: "Dados inválidos.", detalhes: z.flattenError(resultado.error).fieldErrors },
+        {
+          erro: "Dados inválidos.",
+          detalhes: z.flattenError(resultado.error).fieldErrors,
+        },
         { status: 400 },
       );
     }
 
     try {
-      const log = await servicoHistoricoTicket.criar(idValidado.data, resultado.data);
+      const log = await servicoHistoricoTicket.criar(idValidado.data, {
+        ...resultado.data,
+        usuarioId: sessao.usuarioId,
+      });
       if (!log) {
-        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+        return NextResponse.json(
+          { erro: "Ticket não encontrado." },
+          { status: 404 },
+        );
       }
       return NextResponse.json(log, { status: 201 });
     } catch (erro) {

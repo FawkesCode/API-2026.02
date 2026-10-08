@@ -1,5 +1,5 @@
-import { servicoCliente } from "../services/cliente.service";
-import { servicoUsuario } from "../services/usuario.service";
+import { servicoCliente } from "../../services/cliente.service";
+import { servicoUsuario } from "../../services/usuario.service";
 
 export interface SelectInterface {
   label: string;

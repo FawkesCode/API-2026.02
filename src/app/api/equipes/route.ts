@@ -1,4 +1,4 @@
-import { controladorEquipe } from "@/lib/controllers/equipe.controller";
+import { controladorEquipe } from "@/controllers/equipe.controller";
 
 export async function GET() {
   return controladorEquipe.listar();

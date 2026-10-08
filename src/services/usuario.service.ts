@@ -1,6 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { Cargo } from "@/lib/generated/prisma/client";
 
+const dadosUsuarioAtual = {
+  id: true,
+  nome: true,
+  email: true,
+  cargo: true,
+  ativo: true,
+  equipeId: true,
+  equipe: { select: { nome: true } },
+} as const;
+
 export class ServicoUsuario {
   /**
    * Lista usuários ativos com apenas id/nome, opcionalmente filtrando por
@@ -15,28 +25,17 @@ export class ServicoUsuario {
     });
   }
 
-  /**
-   * Primeiro gestor ativo, usado pelo emissor de sessão de desenvolvimento
-   * (`lib/controllers/sessao-dev.controller.ts`) quando nenhum usuário é
-   * informado. Pode sair junto com ele quando o login real existir.
-   */
-  async buscarPrimeiroGestorAtivo() {
-    return prisma.usuario.findFirst({
-      where: { ativo: true, cargo: Cargo.GESTOR },
-      select: { id: true, nome: true, cargo: true },
-      orderBy: { criadoEm: "asc" },
+  async buscarPorEmail(email: string) {
+    return prisma.usuario.findUnique({
+      where: { email },
+      select: dadosUsuarioAtual,
     });
   }
 
   async buscarPorId(usuarioId: string) {
     return prisma.usuario.findUnique({
       where: { id: usuarioId },
-      select: {
-        id: true,
-        nome: true,
-        cargo: true,
-        equipe: { select: { nome: true } },
-      },
+      select: dadosUsuarioAtual,
     });
   }
 }

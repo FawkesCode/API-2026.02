@@ -7,7 +7,7 @@ import { podeAbrirTicket } from "@/lib/access-control";
 export function NovoTicketButton() {
   const usuario = useCurrentUser();
 
-  if (!podeAbrirTicket(usuario.cargo)) {
+  if (!usuario || !podeAbrirTicket(usuario.cargo)) {
     return null;
   }
 

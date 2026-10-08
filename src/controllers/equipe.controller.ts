@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { servicoEquipe } from "@/lib/services/equipe.service";
+import { servicoEquipe } from "@/services/equipe.service";
 
 export class ControladorEquipe {
   async listar() {
