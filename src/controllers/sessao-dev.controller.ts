@@ -1,8 +1,8 @@
 import { EMAIL_GESTOR_SEED } from "@/lib/dev-users";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { criarTokenDeSessao } from "@/lib/auth/sessao";
-import { servicoUsuario } from "@/lib/services/usuario.service";
+import { criarTokenDeSessao } from "@/auth/sessao";
+import { servicoUsuario } from "@/services/usuario.service";
 
 /**
  * TEMPORÁRIO — emissor de sessão para desenvolvimento.
@@ -42,7 +42,9 @@ const entrarSchema = z.object({
 });
 
 function ambienteDeDesenvolvimento() {
-  return process.env.NODE_ENV !== "production" && process.env.production !== "true";
+  return (
+    process.env.NODE_ENV !== "production" && process.env.production !== "true"
+  );
 }
 
 function bloqueadoEmProducao() {
@@ -67,7 +69,10 @@ export class ControladorSessaoDev {
     const resultado = entrarSchema.safeParse(corpo ?? {});
     if (!resultado.success) {
       return NextResponse.json(
-        { erro: "Dados inválidos.", detalhes: z.flattenError(resultado.error).fieldErrors },
+        {
+          erro: "Dados inválidos.",
+          detalhes: z.flattenError(resultado.error).fieldErrors,
+        },
         { status: 400 },
       );
     }
@@ -80,7 +85,9 @@ export class ControladorSessaoDev {
 
       if (!usuario?.ativo) {
         return NextResponse.json(
-          { erro: "Usuário não encontrado. Rode o seed ou informe um usuarioId válido." },
+          {
+            erro: "Usuário não encontrado. Rode o seed ou informe um usuarioId válido.",
+          },
           { status: 404 },
         );
       }
@@ -103,7 +110,10 @@ export class ControladorSessaoDev {
       return resposta;
     } catch (erro) {
       console.error(erro);
-      return NextResponse.json({ erro: "Erro interno ao criar a sessão." }, { status: 500 });
+      return NextResponse.json(
+        { erro: "Erro interno ao criar a sessão." },
+        { status: 500 },
+      );
     }
   }
 

@@ -1,4 +1,4 @@
-import type { Cargo } from "@/lib/ticket-enums";
+import type { Cargo } from "@/types/ticket-enums";
 
 export interface UsuarioAtual {
   id: string;

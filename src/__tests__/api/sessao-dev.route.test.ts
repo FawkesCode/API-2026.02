@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/dev/sessao/route";
-import { obterSessaoDaRequisicao } from "@/lib/auth/sessao";
-import { servicoUsuario } from "@/lib/services/usuario.service";
+import { obterSessaoDaRequisicao } from "@/auth/sessao";
+import { servicoUsuario } from "@/services/usuario.service";
 
 vi.mock("@/lib/services/usuario.service", () => ({
   servicoUsuario: { buscarPorId: vi.fn(), buscarPorEmail: vi.fn() },
@@ -43,9 +43,13 @@ describe("sessão de desenvolvimento", () => {
     const resposta = await POST(requisicao());
     expect(resposta.status).toBe(200);
     expect(servicoUsuario.buscarPorEmail).toHaveBeenCalledWith(gestor.email);
-    expect(obterSessaoDaRequisicao(new Request("http://localhost", {
-      headers: { cookie: resposta.headers.get("set-cookie")! },
-    }))).toEqual({ usuarioId: gestor.id });
+    expect(
+      obterSessaoDaRequisicao(
+        new Request("http://localhost", {
+          headers: { cookie: resposta.headers.get("set-cookie")! },
+        }),
+      ),
+    ).toEqual({ usuarioId: gestor.id });
   });
 
   it("permite selecionar o Massa pelo ID informado", async () => {
@@ -58,18 +62,24 @@ describe("sessão de desenvolvimento", () => {
   });
 
   it("não emite sessão para um usuário desativado", async () => {
-    vi.mocked(servicoUsuario.buscarPorId).mockResolvedValue({ ...gestor, ativo: false });
+    vi.mocked(servicoUsuario.buscarPorId).mockResolvedValue({
+      ...gestor,
+      ativo: false,
+    });
 
     const resposta = await POST(requisicao({ usuarioId: gestor.id }));
     expect(resposta.status).toBe(404);
     expect(resposta.headers.get("set-cookie")).toBeNull();
   });
 
-  it.each(["NODE_ENV", "production"])("não funciona em produção (%s)", async (variavel) => {
-    vi.stubEnv(variavel, variavel === "NODE_ENV" ? "production" : "true");
+  it.each(["NODE_ENV", "production"])(
+    "não funciona em produção (%s)",
+    async (variavel) => {
+      vi.stubEnv(variavel, variavel === "NODE_ENV" ? "production" : "true");
 
-    expect((await POST(requisicao())).status).toBe(404);
-    expect(servicoUsuario.buscarPorEmail).not.toHaveBeenCalled();
-    expect(servicoUsuario.buscarPorId).not.toHaveBeenCalled();
-  });
+      expect((await POST(requisicao())).status).toBe(404);
+      expect(servicoUsuario.buscarPorEmail).not.toHaveBeenCalled();
+      expect(servicoUsuario.buscarPorId).not.toHaveBeenCalled();
+    },
+  );
 });

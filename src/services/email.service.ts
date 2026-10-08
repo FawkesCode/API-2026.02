@@ -1,62 +1,64 @@
-import dotenv from 'dotenv';
-import { prisma } from '../prisma';
+import dotenv from "dotenv";
+import { prisma } from "../lib/prisma";
 
-import path from 'path';
-import CreateTransporter from './default-classes/transporter';
+import path from "path";
+import CreateTransporter from "./default-classes/transporter";
 
-dotenv.config({ path: path.resolve(process.cwd(), 'src', '.env') });
-const transporter = CreateTransporter.transporter
+dotenv.config({ path: path.resolve(process.cwd(), "src", ".env") });
+const transporter = CreateTransporter.transporter;
 
-export default class EmailManagerService{
-    private managerId: string
-    private ticketId: string
+export default class EmailManagerService {
+  private managerId: string;
+  private ticketId: string;
 
-    constructor(managerId: string, ticketId: string){
-        this.managerId= managerId
-        this.ticketId=ticketId
+  constructor(managerId: string, ticketId: string) {
+    this.managerId = managerId;
+    this.ticketId = ticketId;
+  }
+
+  public async sendMail() {
+    const managerInfo = await prisma.usuario.findFirst({
+      where: {
+        id: this.managerId,
+        cargo: "GESTOR",
+        ativo: true,
+      },
+      select: {
+        nome: true,
+        email: true,
+        ativo: true,
+      },
+    });
+    if (!managerInfo || !managerInfo.ativo) {
+      throw new Error("Perfil inativo ou não encontrado.");
     }
-       
-        public async sendMail(){
-            const managerInfo = await prisma.usuario.findFirst({
-                where:{
-                    id:this.managerId,
-                    cargo:"GESTOR",
-                    ativo:true
-                },
-                select:{
-                    nome:true,
-                    email:true,
-                    ativo:true,
-                }
-            })
-            if (!managerInfo || !managerInfo.ativo) {
-                throw new Error("Perfil inativo ou não encontrado.");
-            }
 
-            const ticketInfo = await prisma.ticket.findFirst({
-                where: {
-                    id: this.ticketId,
-                },
-                select: {
-                    titulo: true,
-                    categoria: true,
-                    prioridade: true,
-                    status: true,
-                    projeto: {
-                        select: {
-                            nome: true
-                        }
-                    }
-                },
-            });
+    const ticketInfo = await prisma.ticket.findFirst({
+      where: {
+        id: this.ticketId,
+      },
+      select: {
+        titulo: true,
+        categoria: true,
+        prioridade: true,
+        status: true,
+        projeto: {
+          select: {
+            nome: true,
+          },
+        },
+      },
+    });
 
-            if (!ticketInfo) {
-                throw new Error("Ticket não encontrado.");
-            }
+    if (!ticketInfo) {
+      throw new Error("Ticket não encontrado.");
+    }
 
-            const dataAtribuicao = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const dataAtribuicao = new Date().toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+    });
 
-            const text = `Olá, ${managerInfo.nome}!
+    const text = `Olá, ${managerInfo.nome}!
 
 Um novo ticket foi atribuído ao seu time. Confira os detalhes abaixo:
 
@@ -71,7 +73,7 @@ Data/Hora:  ${dataAtribuicao}
 
 Acesse o sistema para mais detalhes.`;
 
-            const html = `
+    const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -140,22 +142,20 @@ Acesse o sistema para mais detalhes.`;
 </html>
 `;
 
-            try {
-              const info = await transporter.sendMail({
-                from: process.env.EMAIL_USER,
-                to: managerInfo.email,
-                subject: `Ticket atribuido ao seu time ${ticketInfo.titulo}`,
-                text:text,
-                html:html,
-              });
-          
-              console.log(`E-mail enviado com sucesso! ID: ${info.messageId}`);
-              return { success: true, messageId: info.messageId };
-            } catch (error) {
-              console.error('Erro ao enviar e-mail:', error);
-              return { success: false, error };
-            
-}
-        }                                       
-   
+    try {
+      const info = await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: managerInfo.email,
+        subject: `Ticket atribuido ao seu time ${ticketInfo.titulo}`,
+        text: text,
+        html: html,
+      });
+
+      console.log(`E-mail enviado com sucesso! ID: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("Erro ao enviar e-mail:", error);
+      return { success: false, error };
+    }
+  }
 }

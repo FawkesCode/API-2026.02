@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { priorityBadgeVariants } from "@/components/priority-badge";
 import { PriorityButton } from "@/components/priority-button";
 import {
@@ -12,7 +19,7 @@ import {
   PRIORITY_LEVEL_TO_ENUM,
   PRIORITY_LEVELS,
   type Priority,
-} from "@/lib/priority";
+} from "@/types/priority";
 
 interface RespostaDeErro {
   erro?: string;
@@ -27,7 +34,9 @@ function PriorityEditor({ ticketId, priority }: PriorityEditorProps) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const nivelInicial =
-    PRIORITY_LABEL_TO_LEVEL[priority] ?? PRIORITY_ENUM_TO_LEVEL[priority] ?? null;
+    PRIORITY_LABEL_TO_LEVEL[priority] ??
+    PRIORITY_ENUM_TO_LEVEL[priority] ??
+    null;
   const [nivelAtual, setNivelAtual] = useState<Priority | null>(nivelInicial);
   const [selecionado, setSelecionado] = useState<Priority | null>(nivelInicial);
   const [salvando, setSalvando] = useState(false);
@@ -46,14 +55,19 @@ function PriorityEditor({ ticketId, priority }: PriorityEditorProps) {
       const res = await fetch(`/api/tickets/${ticketId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prioridade: PRIORITY_LEVEL_TO_ENUM[selecionado] }),
+        body: JSON.stringify({
+          prioridade: PRIORITY_LEVEL_TO_ENUM[selecionado],
+        }),
       });
 
-      const resposta = (await res.json().catch(() => null)) as RespostaDeErro | null;
+      const resposta = (await res
+        .json()
+        .catch(() => null)) as RespostaDeErro | null;
 
       if (!res.ok) {
         throw new Error(
-          resposta?.erro ?? "Não foi possível salvar a prioridade. Tente novamente.",
+          resposta?.erro ??
+            "Não foi possível salvar a prioridade. Tente novamente.",
         );
       }
 
@@ -73,69 +87,83 @@ function PriorityEditor({ ticketId, priority }: PriorityEditorProps) {
   }
 
   return (
-    <Dialog open={aberto} onOpenChange={(valor) => {
-      setAberto(valor);
-      if (valor) { setSelecionado(nivelAtual); setErro(null); }
-    }}>
+    <Dialog
+      open={aberto}
+      onOpenChange={(valor) => {
+        setAberto(valor);
+        if (valor) {
+          setSelecionado(nivelAtual);
+          setErro(null);
+        }
+      }}
+    >
       <DialogTrigger
         className={priorityBadgeVariants({
           priority: nivelAtual,
-          className: "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2",
+          className:
+            "cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2",
         })}
         aria-label={`Alterar prioridade: ${nivelAtual ? PRIORITY_LABELS[nivelAtual] : priority}`}
       >
         {nivelAtual ? PRIORITY_LABELS[nivelAtual] : priority}
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Alterar prioridade</DialogTitle><DialogDescription>Selecione a nova prioridade do ticket e salve.</DialogDescription></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Alterar prioridade</DialogTitle>
+          <DialogDescription>
+            Selecione a nova prioridade do ticket e salve.
+          </DialogDescription>
+        </DialogHeader>
         <div className="flex flex-col items-end gap-2">
-      <div
-        role="radiogroup"
-        aria-label="Prioridade do ticket"
-        className="flex items-center gap-1.5"
-      >
-        {PRIORITY_LEVELS.map((nivel) => (
-          <PriorityButton
-            key={nivel}
-            type="button"
-            priority={nivel}
-            selected={selecionado === nivel}
-            role="radio"
-            aria-checked={selecionado === nivel}
-            onClick={() => {
-              setSelecionado(nivel);
-              setSalvo(false);
-            }}
+          <div
+            role="radiogroup"
+            aria-label="Prioridade do ticket"
+            className="flex items-center gap-1.5"
           >
-            {PRIORITY_LABELS[nivel]}
-          </PriorityButton>
-        ))}
-      </div>
+            {PRIORITY_LEVELS.map((nivel) => (
+              <PriorityButton
+                key={nivel}
+                type="button"
+                priority={nivel}
+                selected={selecionado === nivel}
+                role="radio"
+                aria-checked={selecionado === nivel}
+                onClick={() => {
+                  setSelecionado(nivel);
+                  setSalvo(false);
+                }}
+              >
+                {PRIORITY_LABELS[nivel]}
+              </PriorityButton>
+            ))}
+          </div>
 
-      {nivelAtual === null && selecionado === null && (
-        <p role="alert" className="text-xs font-medium text-destructive">
-          Prioridade atual desconhecida. Selecione uma opção.
-        </p>
-      )}
+          {nivelAtual === null && selecionado === null && (
+            <p role="alert" className="text-xs font-medium text-destructive">
+              Prioridade atual desconhecida. Selecione uma opção.
+            </p>
+          )}
 
-      <div className="flex items-center gap-2">
-        {erro && (
-          <p role="alert" className="text-xs font-medium text-destructive">
-            {erro}
-          </p>
-        )}
-        {salvo && !erro && (
-          <p className="text-xs font-medium text-green-600">Prioridade atualizada.</p>
-        )}
-        <button
-          type="button"
-          onClick={salvar}
-          disabled={!alterou || salvando}
-          className="rounded-md bg-cyan-400 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-cyan-500 disabled:pointer-events-none disabled:opacity-50"
-        >
-          {salvando ? "Salvando..." : "Salvar"}
-        </button>
-      </div>
+          <div className="flex items-center gap-2">
+            {erro && (
+              <p role="alert" className="text-xs font-medium text-destructive">
+                {erro}
+              </p>
+            )}
+            {salvo && !erro && (
+              <p className="text-xs font-medium text-green-600">
+                Prioridade atualizada.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={salvar}
+              disabled={!alterou || salvando}
+              className="rounded-md bg-cyan-400 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-cyan-500 disabled:pointer-events-none disabled:opacity-50"
+            >
+              {salvando ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

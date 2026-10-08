@@ -1,6 +1,6 @@
 import { EMAIL_MASSA_SEED } from "@/lib/dev-users";
-import { obterSessaoAtual } from "@/lib/auth/sessao";
-import { servicoUsuario } from "@/lib/services/usuario.service";
+import { obterSessaoAtual } from "@/auth/sessao";
+import { servicoUsuario } from "@/services/usuario.service";
 
 /**
  * Usuário logado atual, a partir do cookie de sessão. Retorna `null` quando
@@ -22,7 +22,10 @@ export async function getUsuarioAtual() {
     return usuario?.ativo ? usuario : null;
   }
 
-  if (process.env.NODE_ENV === "production" || process.env.production === "true") {
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.production === "true"
+  ) {
     return null;
   }
 

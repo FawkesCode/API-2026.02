@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { obterSessaoAtual } from "@/lib/auth/sessao";
+import { obterSessaoAtual } from "@/auth/sessao";
 import { getUsuarioAtual, getUsuarioLogado } from "@/lib/data/sessao";
-import { servicoUsuario } from "@/lib/services/usuario.service";
+import { servicoUsuario } from "@/services/usuario.service";
 
 vi.mock("@/lib/auth/sessao", () => ({ obterSessaoAtual: vi.fn() }));
 vi.mock("@/lib/services/usuario.service", () => ({
@@ -97,7 +97,10 @@ describe("usuário da interface", () => {
 
   it("descarta um usuário autenticado que foi desativado", async () => {
     vi.mocked(obterSessaoAtual).mockResolvedValue({ usuarioId: gestor.id });
-    vi.mocked(servicoUsuario.buscarPorId).mockResolvedValue({ ...gestor, ativo: false });
+    vi.mocked(servicoUsuario.buscarPorId).mockResolvedValue({
+      ...gestor,
+      ativo: false,
+    });
 
     expect(await getUsuarioLogado()).toBeNull();
   });

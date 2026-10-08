@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format, isValid } from "date-fns";
 import { X } from "lucide-react";
-import DateRangePicker, { type IntervaloData } from "./date-range-picker";
-import { Field, FieldLabel } from "./ui/field";
-import { Input } from "./ui/input";
+import DateRangePicker, { type IntervaloData } from "../date-range-picker";
+import { Field, FieldLabel } from "../ui/field";
+import { Input } from "../ui/input";
 import {
   Select,
   SelectContent,
@@ -14,13 +14,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+} from "../ui/select";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   useProjetosDisponiveis,
   type ProjetoResumo,
-} from "@/hooks/use-projetos-disponiveis";
+} from "@/hooks/use-available-projects";
 import { useEquipes } from "@/hooks/use-equipes";
 
 interface SelectItemsOptions {
@@ -374,7 +374,9 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
                 id="equipe"
                 type="select"
                 value={equipeId}
-                onValueChange={(valor) => updateParam("equipeId", valor || undefined)}
+                onValueChange={(valor) =>
+                  updateParam("equipeId", valor || undefined)
+                }
                 onClear={() => updateParam("equipeId", undefined)}
                 items={equipeItems}
               />
@@ -394,7 +396,9 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
               id="priority"
               type="select"
               value={prioridade}
-              onValueChange={(valor) => updateParam("prioridade", valor || undefined)}
+              onValueChange={(valor) =>
+                updateParam("prioridade", valor || undefined)
+              }
               onClear={() => updateParam("prioridade", undefined)}
               selectOptions="Crítica,CRITICA|Alta,ALTA|Média,MEDIA|Baixa,BAIXA"
             />
@@ -403,7 +407,9 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
               id="status"
               type="select"
               value={status}
-              onValueChange={(valor) => updateParam("status", valor || undefined)}
+              onValueChange={(valor) =>
+                updateParam("status", valor || undefined)
+              }
               onClear={() => updateParam("status", undefined)}
               selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Solicitação de encerramento,SOLICITACAO_ENCERRAMENTO|Em revisão,EM_REVISAO|Encerrado,ENCERRADO"
             />
@@ -427,7 +433,9 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
             id="priority"
             type="select"
             value={prioridade}
-            onValueChange={(valor) => updateParam("prioridade", valor || undefined)}
+            onValueChange={(valor) =>
+              updateParam("prioridade", valor || undefined)
+            }
             onClear={() => updateParam("prioridade", undefined)}
             selectOptions="Crítica,CRITICA|Alta,ALTA|Média,MEDIA|Baixa,BAIXA"
           />

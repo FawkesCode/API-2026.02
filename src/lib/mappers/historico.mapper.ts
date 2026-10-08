@@ -1,5 +1,5 @@
 import type { Cargo } from "@/lib/generated/prisma/client";
-import type { LogTicketComUsuario } from "@/lib/services/historico.service";
+import type { LogTicketComUsuario } from "@/services/historico.service";
 import type { LogStatus } from "@/components/tickets/log-states";
 import type { Autor, LogItem } from "@/components/tickets/ticket-logs";
 

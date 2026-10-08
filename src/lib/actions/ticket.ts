@@ -1,7 +1,10 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { servicoTicket, TicketComRelacoes } from "../services/ticket.service";
-import { servicoHistoricoTicket } from "../services/historico.service";
+import {
+  servicoTicket,
+  TicketComRelacoes,
+} from "../../services/ticket.service";
+import { servicoHistoricoTicket } from "../../services/historico.service";
 import { toLogItem } from "../mappers/historico.mapper";
 
 type ActionResponse<T> =

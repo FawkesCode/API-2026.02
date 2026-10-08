@@ -1,5 +1,5 @@
-import { obterSessaoDaRequisicao } from "@/lib/auth/sessao";
-import { servicoUsuario } from "@/lib/services/usuario.service";
+import { obterSessaoDaRequisicao } from "@/auth/sessao";
+import { servicoUsuario } from "@/services/usuario.service";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
@@ -7,8 +7,8 @@ import {
   servicoProjeto,
   GestorNaoEncontradoError,
   GestorSemEquipeError,
-} from "@/lib/services/projeto.service";
-import { servicoTicket } from "@/lib/services/ticket.service";
+} from "@/services/projeto.service";
+import { servicoTicket } from "@/services/ticket.service";
 import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
 import { criarProjetoSchema } from "@/schemas/projeto.schema";
 
@@ -27,7 +27,10 @@ async function extrairJson(requisicao: Request) {
 }
 
 function tratarErroInesperado(erro: unknown) {
-  if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2003") {
+  if (
+    erro instanceof Prisma.PrismaClientKnownRequestError &&
+    erro.code === "P2003"
+  ) {
     return NextResponse.json(
       { erro: "Referência inválida: clienteId não existe." },
       { status: 400 },
@@ -35,7 +38,10 @@ function tratarErroInesperado(erro: unknown) {
   }
 
   console.error(erro);
-  return NextResponse.json({ erro: "Erro interno ao processar o projeto." }, { status: 500 });
+  return NextResponse.json(
+    { erro: "Erro interno ao processar o projeto." },
+    { status: 500 },
+  );
 }
 
 export class ControladorProjeto {
@@ -47,13 +53,19 @@ export class ControladorProjeto {
     try {
       const usuario = await servicoUsuario.buscarPorId(sessao.usuarioId);
       if (!usuario?.ativo) {
-        return NextResponse.json({ erro: "Usuário sem acesso." }, { status: 403 });
+        return NextResponse.json(
+          { erro: "Usuário sem acesso." },
+          { status: 403 },
+        );
       }
       const projetos = await servicoProjeto.listarAtivos();
       return NextResponse.json(projetos, { status: 200 });
     } catch (erro) {
       console.error(erro);
-      return NextResponse.json({ erro: "Erro interno ao listar projetos." }, { status: 500 });
+      return NextResponse.json(
+        { erro: "Erro interno ao listar projetos." },
+        { status: 500 },
+      );
     }
   }
 
@@ -65,15 +77,17 @@ export class ControladorProjeto {
     const resultado = criarProjetoSchema.safeParse(corpo);
     if (!resultado.success) {
       return NextResponse.json(
-        { erro: "Dados inválidos.", detalhes: z.flattenError(resultado.error).fieldErrors },
+        {
+          erro: "Dados inválidos.",
+          detalhes: z.flattenError(resultado.error).fieldErrors,
+        },
         { status: 400 },
       );
     }
 
     try {
-      const { projeto, ticketInstalacao } = await servicoProjeto.criarComTicketDeInstalacao(
-        resultado.data,
-      );
+      const { projeto, ticketInstalacao } =
+        await servicoProjeto.criarComTicketDeInstalacao(resultado.data);
       return NextResponse.json(
         { ...projeto, ticketInstalacao: toTicketDTO(ticketInstalacao) },
         { status: 201 },
@@ -97,7 +111,10 @@ export class ControladorProjeto {
         await servicoProjeto.buscarProjetoComTicketDeInstalacao(projetoId);
 
       if (!projeto) {
-        return NextResponse.json({ erro: "Projeto não encontrado." }, { status: 404 });
+        return NextResponse.json(
+          { erro: "Projeto não encontrado." },
+          { status: 404 },
+        );
       }
 
       if (!ticketInstalacao) {
@@ -122,13 +139,19 @@ export class ControladorProjeto {
       const projeto = await servicoProjeto.buscarDetalhePorId(projetoId);
 
       if (!projeto) {
-        return NextResponse.json({ erro: "Projeto não encontrado." }, { status: 404 });
+        return NextResponse.json(
+          { erro: "Projeto não encontrado." },
+          { status: 404 },
+        );
       }
 
       return NextResponse.json(projeto, { status: 200 });
     } catch (erro) {
       console.error(erro);
-      return NextResponse.json({ erro: "Erro interno ao buscar o projeto." }, { status: 500 });
+      return NextResponse.json(
+        { erro: "Erro interno ao buscar o projeto." },
+        { status: 500 },
+      );
     }
   }
 
@@ -136,7 +159,10 @@ export class ControladorProjeto {
     try {
       const projeto = await servicoProjeto.buscarDetalhePorId(projetoId);
       if (!projeto) {
-        return NextResponse.json({ erro: "Projeto não encontrado." }, { status: 404 });
+        return NextResponse.json(
+          { erro: "Projeto não encontrado." },
+          { status: 404 },
+        );
       }
 
       const tickets = await servicoTicket.listarPorProjeto(projetoId);
