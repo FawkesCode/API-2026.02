@@ -4,7 +4,10 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import {
   ErroConflitoPrioridade,
+  ErroEquipeInvalida,
   ErroNaoAutorizadoParaAlterarPrioridade,
+  ErroNaoAutorizadoParaGerenciarEquipes,
+  ErroUltimaEquipeDoTicket,
   ProjetoNaoEncontradoError,
   servicoTicket,
 } from "@/services/ticket.service";
@@ -47,6 +50,15 @@ function validarCorpo<T>(schema: z.ZodType<T>, corpo: unknown) {
 }
 
 function tratarErroInesperado(erro: unknown) {
+  if (erro instanceof ErroNaoAutorizadoParaGerenciarEquipes) {
+    return NextResponse.json({ erro: erro.message }, { status: 403 });
+  }
+  if (erro instanceof ErroEquipeInvalida) {
+    return NextResponse.json({ erro: erro.message }, { status: 400 });
+  }
+  if (erro instanceof ErroUltimaEquipeDoTicket) {
+    return NextResponse.json({ erro: erro.message }, { status: 409 });
+  }
   if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {
     return NextResponse.json({ erro: erro.message }, { status: 403 });
   }
@@ -232,6 +244,52 @@ export class ControladorTicket {
     } catch (erro) {
       return tratarErroInesperado(erro);
     }
+  }
+  private async gerenciarEquipe(
+    requisicao: Request,
+    ticketId: string,
+    acao: "atribuir" | "desatribuir",
+  ) {
+    const idValidado = z.uuid().safeParse(ticketId);
+    if (!idValidado.success) {
+      return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
+    }
+
+    const sessao = obterSessaoDaRequisicao(requisicao);
+    if (!sessao) {
+      return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+    }
+
+    const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
+    if (erroDeParse) return erroDeParse;
+
+    const { dados, erro: erroDeValidacao } = validarCorpo(
+      alocarEquipeTicketSchema,
+      corpo,
+    );
+    if (erroDeValidacao) return erroDeValidacao;
+
+    try {
+      const ticket =
+        acao === "atribuir"
+          ? await servicoTicket.atribuirEquipe(idValidado.data, dados.equipeId, sessao.usuarioId)
+          : await servicoTicket.desatribuirEquipe(idValidado.data, dados.equipeId, sessao.usuarioId);
+
+      if (!ticket) {
+        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+      }
+      return NextResponse.json(toTicketDTO(ticket), { status: 200 });
+    } catch (erro) {
+      return tratarErroInesperado(erro);
+    }
+  }
+
+  atribuirEquipe(requisicao: Request, ticketId: string) {
+    return this.gerenciarEquipe(requisicao, ticketId, "atribuir");
+  }
+
+  desatribuirEquipe(requisicao: Request, ticketId: string) {
+    return this.gerenciarEquipe(requisicao, ticketId, "desatribuir");
   }
 }
 

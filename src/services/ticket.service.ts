@@ -206,6 +206,22 @@ const includeListagem = {
   },
 } satisfies Prisma.TicketInclude;
 
+async function exigirGestorDoTicket(
+  tx: Prisma.TransactionClient,
+  equipesDoTicket: { equipeId: string }[],
+  usuarioId: string,
+) {
+  const gestor = await tx.usuario.findUnique({ where: { id: usuarioId } });
+  if (
+    !gestor?.ativo ||
+    gestor.cargo !== Cargo.GESTOR ||
+    !gestor.equipeId ||
+    !equipesDoTicket.some((e) => e.equipeId === gestor.equipeId)
+  ) {
+    throw new ErroNaoAutorizadoParaGerenciarEquipes();
+  }
+}
+
 export class ServicoTicket {
   constructor(private readonly db: PrismaClient = prisma) {}
 
@@ -217,6 +233,7 @@ export class ServicoTicket {
         descricao: dados.descricao,
         categoria: dados.categoria,
         prioridade: dados.prioridade,
+        status: StatusTicket.EM_ANDAMENTO,
         projetoId: dados.projetoId,
         abertoPorId: dados.abertoPorId,
         slaEm: dados.slaEm,
@@ -425,6 +442,99 @@ export class ServicoTicket {
       where: { id: ticketId },
       include: RELACOES_TICKET,
     });
+  }
+
+    async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string) {
+    const resultado = await this.db.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+        include: { equipesAlocadas: { select: { equipeId: true } } },
+      });
+      if (!ticket) return null;
+
+      await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+
+      const equipe = await tx.equipe.findUnique({
+        where: { id: equipeId },
+        select: { ativo: true },
+      });
+      if (!equipe?.ativo) {
+        throw new ErroEquipeInvalida("Equipe não encontrada ou inativa.");
+      }
+
+      return {
+        jaAlocada: ticket.equipesAlocadas.some((e) => e.equipeId === equipeId),
+      };
+    });
+
+    if (!resultado) return null;
+
+    // Se já estava no ticket, não recria nem reenvia e-mail.
+    if (resultado.jaAlocada) {
+      return this.db.ticket.findUniqueOrThrow({
+        where: { id: ticketId },
+        include: RELACOES_TICKET,
+      });
+    }
+
+    // Reaproveita a lógica existente (upsert + e-mail ao gestor da equipe).
+    return this.alocarEquipe(ticketId, equipeId);
+  }
+
+  async desatribuirEquipe(
+    ticketId: string,
+    equipeId: string,
+    usuarioId: string,
+  ) {
+    return this.db.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+        include: { equipesAlocadas: { select: { equipeId: true } } },
+      });
+      if (!ticket) return null;
+
+      await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+
+      if (!ticket.equipesAlocadas.some((e) => e.equipeId === equipeId)) {
+        throw new ErroEquipeInvalida("Esta equipe não está atribuída ao ticket.");
+      }
+      if (ticket.equipesAlocadas.length <= 1) {
+        throw new ErroUltimaEquipeDoTicket();
+      }
+
+      await tx.ticketEquipe.deleteMany({ where: { ticketId, equipeId } });
+
+      return tx.ticket.findUniqueOrThrow({
+        where: { id: ticketId },
+        include: RELACOES_TICKET,
+      });
+    });
+  }
+
+}
+
+export class ErroNaoAutorizadoParaGerenciarEquipes extends Error {
+  constructor(
+    message = "Apenas o gestor de uma equipe do ticket pode atribuir ou desatribuir equipes.",
+  ) {
+    super(message);
+    this.name = "ErroNaoAutorizadoParaGerenciarEquipes";
+  }
+}
+
+export class ErroEquipeInvalida extends Error {
+  constructor(message = "Equipe inválida.") {
+    super(message);
+    this.name = "ErroEquipeInvalida";
+  }
+}
+
+export class ErroUltimaEquipeDoTicket extends Error {
+  constructor(
+    message = "O ticket precisa ter pelo menos uma equipe atribuída.",
+  ) {
+    super(message);
+    this.name = "ErroUltimaEquipeDoTicket";
   }
 }
 
