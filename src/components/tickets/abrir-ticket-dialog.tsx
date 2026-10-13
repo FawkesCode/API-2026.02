@@ -42,6 +42,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { SLA_OPTIONS, calcularSlaEm } from "@/lib/sla-options";
 import { ticketFormSchema } from "@/schemas/ticket-form.schema";
 import { Categoria, Prioridade } from "@/types/ticket-enums";
+import { useState } from "react";
 
 const CATEGORIA_LABELS: Record<Categoria, string> = {
   [Categoria.INSTALACAO]: "Instalação",
@@ -82,7 +83,7 @@ export function AbrirTicketDialog({
   const usuario = useCurrentUser();
   const { projetos } = useProjetosDisponiveis();
 
-  const [campos, setCampos] = React.useState<CamposFormulario>({
+  const [campos, setCampos] = useState<CamposFormulario>({
     ...CAMPOS_VAZIOS,
     projetoId: projetoInicialId ?? "",
   });
