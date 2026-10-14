@@ -26,9 +26,10 @@ type FormFields = z.infer<typeof schema>;
 const temporaryUser = {
   email: "teste@gmail.com",
   password: "teste123",
+  tempPass: true,
 };
 
-function LoginForm() {
+function LoginForm({ onTempPass }: { onTempPass: () => void }) {
   const {
     register,
     handleSubmit,
@@ -44,13 +45,17 @@ function LoginForm() {
   const onSubmit: SubmitHandler<FormFields> = async (data) => {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      if (
-        data.email === temporaryUser.email &&
-        data.password === temporaryUser.password
-      ) {
-        router.push("/projetos");
+      if (data.password === temporaryUser.password && temporaryUser.tempPass) {
+        onTempPass();
       } else {
-        throw new Error("Email ou senha incorretos");
+        if (
+          data.email === temporaryUser.email &&
+          data.password === temporaryUser.password
+        ) {
+          router.push("/projetos");
+        } else {
+          throw new Error("Email ou senha incorretos");
+        }
       }
     } catch (error) {
       const err = error as Error;
@@ -90,7 +95,7 @@ function LoginForm() {
         <Button
           type="submit"
           disabled={isSubmitting || !isValid}
-          className=" rounded-full w-[60%] p-6 bg-white hover:bg-[#C4D6E5] text-[#0F4C81] font-extrabold"
+          className="rounded-full w-[50%] sm:w-[60%]  bg-white hover:bg-[#C4D6E5] text-[#0F4C81] font-extrabold text-xs p-5 sm:text-regular sm:p-6"
         >
           {isSubmitting ? "Entrando..." : "Entrar"}
         </Button>
@@ -120,11 +125,13 @@ export function FormInput({
 }: FormInputProps) {
   return (
     <Field>
-      <FieldLabel htmlFor={id}>{title}</FieldLabel>
+      <FieldLabel className="text-xs sm:text-regular" htmlFor={id}>
+        {title}
+      </FieldLabel>
       <Input
         id={id}
         placeholder={`Digite seu ${title?.toLowerCase()}`}
-        className="border-0 border-b-2 border-[#236588] pt-6 pb-6 placeholder:text-[#9BAFC0]"
+        className="border-0 border-b-2 border-[#236588] pt-6 pb-6 placeholder:text-[#9BAFC0] text-xs sm:text-regular"
         {...registerProps}
       />
       {error && (
@@ -136,7 +143,7 @@ export function FormInput({
   );
 }
 
-function FormPassword({
+export function FormPassword({
   title = "Senha",
   id,
   error,
@@ -146,14 +153,16 @@ function FormPassword({
 
   return (
     <Field>
-      <FieldLabel htmlFor={id}>{title}</FieldLabel>
+      <FieldLabel className="text-xs sm:text-regular" htmlFor={id}>
+        {title}
+      </FieldLabel>
 
       <InputGroup className="rounded-xl border-0 border-b-2 border-[#236588] pt-6 pb-6">
         <InputGroupInput
           id={id}
           name={id}
           type={visible ? "text" : "password"}
-          className="placeholder:text-[#9BAFC0]"
+          className="placeholder:text-[#9BAFC0] text-xs sm:text-regular"
           placeholder={`Digite a senha`}
           {...registerProps}
         />
