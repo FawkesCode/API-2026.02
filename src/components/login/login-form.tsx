@@ -45,21 +45,20 @@ function LoginForm({ onTempPass }: { onTempPass: () => void }) {
   const onSubmit: SubmitHandler<FormFields> = async (data) => {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      if (data.password === temporaryUser.password && temporaryUser.tempPass) {
-        onTempPass();
-      } else {
-        if (
-          data.email === temporaryUser.email &&
-          data.password === temporaryUser.password
-        ) {
-          router.push("/projetos");
+      if (
+        data.email === temporaryUser.email &&
+        data.password === temporaryUser.password
+      ) {
+        if (temporaryUser.tempPass) {
+          onTempPass();
         } else {
-          throw new Error("Email ou senha incorretos");
+          router.push("/projetos");
         }
+      } else {
+        throw new Error("Email ou senha incorretos");
       }
     } catch (error) {
       const err = error as Error;
-
       setError("root", { message: err.message });
     }
   };
