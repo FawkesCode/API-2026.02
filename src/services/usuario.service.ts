@@ -11,6 +11,17 @@ const dadosUsuarioAtual = {
   equipe: { select: { nome: true } },
 } as const;
 
+/** Campos expostos na listagem de gestão. `senhaHash` nunca entra aqui. */
+const detailedUserFields = {
+  id: true,
+  nome: true,
+  email: true,
+  cargo: true,
+  ativo: true,
+  senhaProvisoria: true,
+  equipe: { select: { nome: true } },
+} as const;
+
 export class ServicoUsuario {
   /**
    * Lista usuários ativos com apenas id/nome, opcionalmente filtrando por
@@ -21,6 +32,17 @@ export class ServicoUsuario {
     return prisma.usuario.findMany({
       where: { ativo: true, ...(cargo ? { cargo } : {}) },
       select: { id: true, nome: true },
+      orderBy: { nome: "asc" },
+    });
+  }
+
+  /**
+   * Lista todos os usuários (ativos e inativos) com os dados da tela de
+   * gestão, ordenados por nome.
+   */
+  async listDetailed() {
+    return prisma.usuario.findMany({
+      select: detailedUserFields,
       orderBy: { nome: "asc" },
     });
   }
