@@ -17,6 +17,19 @@ export class ServicoUsuario {
    * cargo (ex: `?cargo=GESTOR` para o dropdown de gestor no cadastro de
    * projeto). Sem `cargo`, retorna todos os usuários ativos.
    */
+
+  async listarTecnicosParaEquipe(equipeId: string) {
+    return prisma.usuario.findMany({
+      where: {
+        ativo: true,
+        cargo: Cargo.TECNICO,
+        OR: [{ equipeId: null }, { equipeId }],
+      },
+      select: { id: true, nome: true },
+      orderBy: { nome: "asc" },
+    });
+  }
+
   async listarParaSelecao(cargo?: Cargo) {
     return prisma.usuario.findMany({
       where: { ativo: true, ...(cargo ? { cargo } : {}) },

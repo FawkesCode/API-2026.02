@@ -21,7 +21,14 @@ const corpoSchema = z.object({
 async function obterUsuarioId(req: Request) {
   const sessao = obterSessaoDaRequisicao(req);
   if (sessao) return sessao.usuarioId;
-  if (process.env.NODE_ENV === "production") return null;
+
+  if (
+    process.env.NODE_ENV !== "development" ||
+    process.env.ALLOW_DEV_AUTH !== "true"
+  ) {
+    return null;
+  }
+
   const dev = await servicoUsuario.buscarPorEmail(EMAIL_DEV);
   return dev?.ativo ? dev.id : null;
 }

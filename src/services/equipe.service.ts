@@ -16,7 +16,9 @@ export class ErroEquipeNaoEncontrada extends Error {
 }
 
 export class ErroTecnicosInvalidos extends Error {
-  constructor(message = "Um ou mais técnicos selecionados são inválidos.") {
+  constructor(
+    message = "Um ou mais técnicos são inválidos ou já pertencem a outra equipe.",
+  ) {
     super(message);
     this.name = "ErroTecnicosInvalidos";
   }
@@ -71,6 +73,9 @@ export class ServicoEquipe {
     usuarioId: string,
     dados: DadosAtualizarEquipe,
   ) {
+    // Normaliza aqui também: o serviço não deve depender da rota para isso.
+    const tecnicosIds = [...new Set(dados.tecnicosIds)];
+
     try {
       return await prisma.$transaction(async (tx) => {
         const solicitante = await tx.usuario.findUnique({
@@ -90,14 +95,17 @@ export class ServicoEquipe {
         });
         if (!equipe?.ativo) throw new ErroEquipeNaoEncontrada();
 
-        const tecnicos = await tx.usuario.count({
+        // Só aceita técnicos ativos que estão sem equipe ou já são desta equipe.
+        // Técnicos de outra equipe não são transferidos silenciosamente.
+        const tecnicosValidos = await tx.usuario.count({
           where: {
-            id: { in: dados.tecnicosIds },
+            id: { in: tecnicosIds },
             ativo: true,
             cargo: Cargo.TECNICO,
+            OR: [{ equipeId: null }, { equipeId }],
           },
         });
-        if (tecnicos !== dados.tecnicosIds.length) {
+        if (tecnicosValidos !== tecnicosIds.length) {
           throw new ErroTecnicosInvalidos();
         }
 
@@ -111,14 +119,14 @@ export class ServicoEquipe {
           where: {
             equipeId,
             cargo: Cargo.TECNICO,
-            id: { notIn: dados.tecnicosIds },
+            id: { notIn: tecnicosIds },
           },
           data: { equipeId: null },
         });
 
-        // Técnicos da lista passam para esta equipe (saem da anterior, se houver).
+        // Técnicos da lista entram nesta equipe (já validados acima).
         await tx.usuario.updateMany({
-          where: { id: { in: dados.tecnicosIds } },
+          where: { id: { in: tecnicosIds } },
           data: { equipeId },
         });
 
