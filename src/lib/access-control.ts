@@ -15,3 +15,7 @@ export function podeAbrirTicket(cargo: Cargo | undefined | null): boolean {
 export function podeVerMinhaEquipe(cargo: Cargo | undefined | null): boolean {
   return cargo !== CARGO_ANALISTA_SUPORTE_EXTERNO;
 }
+
+export function podeVerUsuarios(cargo: Cargo | undefined | null): boolean {
+  return cargo === CARGO_ANALISTA_SUPORTE_EXTERNO;
+}

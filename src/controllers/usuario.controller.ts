@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import { Cargo } from "@/lib/generated/prisma/client";
+import { podeVerUsuarios } from "@/lib/access-control";
 import { servicoUsuario } from "@/services/usuario.service";
 
 const CARGOS_VALIDOS = new Set<string>(Object.values(Cargo));
@@ -47,6 +48,13 @@ export class ControladorUsuario {
       if (!usuario?.ativo) {
         return NextResponse.json(
           { erro: "Usuário sem acesso.", codigo: "USUARIO_SEM_ACESSO" },
+          { status: 403 },
+        );
+      }
+
+      if (!podeVerUsuarios(usuario.cargo)) {
+        return NextResponse.json(
+          { erro: "Usuário sem permissão.", codigo: "SEM_PERMISSAO" },
           { status: 403 },
         );
       }

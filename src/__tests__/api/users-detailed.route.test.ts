@@ -66,6 +66,25 @@ describe("GET /api/usuarios/detalhado", () => {
     },
   );
 
+  it.each(["TECNICO", "GESTOR", "COMERCIAL"] as const)(
+    "retorna 403 para usuário ativo com cargo %s",
+    async (cargo) => {
+      vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+        ...sessionUser,
+        cargo,
+      });
+      const list = vi.spyOn(servicoUsuario, "listDetailed");
+      const resposta = await GET(request());
+
+      expect(resposta.status).toBe(403);
+      expect(await resposta.json()).toEqual({
+        erro: "Usuário sem permissão.",
+        codigo: "SEM_PERMISSAO",
+      });
+      expect(list).not.toHaveBeenCalled();
+    },
+  );
+
   it("retorna 200 com a lista de usuários", async () => {
     vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue(sessionUser);
     const list = vi
