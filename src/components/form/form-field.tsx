@@ -29,7 +29,7 @@ export interface FormInputProps extends React.ComponentProps<typeof Input> {
 }
 
 export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, required, error, id, ...props }, ref) => {
+  ({ label, required, error, id, className, ...props }, ref) => {
     const generatedId = React.useId();
     const inputId = id ?? generatedId;
     const errorId = `${inputId}-error`;
@@ -42,7 +42,7 @@ export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
         <Input
           id={inputId}
           ref={ref}
-          className="w-full"
+          className={`w-full ${className}`}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
           aria-required={required || undefined}

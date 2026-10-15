@@ -1,3 +1,4 @@
+import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { Cargo } from "@/lib/generated/prisma/client";
 
@@ -9,6 +10,18 @@ const dadosUsuarioAtual = {
   ativo: true,
   equipeId: true,
   equipe: { select: { nome: true } },
+} as const;
+
+const createdUserData = {
+  id: true,
+  nome: true,
+  email: true,
+  cargo: true,
+  ativo: true,
+  senhaProvisoria: true,
+  equipeId: true,
+  criadoEm: true,
+  atualizadoEm: true,
 } as const;
 
 export class ServicoUsuario {
@@ -35,6 +48,25 @@ export class ServicoUsuario {
       where: { ativo: true, ...(cargo ? { cargo } : {}) },
       select: { id: true, nome: true },
       orderBy: { nome: "asc" },
+    });
+  }
+
+  async createUser(data: {
+    nome: string;
+    email: string;
+    cargo: Cargo;
+    password: string;
+  }) {
+    const { password, ...userData } = data;
+
+    return prisma.usuario.create({
+      data: {
+        ...userData,
+        senhaHash: await hash(password, 12),
+        senhaProvisoria: true,
+        equipeId: null,
+      },
+      select: createdUserData,
     });
   }
 
