@@ -6,7 +6,8 @@ export async function getEquipeParaEdicao(equipeId: string) {
   try {
     const [equipe, tecnicos] = await Promise.all([
       servicoEquipe.buscarParaEdicao(equipeId),
-      servicoUsuario.listarParaSelecao("TECNICO"),
+      // Técnicos ativos sem equipe + os que já são desta equipe.
+      servicoUsuario.listarTecnicosParaEquipe(equipeId),
     ]);
 
     if (!equipe) return null;

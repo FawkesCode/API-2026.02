@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,7 +33,7 @@ import {
 import type { EquipeEdicao } from "@/types/equipe";
 
 /**
- * CONEXÃO PENDENTE: contrato esperado do endpoint.
+ * Contrato do endpoint (alinhado a `DadosAtualizarEquipe` em equipe.service.ts):
  *   PATCH /api/equipes/:id
  *   body: { nome: string; descricao: string; tecnicosIds: string[] }
  *   sucesso: 2xx | erro: { erro: string } (mensagem exibida no modal)
@@ -57,6 +57,16 @@ export function GerenciarEquipeDialog({
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
   const [avisoTecnico, setAvisoTecnico] = useState<string | null>(null);
 
+  // Referência estável: só muda quando a equipe vinda do servidor muda.
+  const valoresIniciais = useMemo<EquipeFormValues>(
+    () => ({
+      nome: equipe.nome,
+      descricao: equipe.descricao,
+      tecnicos: equipe.tecnicos,
+    }),
+    [equipe.nome, equipe.descricao, equipe.tecnicos],
+  );
+
   const {
     register,
     control,
@@ -65,14 +75,14 @@ export function GerenciarEquipeDialog({
     formState: { errors, isSubmitting },
   } = useForm<EquipeFormValues>({
     resolver: zodResolver(equipeFormSchema),
-    // `values` mantém o formulário em sincronia com a equipe atualizada
-    // depois do router.refresh().
-    values: {
-      nome: equipe.nome,
-      descricao: equipe.descricao,
-      tecnicos: equipe.tecnicos,
-    },
+    defaultValues: valoresIniciais,
   });
+
+  // Depois do router.refresh() a equipe chega atualizada: ressincroniza o
+  // formulário (e o ponto de retorno do reset ao fechar o modal).
+  useEffect(() => {
+    reset(valoresIniciais);
+  }, [reset, valoresIniciais]);
 
   function aoMudarAbertura(valor: boolean) {
     setAberto(valor);

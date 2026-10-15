@@ -3,6 +3,7 @@ import MyTeamTickets from "@/components/tickets/my-team-tickets";
 import { GerenciarEquipeDialog } from "@/components/equipe/gerenciar-equipe-dialog";
 import { getTeamsTickets } from "@/lib/data/my-team";
 import { getEquipeParaEdicao } from "@/lib/data/equipe";
+import { podeEditarEquipe } from "@/lib/access-control";
 import { connection } from "next/server";
 import { getUsuarioAtual } from "@/lib/data/sessao";
 
@@ -15,7 +16,10 @@ export default async function Team() {
     usuario
       ? getTeamsTickets(usuario.id)
       : { equipeNome: "Sem equipe", tickets: [] },
-    usuario?.equipeId ? getEquipeParaEdicao(usuario.equipeId) : null,
+    // Só o gestor edita a equipe: para os demais nem buscamos os dados do modal.
+    podeEditarEquipe(usuario?.cargo) && usuario?.equipeId
+      ? getEquipeParaEdicao(usuario.equipeId)
+      : null,
   ]);
 
   return (

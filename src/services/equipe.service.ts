@@ -118,16 +118,17 @@ export class ServicoEquipe {
 
         // Aceita técnicos ativos que estejam sem equipe ou já pertençam
         // à equipe editada. Não transfere técnicos de outras equipes.
-        const tecnicosValidos = await tx.usuario.count({
+        const candidatos = await tx.usuario.findMany({
           where: {
             id: { in: tecnicosIds },
             ativo: true,
             cargo: Cargo.TECNICO,
             OR: [{ equipeId: null }, { equipeId }],
           },
+          select: { id: true, equipeId: true },
         });
 
-        if (tecnicosValidos !== tecnicosIds.length) {
+        if (candidatos.length !== tecnicosIds.length) {
           throw new ErroTecnicosInvalidos();
         }
 
@@ -139,25 +140,40 @@ export class ServicoEquipe {
           },
         });
 
-        // Técnicos removidos da lista ficam sem equipe.
+        // Técnicos ativos removidos da lista ficam sem equipe. Inativos não
+        // aparecem no modal, então não podem ser desvinculados por ele.
         await tx.usuario.updateMany({
           where: {
             equipeId,
             cargo: Cargo.TECNICO,
+            ativo: true,
             id: { notIn: tecnicosIds },
           },
           data: { equipeId: null },
         });
 
-        // Os técnicos selecionados passam a pertencer a esta equipe.
-        if (tecnicosIds.length > 0) {
-          await tx.usuario.updateMany({
+        // Vincula só quem ainda está sem equipe. A condição `equipeId: null`
+        // vai no próprio UPDATE: se outra requisição alocar o técnico entre a
+        // leitura acima e esta escrita, a contagem diverge e a transação é
+        // desfeita (sem depender de como o driver conta linhas afetadas).
+        const livres = candidatos
+          .filter((c) => c.equipeId === null)
+          .map((c) => c.id);
+
+        if (livres.length > 0) {
+          const { count } = await tx.usuario.updateMany({
             where: {
-              id: { in: tecnicosIds },
+              id: { in: livres },
+              ativo: true,
               cargo: Cargo.TECNICO,
+              equipeId: null,
             },
             data: { equipeId },
           });
+
+          if (count !== livres.length) {
+            throw new ErroTecnicosInvalidos();
+          }
         }
 
         return tx.equipe.findUniqueOrThrow({
