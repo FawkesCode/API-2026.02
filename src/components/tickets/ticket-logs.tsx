@@ -4,39 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
 import { LogEditor } from "@/components/tickets/log-editor";
-import { LogState, type LogStatus } from "@/components/tickets/log-states";
+import { LogState } from "@/components/tickets/log-states";
 import { LogSuggestion } from "@/components/tickets/log-suggestions";
 import UserMessages from "@/components/tickets/user-messages";
-import { EventoLog, toLogItem } from "@/lib/mappers/historico.mapper";
+import {
+  EventoLog,
+  toLogItem,
+  type Autor,
+  type LogItem,
+} from "@/lib/mappers/historico.mapper";
 import { logRespostaSchema } from "@/schemas/historico.schema";
-
-interface Autor {
-  id: string;
-  nome: string;
-  equipe: string;
-  setor: string;
-}
-
-type LogItem =
-  | {
-      id: string;
-      tipo: "aviso";
-      status: LogStatus;
-      titulo: string;
-      descricao: string;
-      criadoEm: Date;
-    }
-  | {
-      id: string;
-      tipo: "manual";
-      autorId: string;
-      autorNome: string;
-      equipe: string;
-      setor: string;
-      titulo: string;
-      descricao: string;
-      criadoEm: Date;
-    };
 
 interface NovoLog {
   evento: string;
