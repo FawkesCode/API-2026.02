@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import { Cargo, Prisma } from "@/lib/generated/prisma/client";
+import { podeVerUsuarios } from "@/lib/access-control";
 import { createUserSchema } from "@/schemas/user.schema";
 import { servicoUsuario } from "@/services/usuario.service";
 
@@ -85,6 +87,42 @@ export class ControladorUsuario {
       console.error(erro);
       return NextResponse.json(
         { erro: "Erro interno ao listar usuários." },
+        { status: 500 },
+      );
+    }
+  }
+
+  async listDetailed(requisicao: Request) {
+    const sessao = obterSessaoDaRequisicao(requisicao);
+    if (!sessao) {
+      return NextResponse.json(
+        { erro: "Não autenticado.", codigo: "NAO_AUTENTICADO" },
+        { status: 401 },
+      );
+    }
+
+    try {
+      const usuario = await servicoUsuario.buscarPorId(sessao.usuarioId);
+      if (!usuario?.ativo) {
+        return NextResponse.json(
+          { erro: "Usuário sem acesso.", codigo: "USUARIO_SEM_ACESSO" },
+          { status: 403 },
+        );
+      }
+
+      if (!podeVerUsuarios(usuario.cargo)) {
+        return NextResponse.json(
+          { erro: "Usuário sem permissão.", codigo: "SEM_PERMISSAO" },
+          { status: 403 },
+        );
+      }
+
+      const users = await servicoUsuario.listDetailed();
+      return NextResponse.json(users, { status: 200 });
+    } catch (erro) {
+      console.error(erro);
+      return NextResponse.json(
+        { erro: "Erro interno ao listar usuários.", codigo: "ERRO_INTERNO" },
         { status: 500 },
       );
     }
