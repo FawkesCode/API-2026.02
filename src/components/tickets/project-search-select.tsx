@@ -13,7 +13,7 @@ interface ProjectSearchSelectProps {
 
 /**
  * "form de busca" descrito: mostra os projetos cabíveis ao usuário (já
- * filtrados por equipe em useProjetosDisponiveis) com uma barra de
+ * filtrados conforme cargo/equipe em useProjetosDisponiveis) com uma barra de
  * pesquisa por nome/cliente em cima.
  */
 export function ProjectSearchSelect({ onSelect }: ProjectSearchSelectProps) {

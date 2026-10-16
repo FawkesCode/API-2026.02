@@ -1,4 +1,3 @@
-import { EMAIL_MASSA_SEED } from "@/lib/dev-users";
 import { obterSessaoAtual } from "@/auth/sessao";
 import { servicoUsuario } from "@/services/usuario.service";
 
@@ -14,7 +13,7 @@ export async function getUsuarioLogado() {
   return usuario?.ativo ? usuario : null;
 }
 
-/** Identidade da interface; o Massa do seed é usado somente no desenvolvimento. */
+/** Identidade autenticada para exibição na interface. */
 export async function getUsuarioAtual() {
   const sessao = await obterSessaoAtual();
   if (sessao) {
@@ -22,13 +21,5 @@ export async function getUsuarioAtual() {
     return usuario?.ativo ? usuario : null;
   }
 
-  if (
-    process.env.NODE_ENV === "production" ||
-    process.env.production === "true"
-  ) {
-    return null;
-  }
-
-  const massa = await servicoUsuario.buscarPorEmail(EMAIL_MASSA_SEED);
-  return massa?.ativo ? massa : null;
+  return null;
 }

@@ -54,14 +54,14 @@ describe("GET /api/usuarios/detalhado", () => {
   });
 
   it.each([null, { ...sessionUser, ativo: false }])(
-    "retorna 403 para usuário inexistente ou inativo",
+    "retorna 401 para usuário inexistente ou inativo",
     async (registro) => {
       vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue(registro);
       const list = vi.spyOn(servicoUsuario, "listDetailed");
       const resposta = await GET(request());
 
-      expect(resposta.status).toBe(403);
-      expect((await resposta.json()).codigo).toBe("USUARIO_SEM_ACESSO");
+      expect(resposta.status).toBe(401);
+      expect((await resposta.json()).codigo).toBe("NAO_AUTENTICADO");
       expect(list).not.toHaveBeenCalled();
     },
   );

@@ -219,17 +219,33 @@ export class ServicoEquipe {
   /**
    * Substitui os técnicos de uma equipe sem afetar usuários de outros cargos.
    */
-  async replaceTechnicians(teamId: string, technicianIds: string[]) {
+  async replaceTechnicians(
+    teamId: string,
+    technicianIds: string[],
+    usuarioId: string,
+  ) {
     const uniqueIds = [...new Set(technicianIds)];
 
     return this.db.$transaction(async (transaction) => {
       const team = await transaction.equipe.findUnique({
         where: { id: teamId },
-        select: { id: true },
+        select: { id: true, ativo: true },
       });
 
-      if (!team) {
+      if (!team?.ativo) {
         return null;
+      }
+
+      const solicitante = await transaction.usuario.findUnique({
+        where: { id: usuarioId },
+        select: { ativo: true, cargo: true, equipeId: true },
+      });
+      if (
+        !solicitante?.ativo ||
+        solicitante.cargo !== Cargo.GESTOR ||
+        solicitante.equipeId !== teamId
+      ) {
+        throw new ErroEquipeSemPermissao();
       }
 
       const users = await transaction.usuario.findMany({

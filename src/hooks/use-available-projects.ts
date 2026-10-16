@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { Cargo } from "@/types/ticket-enums";
 
 /**
  * Ajuste os campos abaixo se o retorno real de GET /api/projetos tiver
@@ -19,6 +20,7 @@ export interface ProjetoResumo {
 
 export function useProjetosDisponiveis() {
   const usuario = useCurrentUser();
+  const suportePodeVerTodos = usuario?.cargo === Cargo.SUPORTE;
   const [projetos, setProjetos] = useState<ProjetoResumo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export function useProjetosDisponiveis() {
       setCarregando(true);
       setErro(null);
       setProjetos([]);
-      if (!usuario?.equipeId) {
+      if (!usuario || (!suportePodeVerTodos && !usuario.equipeId)) {
         setCarregando(false);
         return;
       }
@@ -42,8 +44,11 @@ export function useProjetosDisponiveis() {
         const dados: ProjetoResumo[] = await resposta.json();
         if (!ativo) return;
 
-        // "que apareçam os que estejam atrelados à atual equipe"
-        const filtrados = dados.filter((projeto) => projeto.equipeId === usuario.equipeId);
+        // Suporte abre tickets para qualquer projeto; gestor e técnico ficam
+        // limitados aos projetos vinculados à própria equipe.
+        const filtrados = suportePodeVerTodos
+          ? dados
+          : dados.filter((projeto) => projeto.equipeId === usuario.equipeId);
 
         setProjetos(filtrados);
       } catch (erroCapturado) {
@@ -62,13 +67,15 @@ export function useProjetosDisponiveis() {
     return () => {
       ativo = false;
     };
-  }, [usuario?.equipeId]);
+  }, [usuario, suportePodeVerTodos]);
 
   return {
-    projetos: usuario?.equipeId
+    projetos: suportePodeVerTodos
+      ? projetos
+      : usuario?.equipeId
       ? projetos.filter((projeto) => projeto.equipeId === usuario.equipeId)
       : [],
-    carregando: !!usuario?.equipeId && carregando,
-    erro: usuario?.equipeId ? erro : null,
+    carregando: !!usuario && (suportePodeVerTodos || !!usuario.equipeId) && carregando,
+    erro: usuario && (suportePodeVerTodos || usuario.equipeId) ? erro : null,
   };
 }

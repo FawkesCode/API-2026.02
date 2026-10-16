@@ -36,12 +36,23 @@ function AlterPassForm() {
 
   const onSubmit: SubmitHandler<FormFields> = async (data) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       if (data.password !== data.confirmPassword) {
         throw new Error("As senhas precisam estar iguais para prosseguir");
       }
 
-      router.push("/projetos");
+      const response = await fetch("/api/auth/password", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ novaSenha: data.password }),
+      });
+      const result = (await response.json()) as { erro?: string };
+
+      if (!response.ok) {
+        throw new Error(result.erro ?? "Não foi possível trocar a senha.");
+      }
+
+      router.replace("/projetos");
+      router.refresh();
     } catch (error) {
       const err = error as Error;
       setError("root", { message: err.message });

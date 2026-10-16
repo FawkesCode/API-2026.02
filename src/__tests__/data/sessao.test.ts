@@ -3,9 +3,13 @@ import { obterSessaoAtual } from "@/auth/sessao";
 import { getUsuarioAtual, getUsuarioLogado } from "@/lib/data/sessao";
 import { servicoUsuario } from "@/services/usuario.service";
 
-vi.mock("@/lib/auth/sessao", () => ({ obterSessaoAtual: vi.fn() }));
-vi.mock("@/lib/services/usuario.service", () => ({
-  servicoUsuario: { buscarPorId: vi.fn(), buscarPorEmail: vi.fn() },
+vi.mock("@/auth/sessao", () => ({ obterSessaoAtual: vi.fn() }));
+vi.mock("@/services/usuario.service", () => ({
+  servicoUsuario: {
+    buscarPorId: vi.fn(),
+    buscarPorEmail: vi.fn(),
+    alterarSenha: vi.fn(),
+  },
 }));
 
 const massa = {
@@ -37,11 +41,9 @@ afterEach(() => {
 });
 
 describe("usuário da interface", () => {
-  it("resolve o Massa pelo email do banco, sem depender de um UUID fixo", async () => {
-    vi.mocked(servicoUsuario.buscarPorEmail).mockResolvedValue(massa);
-
-    expect(await getUsuarioAtual()).toEqual(massa);
-    expect(servicoUsuario.buscarPorEmail).toHaveBeenCalledWith(massa.email);
+  it("não inventa uma identidade quando a sessão está ausente", async () => {
+    expect(await getUsuarioAtual()).toBeNull();
+    expect(servicoUsuario.buscarPorEmail).not.toHaveBeenCalled();
     expect(servicoUsuario.buscarPorId).not.toHaveBeenCalled();
   });
 
@@ -66,34 +68,6 @@ describe("usuário da interface", () => {
       expect(servicoUsuario.buscarPorEmail).not.toHaveBeenCalled();
     },
   );
-
-  it.each(["inativo", "ausente"])(
-    "retorna null quando o Massa está %s",
-    async (estado) => {
-      vi.mocked(servicoUsuario.buscarPorEmail).mockResolvedValue(
-        estado === "inativo" ? { ...massa, ativo: false } : null,
-      );
-
-      expect(await getUsuarioAtual()).toBeNull();
-    },
-  );
-
-  it.each(["NODE_ENV", "production"])(
-    "não seleciona usuário automaticamente em produção (%s)",
-    async (variavel) => {
-      vi.stubEnv(variavel, variavel === "NODE_ENV" ? "production" : "true");
-
-      expect(await getUsuarioAtual()).toBeNull();
-      expect(servicoUsuario.buscarPorEmail).not.toHaveBeenCalled();
-    },
-  );
-
-  it("o Massa padrão da interface não equivale a uma sessão autenticada", async () => {
-    vi.mocked(servicoUsuario.buscarPorEmail).mockResolvedValue(massa);
-
-    expect(await getUsuarioAtual()).toEqual(massa);
-    expect(await getUsuarioLogado()).toBeNull();
-  });
 
   it("descarta um usuário autenticado que foi desativado", async () => {
     vi.mocked(obterSessaoAtual).mockResolvedValue({ usuarioId: gestor.id });

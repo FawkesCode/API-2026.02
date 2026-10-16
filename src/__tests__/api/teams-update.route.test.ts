@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PATCH } from "@/app/api/equipes/[id]/route";
 import { criarTokenDeSessao } from "@/auth/sessao";
+import { servicoUsuario } from "@/services/usuario.service";
 import {
   ErroEquipeNaoEncontrada,
   ErroEquipeSemPermissao,
@@ -40,6 +41,18 @@ function patch(body: unknown, options?: { authenticated?: boolean; id?: string }
     { params: Promise.resolve({ id }) },
   );
 }
+
+beforeEach(() => {
+  vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+    id: managerId,
+    nome: "Gestor",
+    email: "gestor@example.com",
+    cargo: "GESTOR",
+    ativo: true,
+    equipeId: teamId,
+    equipe: { nome: "Equipe Norte" },
+  });
+});
 
 afterEach(() => vi.restoreAllMocks());
 

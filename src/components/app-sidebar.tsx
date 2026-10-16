@@ -16,12 +16,11 @@ import {
   ClipboardList,
   LogOut,
   LucideIcon,
-  Settings,
   Ticket,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import UserSidebar from "./user-sidebar";
 import LogoSidebar from "./logo-sidebar";
 import { cn } from "cn";
@@ -37,6 +36,7 @@ interface NavItem {
 export function AppSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
   const loggedUser = useCurrentUser();
 
   const items: NavItem[] = [
@@ -97,6 +97,13 @@ export function AppSidebar() {
           <SidebarMenuButton
             tooltip="Sair"
             className="flex cursor-pointer justify-center"
+            onClick={async () => {
+              const response = await fetch("/api/auth/logout", { method: "POST" });
+              if (response.ok) {
+                router.replace("/");
+                router.refresh();
+              }
+            }}
           >
             <LogOut aria-hidden={true} className="ml-1" />
             <span>SAIR</span>

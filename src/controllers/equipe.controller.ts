@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { obterSessaoDaRequisicao } from "@/auth/sessao";
+import { exigirCargo } from "@/auth/exigir-cargo";
+import { Cargo } from "@/lib/generated/prisma/client";
 import {
   ErroEquipeNaoEncontrada,
   ErroEquipeSemPermissao,
@@ -70,13 +71,8 @@ export class ControladorEquipe {
       );
     }
 
-    const session = obterSessaoDaRequisicao(request);
-    if (!session) {
-      return NextResponse.json(
-        { erro: "Não autenticado.", codigo: "NAO_AUTENTICADO" },
-        { status: 401 },
-      );
-    }
+    const acesso = await exigirCargo(request, Cargo.GESTOR);
+    if (!acesso.autorizado) return acesso.resposta;
 
     let body: unknown;
     try {
@@ -108,7 +104,7 @@ export class ControladorEquipe {
     try {
       const team = await servicoEquipe.atualizar(
         validatedId.data,
-        session.usuarioId,
+        acesso.usuario.id,
         {
           nome,
           // Descrição vazia é salva como `null`, como o modal já esperava.
@@ -130,6 +126,9 @@ export class ControladorEquipe {
         { status: 400 },
       );
     }
+
+    const acesso = await exigirCargo(request, Cargo.GESTOR);
+    if (!acesso.autorizado) return acesso.resposta;
 
     let body: unknown;
     try {
@@ -160,6 +159,7 @@ export class ControladorEquipe {
       const technicians = await servicoEquipe.replaceTechnicians(
         validatedId.data,
         result.data.tecnicoIds,
+        acesso.usuario.id,
       );
       if (!technicians) {
         return NextResponse.json(
@@ -173,6 +173,12 @@ export class ControladorEquipe {
         return NextResponse.json(
           { erro: error.message, codigo: "INVALID_TECHNICIAN_IDS" },
           { status: 400 },
+        );
+      }
+      if (error instanceof ErroEquipeSemPermissao) {
+        return NextResponse.json(
+          { erro: error.message, codigo: "SEM_PERMISSAO" },
+          { status: 403 },
         );
       }
 
