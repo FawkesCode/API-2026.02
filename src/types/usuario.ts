@@ -14,12 +14,10 @@ export interface UsuarioAtual {
  *
  * ATENÇÃO: o enum atual tem 4 valores (TECNICO, GESTOR, SUPORTE, COMERCIAL),
  * mas o mockup tem 5 tipos. Quando o enum for separado em
- * SUPORTE_INTERNO / SUPORTE_EXTERNO, basta ajustar as chaves abaixo.
  */
 export const CARGO_UI: Record<string, { label: string; cor: string }> = {
   COMERCIAL: { label: "Analista de Compras", cor: "#3949F0" },
-  SUPORTE: { label: "Suporte Interno", cor: "#1391D6" },
-  // SUPORTE_EXTERNO: { label: "Suporte Externo", cor: "#1368D0" },
+  SUPORTE: { label: "Suporte Externo", cor: "#1368D0" },
   GESTOR: { label: "Gestor", cor: "#2FB1F8" },
   TECNICO: { label: "Técnico", cor: "#17498A" },
 };
