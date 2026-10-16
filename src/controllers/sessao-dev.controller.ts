@@ -42,11 +42,14 @@ const entrarSchema = z.object({
 });
 
 function ambienteDeDesenvolvimento() {
+  console.log("NODE_ENV:", process.env.NODE_ENV);
+  console.log("production:", process.env.production);
+
   return (
-    process.env.NODE_ENV !== "production" && process.env.production !== "true"
+    process.env.NODE_ENV !== "production" &&
+    process.env.production !== "true"
   );
 }
-
 function bloqueadoEmProducao() {
   return NextResponse.json(
     { erro: "Rota disponível apenas em ambiente de desenvolvimento." },

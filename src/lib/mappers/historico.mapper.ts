@@ -1,7 +1,34 @@
 import type { Cargo } from "@/lib/generated/prisma/client";
 import type { LogTicketComUsuario } from "@/services/historico.service";
 import type { LogStatus } from "@/components/tickets/log-states";
-import type { Autor, LogItem } from "@/components/tickets/ticket-logs";
+
+export interface Autor {
+  id: string;
+  nome: string;
+  equipe: string;
+  setor: string;
+}
+
+export type LogItem =
+  | {
+    id: string;
+    tipo: "aviso";
+    status: LogStatus;
+    titulo: string;
+    descricao: string;
+    criadoEm: Date;
+  }
+  | {
+    id: string;
+    tipo: "manual";
+    autorId: string;
+    autorNome: string;
+    equipe: string;
+    setor: string;
+    titulo: string;
+    descricao: string;
+    criadoEm: Date;
+  };
 
 export const EventoLog = {
   AtividadeIniciada: "ATIVIDADE_INICIADA",
