@@ -1,17 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
 import { Cargo } from "@/lib/generated/prisma/client";
 import {
+  ErroEquipeSemPermissao,
   InvalidTechnicianError,
   ServicoEquipe,
 } from "@/services/equipe.service";
 
 type TeamDatabase = ConstructorParameters<typeof ServicoEquipe>[0];
+type MockTransaction = {
+  equipe: { findUnique: ReturnType<typeof vi.fn> };
+  usuario: {
+    findUnique: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+  };
+};
 
 const teamId = "550e8400-e29b-41d4-a716-446655440000";
 const technicianId = "550e8400-e29b-41d4-a716-446655440001";
+const managerId = "550e8400-e29b-41d4-a716-446655440002";
 
 function createService(options?: {
-  team?: { id: string } | null;
+  team?: { id: string; ativo: boolean } | null;
   users?: { id: string; cargo: Cargo }[];
   result?: unknown[];
 }) {
@@ -20,10 +30,15 @@ function createService(options?: {
       findUnique: vi
         .fn()
         .mockResolvedValue(
-          options?.team === undefined ? { id: teamId } : options.team,
+          options?.team === undefined ? { id: teamId, ativo: true } : options.team,
         ),
     },
     usuario: {
+      findUnique: vi.fn().mockResolvedValue({
+        ativo: true,
+        cargo: Cargo.GESTOR,
+        equipeId: teamId,
+      }),
       findMany: vi
         .fn()
         .mockResolvedValueOnce(
@@ -35,8 +50,8 @@ function createService(options?: {
   };
   const database = {
     $transaction: vi.fn(
-      async (operation: (transaction: typeof transaction) => unknown) =>
-        operation(transaction),
+      async (operation: (transaction: MockTransaction) => unknown) =>
+        operation(transaction as MockTransaction),
     ),
   };
 
@@ -61,7 +76,7 @@ describe("ServicoEquipe.replaceTechnicians", () => {
     const { service, transaction, database } = createService({ result });
 
     await expect(
-      service.replaceTechnicians(teamId, [technicianId]),
+      service.replaceTechnicians(teamId, [technicianId], managerId),
     ).resolves.toEqual(result);
     expect(database.$transaction).toHaveBeenCalledOnce();
     expect(transaction.usuario.updateMany).toHaveBeenNthCalledWith(1, {
@@ -84,7 +99,7 @@ describe("ServicoEquipe.replaceTechnicians", () => {
     });
 
     await expect(
-      service.replaceTechnicians(teamId, [technicianId]),
+      service.replaceTechnicians(teamId, [technicianId], managerId),
     ).rejects.toBeInstanceOf(InvalidTechnicianError);
     expect(transaction.usuario.updateMany).not.toHaveBeenCalled();
   });
@@ -93,15 +108,29 @@ describe("ServicoEquipe.replaceTechnicians", () => {
     const { service, transaction } = createService({ team: null });
 
     await expect(
-      service.replaceTechnicians(teamId, [technicianId]),
+      service.replaceTechnicians(teamId, [technicianId], managerId),
     ).resolves.toBeNull();
+    expect(transaction.usuario.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("não permite que um gestor altere os técnicos de outra equipe", async () => {
+    const { service, transaction } = createService();
+    transaction.usuario.findUnique.mockResolvedValue({
+      ativo: true,
+      cargo: Cargo.GESTOR,
+      equipeId: "550e8400-e29b-41d4-a716-446655440009",
+    });
+
+    await expect(
+      service.replaceTechnicians(teamId, [technicianId], managerId),
+    ).rejects.toBeInstanceOf(ErroEquipeSemPermissao);
     expect(transaction.usuario.updateMany).not.toHaveBeenCalled();
   });
 
   it("permite esvaziar a equipe, desvinculando seus técnicos", async () => {
     const { service, transaction } = createService({ users: [], result: [] });
 
-    await expect(service.replaceTechnicians(teamId, [])).resolves.toEqual([]);
+    await expect(service.replaceTechnicians(teamId, [], managerId)).resolves.toEqual([]);
     expect(transaction.usuario.updateMany).toHaveBeenCalledTimes(1);
     expect(transaction.usuario.updateMany).toHaveBeenCalledWith({
       where: { equipeId: teamId, cargo: Cargo.TECNICO },
@@ -114,7 +143,7 @@ describe("ServicoEquipe.replaceTechnicians", () => {
       users: [{ id: technicianId, cargo: Cargo.TECNICO }],
     });
 
-    await service.replaceTechnicians(teamId, [technicianId, technicianId]);
+    await service.replaceTechnicians(teamId, [technicianId, technicianId], managerId);
 
     expect(transaction.usuario.findMany).toHaveBeenNthCalledWith(1, {
       where: { id: { in: [technicianId] } },

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@/lib/generated/prisma/client";
+import { Cargo, Prisma } from "@/lib/generated/prisma/client";
 import {
   servicoHistoricoTicket,
   UsuarioSemAcessoAoTicketError,
   TransicaoTicketInvalidaError,
 } from "@/services/historico.service";
-import { obterSessaoDaRequisicao } from "@/auth/sessao";
+import { exigirCargo } from "@/auth/exigir-cargo";
 import { criarLogTicketSchema } from "@/schemas/historico.schema";
 
 async function extrairJson(requisicao: Request) {
@@ -87,9 +87,13 @@ export class ControladorHistoricoTicket {
       );
     }
 
-    const sessao = obterSessaoDaRequisicao(requisicao);
-    if (!sessao)
-      return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+    const acesso = await exigirCargo(
+      requisicao,
+      Cargo.TECNICO,
+      Cargo.SUPORTE,
+      Cargo.GESTOR,
+    );
+    if (!acesso.autorizado) return acesso.resposta;
 
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
@@ -110,7 +114,7 @@ export class ControladorHistoricoTicket {
     try {
       const log = await servicoHistoricoTicket.criar(idValidado.data, {
         ...resultado.data,
-        usuarioId: sessao.usuarioId,
+        usuarioId: acesso.usuario.id,
       });
       if (!log) {
         return NextResponse.json(

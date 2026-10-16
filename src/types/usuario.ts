@@ -6,4 +6,5 @@ export interface UsuarioAtual {
   email: string;
   cargo: Cargo;
   equipeId: string | null;
+  equipeNome: string | null;
 }

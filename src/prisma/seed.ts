@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { hash } from "bcryptjs";
 import { EMAIL_GESTOR_SEED, EMAIL_MASSA_SEED } from "../lib/dev-users";
 import { prisma } from "../lib/prisma";
 import {
@@ -44,6 +45,15 @@ const prioridades = [
 const diasDeSla = [7, 3, 2, 1];
 
 async function main() {
+  const seedDevelopmentUsers =
+    process.env.NODE_ENV !== "production" && process.env.production !== "true";
+  const senhaGestor = seedDevelopmentUsers
+    ? await hash("Gestor@123", 12)
+    : "senha-fake-para-teste";
+  const senhaTecnico = seedDevelopmentUsers
+    ? await hash("Tecnico@123", 12)
+    : "hirosh-ima";
+
   const resultado = await prisma.$transaction(async (tx) => {
     const equipe = await tx.equipe.upsert({
       where: { nome: "Equipe Massa" },
@@ -60,11 +70,19 @@ async function main() {
       create: {
         nome: "Fernando",
         email,
-        senhaHash: "hirosh-ima",
+        senhaHash: senhaTecnico,
         cargo: Cargo.TECNICO,
+        senhaProvisoria: false,
         equipeId: equipe.id,
       },
-      update: { ativo: true, cargo: Cargo.TECNICO, equipeId: equipe.id },
+      update: {
+        ativo: true,
+        cargo: Cargo.TECNICO,
+        equipeId: equipe.id,
+        ...(seedDevelopmentUsers
+          ? { senhaHash: senhaTecnico, senhaProvisoria: false }
+          : {}),
+      },
     });
 
     const gestor = await tx.usuario.upsert({
@@ -72,12 +90,71 @@ async function main() {
       create: {
         nome: "Kami-sama",
         email: EMAIL_GESTOR_SEED,
-        senhaHash: "senha-fake-para-teste",
+        senhaHash: senhaGestor,
         cargo: Cargo.GESTOR,
+        senhaProvisoria: false,
         equipeId: equipe.id,
       },
-      update: { ativo: true, cargo: Cargo.GESTOR, equipeId: equipe.id },
+      update: {
+        ativo: true,
+        cargo: Cargo.GESTOR,
+        equipeId: equipe.id,
+        ...(seedDevelopmentUsers
+          ? { senhaHash: senhaGestor, senhaProvisoria: false }
+          : {}),
+      },
     });
+
+    if (seedDevelopmentUsers) {
+      const contasDeTeste = [
+        {
+          nome: "Usuário de Teste",
+          email: "teste@gmail.com",
+          senha: "teste123",
+          cargo: Cargo.TECNICO,
+          equipeId: equipe.id,
+          senhaProvisoria: true,
+        },
+        {
+          nome: "Suporte de Teste",
+          email: "suporte.seed@example.com",
+          senha: "Suporte@123",
+          cargo: Cargo.SUPORTE,
+          equipeId: null,
+          senhaProvisoria: false,
+        },
+        {
+          nome: "Comercial de Teste",
+          email: "comercial.seed@example.com",
+          senha: "Comercial@123",
+          cargo: Cargo.COMERCIAL,
+          equipeId: null,
+          senhaProvisoria: false,
+        },
+      ];
+
+      for (const conta of contasDeTeste) {
+        await tx.usuario.upsert({
+          where: { email: conta.email },
+          create: {
+            nome: conta.nome,
+            email: conta.email,
+            senhaHash: await hash(conta.senha, 12),
+            cargo: conta.cargo,
+            equipeId: conta.equipeId,
+            senhaProvisoria: conta.senhaProvisoria,
+          },
+          update: {
+            nome: conta.nome,
+            ativo: true,
+            cargo: conta.cargo,
+            equipeId: conta.equipeId,
+            senhaHash: await hash(conta.senha, 12),
+            senhaProvisoria: conta.senhaProvisoria,
+          },
+        });
+      }
+    }
 
     const cliente = await tx.cliente.upsert({
       where: { nome: "Cliente Demonstração" },
@@ -146,6 +223,13 @@ async function main() {
   console.log("Seed concluído: 1 equipe, 1 cliente, 2 projetos e 8 tickets.");
   console.log("Massa:", resultado.massa.email, "— ID:", resultado.massa.id);
   console.log("Gestor:", resultado.gestor.email, "— ID:", resultado.gestor.id);
+  if (seedDevelopmentUsers) {
+    console.log("Credenciais locais: teste@gmail.com / teste123 (troca obrigatória)");
+    console.log("Gestor: gestor.seed@example.com / Gestor@123");
+    console.log("Suporte: suporte.seed@example.com / Suporte@123");
+    console.log("Comercial: comercial.seed@example.com / Comercial@123");
+    console.log("Técnico: fernando@massanori.japa / Tecnico@123");
+  }
   console.log("Equipe:", resultado.equipe.nome, "— ID:", resultado.equipe.id);
   console.log("Cliente:", resultado.cliente.nome, "— ID:", resultado.cliente.id);
   console.log("Tickets:", resultado.ticketsIds);

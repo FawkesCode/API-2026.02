@@ -3,7 +3,7 @@ import { POST } from "@/app/api/dev/sessao/route";
 import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import { servicoUsuario } from "@/services/usuario.service";
 
-vi.mock("@/lib/services/usuario.service", () => ({
+vi.mock("@/services/usuario.service", () => ({
   servicoUsuario: { buscarPorId: vi.fn(), buscarPorEmail: vi.fn() },
 }));
 

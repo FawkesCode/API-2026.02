@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/tickets/[id]/logs/route";
 import { criarTokenDeSessao } from "@/auth/sessao";
 import {
@@ -6,6 +6,7 @@ import {
   UsuarioSemAcessoAoTicketError,
   TransicaoTicketInvalidaError,
 } from "@/services/historico.service";
+import { servicoUsuario } from "@/services/usuario.service";
 
 process.env.SESSION_SECRET = "segredo-de-teste-com-32-caracteres";
 const ticketId = "550e8400-e29b-41d4-a716-446655440010";
@@ -29,11 +30,41 @@ function request(autenticado = true) {
     }),
   });
 }
+beforeEach(() => {
+  vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+    id: usuarioId,
+    nome: "Técnico",
+    email: "tecnico@example.com",
+    cargo: "TECNICO",
+    ativo: true,
+    equipeId: "550e8400-e29b-41d4-a716-446655440003",
+    equipe: { nome: "Equipe" },
+  });
+});
+
 afterEach(() => vi.restoreAllMocks());
 describe("autorização dos eventos de ticket", () => {
   it("exige sessão", async () => {
     const criar = vi.spyOn(servicoHistoricoTicket, "criar");
     expect((await POST(request(false), contexto)).status).toBe(401);
+    expect(criar).not.toHaveBeenCalled();
+  });
+  it("retorna 403 para cargo comercial antes de criar evento", async () => {
+    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+      id: usuarioId,
+      nome: "Comercial",
+      email: "comercial@example.com",
+      cargo: "COMERCIAL",
+      ativo: true,
+      equipeId: null,
+      equipe: null,
+    });
+    const criar = vi.spyOn(servicoHistoricoTicket, "criar");
+
+    const resposta = await POST(request(), contexto);
+
+    expect(resposta.status).toBe(403);
+    expect(await resposta.json()).toMatchObject({ codigo: "SEM_PERMISSAO" });
     expect(criar).not.toHaveBeenCalled();
   });
   it("usa o autor da sessão mesmo que o corpo informe outro usuário", async () => {
