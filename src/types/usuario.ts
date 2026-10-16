@@ -18,10 +18,10 @@ export interface UsuarioAtual {
 export const CARGO_UI: Record<string, { label: string; cor: string }> = {
   COMERCIAL: { label: "Analista de Compras", cor: "#3949F0" },
   SUPORTE: { label: "Suporte Externo", cor: "#1368D0" },
+  SUPORTE_INTERNO: { label: "Suporte Interno", cor: "#1391D6" },
   GESTOR: { label: "Gestor", cor: "#2FB1F8" },
   TECNICO: { label: "Técnico", cor: "#17498A" },
 };
-
 export const CARGO_UI_PADRAO = { label: "Não definido", cor: "#6B7280" };
 
 /** Modelo consumido pela UI da tabela de usuários (já mapeado). */

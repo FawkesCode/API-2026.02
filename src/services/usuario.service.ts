@@ -16,6 +16,8 @@ const dadosUsuarioAtual = {
   equipe: { select: { nome: true } },
 } as const;
 
+
+
 /** Campos expostos na listagem de gestão. `senhaHash` nunca entra aqui. */
 const detailedUserFields = {
   id: true,
@@ -36,6 +38,7 @@ const camposListaUsuario = {
   ativo: true,
   criadoEm: true,
   equipe: { select: { nome: true } },
+  criadoPor: { select: { nome: true, email: true } },
 } as const;
 
 export type UsuarioListaRegistro = Prisma.UsuarioGetPayload<{

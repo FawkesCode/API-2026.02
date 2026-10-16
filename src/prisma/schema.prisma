@@ -11,6 +11,7 @@ enum Cargo {
   TECNICO
   GESTOR
   SUPORTE
+  SUPORTE_INTERNO
   COMERCIAL
 }
 
@@ -52,6 +53,10 @@ model Usuario {
   ticketsResponsaveis Ticket[]          @relation("TicketsResponsaveis")
   relatorios          Relatorio[]
   eventosHistorico    HistoricoTicket[]
+
+  criadoPorId String?   // siga o padrão de @map do seu schema
+  criadoPor   Usuario?  @relation("UsuarioCriadoPor", fields: [criadoPorId], references: [id])
+  criados     Usuario[] @relation("UsuarioCriadoPor")
 
   @@index([equipeId], map: "ix_usuarios_equipe")
   @@map("usuarios")

@@ -26,6 +26,8 @@ export function toUsuarioListaItem(registro: UsuarioListaRegistro): UsuarioLista
     ativo: registro.ativo,
     adicionadoEm: `${format(registro.criadoEm, "dd")} ${mes}, ${format(registro.criadoEm, "yyyy")}`,
     equipe: registro.equipe?.nome ?? null,
-    adicionadoPor: null,
+    adicionadoPor: registro.criadoPor
+  ? `${registro.criadoPor.nome} (${registro.criadoPor.email})`
+  : null,
   };
 }
