@@ -31,10 +31,11 @@ export class ErroNomeEquipeDuplicado extends Error {
   }
 }
 
+/** Campos opcionais: só o que for enviado é alterado (PATCH). */
 export interface DadosAtualizarEquipe {
-  nome: string;
-  descricao: string | null;
-  tecnicosIds: string[];
+  nome?: string;
+  descricao?: string | null;
+  tecnicosIds?: string[];
 }
 
 const teamTechnicianData = {
@@ -90,11 +91,18 @@ export class ServicoEquipe {
     usuarioId: string,
     dados: DadosAtualizarEquipe,
   ) {
-    // Remove IDs repetidos para evitar contagens incorretas.
-    const tecnicosIds = [...new Set(dados.tecnicosIds)];
-
     try {
       return await this.db.$transaction(async (tx) => {
+        // Existência antes da permissão: equipe inexistente responde 404.
+        const equipe = await tx.equipe.findUnique({
+          where: { id: equipeId },
+          select: { ativo: true },
+        });
+
+        if (!equipe?.ativo) {
+          throw new ErroEquipeNaoEncontrada();
+        }
+
         const solicitante = await tx.usuario.findUnique({
           where: { id: usuarioId },
         });
@@ -107,73 +115,20 @@ export class ServicoEquipe {
           throw new ErroEquipeSemPermissao();
         }
 
-        const equipe = await tx.equipe.findUnique({
-          where: { id: equipeId },
-          select: { ativo: true },
-        });
-
-        if (!equipe?.ativo) {
-          throw new ErroEquipeNaoEncontrada();
-        }
-
-        // Aceita técnicos ativos que estejam sem equipe ou já pertençam
-        // à equipe editada. Não transfere técnicos de outras equipes.
-        const candidatos = await tx.usuario.findMany({
-          where: {
-            id: { in: tecnicosIds },
-            ativo: true,
-            cargo: Cargo.TECNICO,
-            OR: [{ equipeId: null }, { equipeId }],
-          },
-          select: { id: true, equipeId: true },
-        });
-
-        if (candidatos.length !== tecnicosIds.length) {
-          throw new ErroTecnicosInvalidos();
-        }
-
-        await tx.equipe.update({
-          where: { id: equipeId },
-          data: {
-            nome: dados.nome,
-            descricao: dados.descricao,
-          },
-        });
-
-        // Técnicos ativos removidos da lista ficam sem equipe. Inativos não
-        // aparecem no modal, então não podem ser desvinculados por ele.
-        await tx.usuario.updateMany({
-          where: {
-            equipeId,
-            cargo: Cargo.TECNICO,
-            ativo: true,
-            id: { notIn: tecnicosIds },
-          },
-          data: { equipeId: null },
-        });
-
-        // Vincula só quem ainda está sem equipe. A condição `equipeId: null`
-        // vai no próprio UPDATE: se outra requisição alocar o técnico entre a
-        // leitura acima e esta escrita, a contagem diverge e a transação é
-        // desfeita (sem depender de como o driver conta linhas afetadas).
-        const livres = candidatos
-          .filter((c) => c.equipeId === null)
-          .map((c) => c.id);
-
-        if (livres.length > 0) {
-          const { count } = await tx.usuario.updateMany({
-            where: {
-              id: { in: livres },
-              ativo: true,
-              cargo: Cargo.TECNICO,
-              equipeId: null,
+        if (dados.nome !== undefined || dados.descricao !== undefined) {
+          await tx.equipe.update({
+            where: { id: equipeId },
+            data: {
+              ...(dados.nome !== undefined ? { nome: dados.nome } : {}),
+              ...(dados.descricao !== undefined
+                ? { descricao: dados.descricao }
+                : {}),
             },
-            data: { equipeId },
           });
+        }
 
-          if (count !== livres.length) {
-            throw new ErroTecnicosInvalidos();
-          }
+        if (dados.tecnicosIds !== undefined) {
+          await this.substituirTecnicos(tx, equipeId, dados.tecnicosIds);
         }
 
         return tx.equipe.findUniqueOrThrow({
@@ -194,6 +149,70 @@ export class ServicoEquipe {
       }
 
       throw e;
+    }
+  }
+
+  /**
+   * `tecnicosIds` é a lista completa: quem ficar de fora é desvinculado.
+   */
+  private async substituirTecnicos(
+    tx: Prisma.TransactionClient,
+    equipeId: string,
+    ids: string[],
+  ) {
+    // Remove IDs repetidos para evitar contagens incorretas.
+    const tecnicosIds = [...new Set(ids)];
+
+    // Aceita técnicos ativos que estejam sem equipe ou já pertençam
+    // à equipe editada. Não transfere técnicos de outras equipes.
+    const candidatos = await tx.usuario.findMany({
+      where: {
+        id: { in: tecnicosIds },
+        ativo: true,
+        cargo: Cargo.TECNICO,
+        OR: [{ equipeId: null }, { equipeId }],
+      },
+      select: { id: true, equipeId: true },
+    });
+
+    if (candidatos.length !== tecnicosIds.length) {
+      throw new ErroTecnicosInvalidos();
+    }
+
+    // Técnicos ativos removidos da lista ficam sem equipe. Inativos não
+    // aparecem no modal, então não podem ser desvinculados por ele.
+    await tx.usuario.updateMany({
+      where: {
+        equipeId,
+        cargo: Cargo.TECNICO,
+        ativo: true,
+        id: { notIn: tecnicosIds },
+      },
+      data: { equipeId: null },
+    });
+
+    // Vincula só quem ainda está sem equipe. A condição `equipeId: null`
+    // vai no próprio UPDATE: se outra requisição alocar o técnico entre a
+    // leitura acima e esta escrita, a contagem diverge e a transação é
+    // desfeita (sem depender de como o driver conta linhas afetadas).
+    const livres = candidatos
+      .filter((c) => c.equipeId === null)
+      .map((c) => c.id);
+
+    if (livres.length > 0) {
+      const { count } = await tx.usuario.updateMany({
+        where: {
+          id: { in: livres },
+          ativo: true,
+          cargo: Cargo.TECNICO,
+          equipeId: null,
+        },
+        data: { equipeId },
+      });
+
+      if (count !== livres.length) {
+        throw new ErroTecnicosInvalidos();
+      }
     }
   }
 
