@@ -6,7 +6,7 @@ import type {
   UsuarioCriadoDTO,
 } from "@/types/usuario";
 
-const URL_USUARIOS = "/api/usuarios";
+export const ENDPOINT_USUARIOS = "/api/usuarios";
 
 export const MENSAGEM_ERRO_CADASTRO_USUARIO =
   "Não foi possível cadastrar o usuário. Tente novamente.";
@@ -65,21 +65,22 @@ export function mapearErrosCamposUsuario(
 }
 
 /**
- * Função assíncrona no lado do cliente que envia os dados do formulário
- * para a rota `POST /api/usuarios` e normaliza o resultado para a UI.
+ * Função assíncrona client-side que realiza o envio dos dados do formulário
+ * via `fetch` para o endpoint `POST /api/usuarios` e normaliza a resposta.
  */
 export async function cadastrarUsuario(
   dados: UsuarioFormValues,
   fetchFn: typeof fetch = fetch,
 ): Promise<CriarUsuarioResultado> {
-  const payload = toCriarUsuarioPayload(dados);
+  const payload: CriarUsuarioPayload = toCriarUsuarioPayload(dados);
+  const initRequisicao: RequestInit = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  };
 
   try {
-    const resposta = await fetchFn(URL_USUARIOS, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const resposta = await fetchFn(ENDPOINT_USUARIOS, initRequisicao);
 
     if (resposta.ok) {
       const usuario = (await resposta
@@ -97,7 +98,11 @@ export async function cadastrarUsuario(
       detalhes?: Record<string, unknown>;
     } | null;
 
-    const errosCampos = mapearErrosCamposUsuario(corpo?.detalhes);
+    const detalhes =
+      corpo?.detalhes && typeof corpo.detalhes === "object"
+        ? corpo.detalhes
+        : undefined;
+    const errosCampos = mapearErrosCamposUsuario(detalhes);
     const erro =
       corpo?.erro ?? corpo?.message ?? MENSAGEM_ERRO_CADASTRO_USUARIO;
 
@@ -105,6 +110,7 @@ export async function cadastrarUsuario(
       sucesso: false,
       erro,
       errosCampos,
+      ...(detalhes ? { detalhes } : {}),
     };
   } catch {
     return {

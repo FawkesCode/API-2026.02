@@ -7,6 +7,8 @@ import {
   useForm,
   useWatch,
   type FieldErrors,
+  type UseFormResetField,
+  type UseFormSetError,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
@@ -25,7 +27,11 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { FormInput, FormSelect } from "@/components/form/form-field";
-import { cadastrarUsuario } from "@/lib/usuarios-client";
+import {
+  cadastrarUsuario,
+  mapearErrosCamposUsuario,
+  MENSAGEM_ERRO_CADASTRO_USUARIO,
+} from "@/lib/usuarios-client";
 import { cn } from "@/lib/utils";
 import {
   OPCOES_TIPO_CONTA,
@@ -35,7 +41,7 @@ import {
   type UsuarioFormValues,
 } from "@/schemas/usuario-form.schema";
 
-const VALORES_INICIAIS: UsuarioFormInput = {
+export const VALORES_INICIAIS_USUARIO_FORM: UsuarioFormInput = {
   email: "",
   nome: "",
   tipoConta: null,
@@ -43,14 +49,80 @@ const VALORES_INICIAIS: UsuarioFormInput = {
   confirmarSenha: "",
 };
 
-function extrairMensagemCampo(valor: unknown): string | undefined {
-  if (typeof valor === "string" && valor.trim().length > 0) {
-    return valor;
+export interface AcoesSubmissaoUsuarioForm {
+  reset: (values?: UsuarioFormInput) => void;
+  resetField: UseFormResetField<UsuarioFormInput>;
+  setError: UseFormSetError<UsuarioFormInput>;
+  setAberto: (aberto: boolean) => void;
+  setErroEnvio: (erro: string | null) => void;
+  atualizarLista: () => void;
+  notificarSucesso?: () => void;
+  enviarCadastro?: typeof cadastrarUsuario;
+}
+
+export function tratarFalhaValidacaoSenha(
+  errosValidacao: FieldErrors<UsuarioFormInput>,
+  senhaDigitada: string,
+  resetField: UseFormResetField<UsuarioFormInput>,
+): void {
+  if (errosValidacao.senha && senhaDigitada.length > 0) {
+    resetField("senha", { keepError: true });
   }
-  if (Array.isArray(valor) && typeof valor[0] === "string" && valor[0].trim().length > 0) {
-    return valor[0];
+}
+
+export async function processarEnvioCadastroUsuario(
+  data: UsuarioFormValues,
+  acoes: AcoesSubmissaoUsuarioForm,
+): Promise<void> {
+  acoes.setErroEnvio(null);
+
+  const enviar = acoes.enviarCadastro ?? cadastrarUsuario;
+  let resultado: Awaited<ReturnType<typeof cadastrarUsuario>>;
+
+  try {
+    resultado = await enviar(data);
+  } catch {
+    acoes.setErroEnvio(MENSAGEM_ERRO_CADASTRO_USUARIO);
+    return;
   }
-  return undefined;
+
+  if (resultado.sucesso) {
+    acoes.reset(VALORES_INICIAIS_USUARIO_FORM);
+    acoes.setAberto(false);
+    if (acoes.notificarSucesso) {
+      acoes.notificarSucesso();
+    } else {
+      toast.add({
+        type: "success",
+        title: "Usuário cadastrado",
+        description: "O novo usuário foi cadastrado com sucesso.",
+      });
+    }
+    acoes.atualizarLista();
+    return;
+  }
+
+  const errosCampos = {
+    ...mapearErrosCamposUsuario(resultado.detalhes),
+    ...resultado.errosCampos,
+  };
+  const { email, nome, tipoConta, senha } = errosCampos;
+
+  if (email) {
+    acoes.setError("email", { type: "server", message: email });
+  }
+  if (nome) {
+    acoes.setError("nome", { type: "server", message: nome });
+  }
+  if (tipoConta) {
+    acoes.setError("tipoConta", { type: "server", message: tipoConta });
+  }
+  if (senha) {
+    acoes.resetField("senha");
+    acoes.setError("senha", { type: "server", message: senha });
+  }
+
+  acoes.setErroEnvio(resultado.erro);
 }
 
 export function UsuarioFormDialog() {
@@ -68,7 +140,7 @@ export function UsuarioFormDialog() {
     formState: { errors, isSubmitting },
   } = useForm<UsuarioFormInput, unknown, UsuarioFormValues>({
     resolver: zodResolver(usuarioFormSchema),
-    defaultValues: VALORES_INICIAIS,
+    defaultValues: VALORES_INICIAIS_USUARIO_FORM,
   });
 
   const senhaDigitada =
@@ -78,66 +150,24 @@ export function UsuarioFormDialog() {
   function aoMudarAbertura(valor: boolean) {
     setAberto(valor);
     if (!valor) {
-      reset(VALORES_INICIAIS);
+      reset(VALORES_INICIAIS_USUARIO_FORM);
       setErroEnvio(null);
     }
   }
 
   function aoFalhar(errosValidacao: FieldErrors<UsuarioFormInput>) {
-    if (errosValidacao.senha && senhaDigitada.length > 0) {
-      resetField("senha", { keepError: true });
-    }
+    tratarFalhaValidacaoSenha(errosValidacao, senhaDigitada, resetField);
   }
 
   async function aoEnviar(data: UsuarioFormValues) {
-    setErroEnvio(null);
-
-    const resultado = await cadastrarUsuario(data);
-
-    if (resultado.sucesso) {
-      reset(VALORES_INICIAIS);
-      setAberto(false);
-      toast.add({
-        type: "success",
-        title: "Usuário cadastrado",
-        description: "O novo usuário foi cadastrado com sucesso.",
-      });
-      router.refresh();
-      return;
-    }
-
-    if (resultado.errosCampos) {
-      const { email, nome, tipoConta, senha } = resultado.errosCampos;
-      if (email) {
-        setError("email", { type: "server", message: email });
-      }
-
-      const corpo = await res.json().catch(() => null);
-
-      if (corpo?.detalhes && typeof corpo.detalhes === "object") {
-        const detalhes = corpo.detalhes as Record<string, unknown>;
-        const erroEmail = extrairMensagemCampo(detalhes.email);
-        const erroNome = extrairMensagemCampo(detalhes.nome);
-        const erroCargo = extrairMensagemCampo(detalhes.cargo);
-        const erroSenha = extrairMensagemCampo(detalhes.senha);
-
-        if (erroEmail) {
-          setError("email", { type: "server", message: erroEmail });
-        }
-        if (erroNome) {
-          setError("nome", { type: "server", message: erroNome });
-        }
-        if (erroCargo) {
-          setError("tipoConta", { type: "server", message: erroCargo });
-        }
-        if (erroSenha) {
-          resetField("senha");
-          setError("senha", { type: "server", message: erroSenha });
-        }
-      }
-    }
-
-    setErroEnvio(resultado.erro);
+    await processarEnvioCadastroUsuario(data, {
+      reset,
+      resetField,
+      setError,
+      setAberto,
+      setErroEnvio,
+      atualizarLista: () => router.refresh(),
+    });
   }
 
   return (
