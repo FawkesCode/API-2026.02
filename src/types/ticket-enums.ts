@@ -23,6 +23,7 @@ export const Cargo = {
   TECNICO: "TECNICO",
   GESTOR: "GESTOR",
   SUPORTE: "SUPORTE",
+  SUPORTE_INTERNO: "SUPORTE_INTERNO",
   COMERCIAL: "COMERCIAL",
 } as const;
 export type Cargo = (typeof Cargo)[keyof typeof Cargo];

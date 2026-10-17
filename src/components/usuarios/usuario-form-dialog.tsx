@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { FormInput, FormSelect } from "@/components/form/form-field";
+import { cadastrarUsuario } from "@/lib/usuarios-client";
 import { cn } from "@/lib/utils";
 import {
   OPCOES_TIPO_CONTA,
@@ -33,11 +34,6 @@ import {
   type UsuarioFormInput,
   type UsuarioFormValues,
 } from "@/schemas/usuario-form.schema";
-
-const URL_USUARIOS = "/api/usuarios";
-
-const MENSAGEM_ERRO_PADRAO =
-  "Não foi possível cadastrar o usuário. Tente novamente.";
 
 const VALORES_INICIAIS: UsuarioFormInput = {
   email: "",
@@ -96,29 +92,24 @@ export function UsuarioFormDialog() {
   async function aoEnviar(data: UsuarioFormValues) {
     setErroEnvio(null);
 
-    try {
-      const res = await fetch(URL_USUARIOS, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: data.nome,
-          email: data.email,
-          cargo: data.tipoConta.value,
-          senha: data.senha,
-        }),
-      });
+    const resultado = await cadastrarUsuario(data);
 
-      if (res.ok) {
-        await res.json().catch(() => null);
-        reset(VALORES_INICIAIS);
-        setAberto(false);
-        toast.add({
-          type: "success",
-          title: "Usuário cadastrado",
-          description: "O novo usuário foi cadastrado com sucesso.",
-        });
-        router.refresh();
-        return;
+    if (resultado.sucesso) {
+      reset(VALORES_INICIAIS);
+      setAberto(false);
+      toast.add({
+        type: "success",
+        title: "Usuário cadastrado",
+        description: "O novo usuário foi cadastrado com sucesso.",
+      });
+      router.refresh();
+      return;
+    }
+
+    if (resultado.errosCampos) {
+      const { email, nome, tipoConta, senha } = resultado.errosCampos;
+      if (email) {
+        setError("email", { type: "server", message: email });
       }
 
       const corpo = await res.json().catch(() => null);
@@ -144,12 +135,9 @@ export function UsuarioFormDialog() {
           setError("senha", { type: "server", message: erroSenha });
         }
       }
-
-      const mensagem = corpo?.erro ?? corpo?.message ?? MENSAGEM_ERRO_PADRAO;
-      setErroEnvio(mensagem);
-    } catch {
-      setErroEnvio(MENSAGEM_ERRO_PADRAO);
     }
+
+    setErroEnvio(resultado.erro);
   }
 
   return (

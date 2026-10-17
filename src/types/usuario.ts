@@ -45,3 +45,37 @@ export interface UsuariosPaginados {
   pagina: number;
   totalPaginas: number;
 }
+
+export interface CriarUsuarioPayload {
+  nome: string;
+  email: string;
+  cargo: Cargo;
+  senha: string;
+}
+
+export interface UsuarioCriadoDTO {
+  id: string;
+  nome: string;
+  email: string;
+  cargo: Cargo;
+  ativo: boolean;
+  senhaProvisoria: boolean;
+  equipeId: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export type CamposErroCadastroUsuario = Partial<{
+  nome: string;
+  email: string;
+  tipoConta: string;
+  senha: string;
+}>;
+
+export type CriarUsuarioResultado =
+  | { sucesso: true; usuario: UsuarioCriadoDTO | null }
+  | {
+      sucesso: false;
+      erro: string;
+      errosCampos?: CamposErroCadastroUsuario;
+    };

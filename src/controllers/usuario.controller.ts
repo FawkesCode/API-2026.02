@@ -36,8 +36,13 @@ export class ControladorUsuario {
     }
 
     try {
+      const sessao = obterSessaoDaRequisicao(request);
       const { senha: password, ...userData } = result.data;
-      const user = await servicoUsuario.createUser({ ...userData, password });
+      const user = await servicoUsuario.createUser({
+        ...userData,
+        password,
+        ...(sessao ? { criadoPorId: sessao.usuarioId } : {}),
+      });
       return NextResponse.json(user, { status: 201 });
     } catch (error) {
       if (
