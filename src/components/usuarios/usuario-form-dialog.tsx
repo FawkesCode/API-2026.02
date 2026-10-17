@@ -43,6 +43,16 @@ const VALORES_INICIAIS: UsuarioFormInput = {
   confirmarSenha: "",
 };
 
+function extrairMensagemCampo(valor: unknown): string | undefined {
+  if (typeof valor === "string" && valor.trim().length > 0) {
+    return valor;
+  }
+  if (Array.isArray(valor) && typeof valor[0] === "string" && valor[0].trim().length > 0) {
+    return valor[0];
+  }
+  return undefined;
+}
+
 export function UsuarioFormDialog() {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -101,15 +111,29 @@ export function UsuarioFormDialog() {
       if (email) {
         setError("email", { type: "server", message: email });
       }
-      if (nome) {
-        setError("nome", { type: "server", message: nome });
-      }
-      if (tipoConta) {
-        setError("tipoConta", { type: "server", message: tipoConta });
-      }
-      if (senha) {
-        resetField("senha");
-        setError("senha", { type: "server", message: senha });
+
+      const corpo = await res.json().catch(() => null);
+
+      if (corpo?.detalhes && typeof corpo.detalhes === "object") {
+        const detalhes = corpo.detalhes as Record<string, unknown>;
+        const erroEmail = extrairMensagemCampo(detalhes.email);
+        const erroNome = extrairMensagemCampo(detalhes.nome);
+        const erroCargo = extrairMensagemCampo(detalhes.cargo);
+        const erroSenha = extrairMensagemCampo(detalhes.senha);
+
+        if (erroEmail) {
+          setError("email", { type: "server", message: erroEmail });
+        }
+        if (erroNome) {
+          setError("nome", { type: "server", message: erroNome });
+        }
+        if (erroCargo) {
+          setError("tipoConta", { type: "server", message: erroCargo });
+        }
+        if (erroSenha) {
+          resetField("senha");
+          setError("senha", { type: "server", message: erroSenha });
+        }
       }
     }
 
