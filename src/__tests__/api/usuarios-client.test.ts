@@ -9,7 +9,15 @@ import {
   mapearErrosCamposUsuario,
   MENSAGEM_ERRO_CADASTRO_USUARIO,
 } from "@/lib/usuarios-client";
-import { OPCOES_TIPO_CONTA } from "@/schemas/usuario-form.schema";
+import {
+  processarEnvioCadastroUsuario,
+  tratarFalhaValidacaoSenha,
+  VALORES_INICIAIS_USUARIO_FORM,
+} from "@/components/usuarios/usuario-form-dialog";
+import {
+  OPCOES_TIPO_CONTA,
+  usuarioFormSchema,
+} from "@/schemas/usuario-form.schema";
 
 const dadosFormularioValidos = {
   email: "novo.tecnico@altave.com",
@@ -34,7 +42,7 @@ const fetchDiretoNoRouteHandler = ((
 
 afterEach(() => vi.restoreAllMocks());
 
-describe("cadastrarUsuario", () => {
+describe("cadastrarUsuario e integração com UsuarioFormDialog", () => {
   it("envia POST para /api/usuarios com payload mapeado e retorna sucesso", async () => {
     const usuarioCriado = {
       id: "550e8400-e29b-41d4-a716-446655440001",
@@ -93,7 +101,7 @@ describe("cadastrarUsuario", () => {
     });
   });
 
-  it("persiste o novo usuário via POST /api/usuarios e o retorna na listagem atualizada", async () => {
+  it("persiste o novo usuário via POST /api/usuarios, fecha o modal, exibe confirmação e atualiza a listagem", async () => {
     const criadoEm = new Date("2026-10-17T12:00:00.000Z");
     const registroPersistido = {
       id: "550e8400-e29b-41d4-a716-446655440099",
@@ -124,13 +132,31 @@ describe("cadastrarUsuario", () => {
       },
     ] as never);
 
-    const resultado = await cadastrarUsuario(
-      dadosFormularioValidos,
-      fetchDiretoNoRouteHandler,
-    );
+    const reset = vi.fn();
+    const resetField = vi.fn();
+    const setError = vi.fn();
+    const setAberto = vi.fn();
+    const setErroEnvio = vi.fn();
+    const atualizarLista = vi.fn();
+    const notificarSucesso = vi.fn();
 
-    expect(resultado.sucesso).toBe(true);
+    await processarEnvioCadastroUsuario(dadosFormularioValidos, {
+      reset,
+      resetField: resetField as never,
+      setError: setError as never,
+      setAberto,
+      setErroEnvio,
+      atualizarLista,
+      notificarSucesso,
+      enviarCadastro: (dados) =>
+        cadastrarUsuario(dados, fetchDiretoNoRouteHandler),
+    });
+
     expect(createSpy).toHaveBeenCalledTimes(1);
+    expect(reset).toHaveBeenCalledWith(VALORES_INICIAIS_USUARIO_FORM);
+    expect(setAberto).toHaveBeenCalledWith(false);
+    expect(notificarSucesso).toHaveBeenCalledTimes(1);
+    expect(atualizarLista).toHaveBeenCalledTimes(1);
 
     const listagemAtualizada = await getUsuarios(parseFiltrosUsuario({}));
     expect(listagemAtualizada.itens).toEqual(
@@ -146,7 +172,7 @@ describe("cadastrarUsuario", () => {
     );
   });
 
-  it("bloqueia o segundo cadastro com o mesmo e-mail no endpoint POST /api/usuarios e mapeia o erro para o campo email", async () => {
+  it("bloqueia o segundo cadastro com o mesmo e-mail no endpoint POST /api/usuarios e exibe o erro no campo email da tela", async () => {
     const emailsCadastrados = new Set<string>();
 
     vi.spyOn(prisma.usuario, "create").mockImplementation((async (args: {
@@ -178,20 +204,169 @@ describe("cadastrarUsuario", () => {
     );
     expect(primeiroCadastro.sucesso).toBe(true);
 
-    const segundoCadastroDuplicado = await cadastrarUsuario(
-      dadosFormularioValidos,
-      fetchDiretoNoRouteHandler,
-    );
-    expect(segundoCadastroDuplicado).toEqual({
-      sucesso: false,
-      erro: "Este e-mail já está cadastrado.",
-      detalhes: {
-        email: ["Este e-mail já está cadastrado."],
-      },
-      errosCampos: {
-        email: "Este e-mail já está cadastrado.",
-      },
+    const setError = vi.fn();
+    const setAberto = vi.fn();
+    const setErroEnvio = vi.fn();
+
+    await processarEnvioCadastroUsuario(dadosFormularioValidos, {
+      reset: vi.fn(),
+      resetField: vi.fn() as never,
+      setError: setError as never,
+      setAberto,
+      setErroEnvio,
+      atualizarLista: vi.fn(),
+      enviarCadastro: (dados) =>
+        cadastrarUsuario(dados, fetchDiretoNoRouteHandler),
     });
+
+    expect(setError).toHaveBeenCalledWith("email", {
+      type: "server",
+      message: "Este e-mail já está cadastrado.",
+    });
+    expect(setAberto).not.toHaveBeenCalledWith(false);
+    expect(setErroEnvio).toHaveBeenCalledWith(
+      "Este e-mail já está cadastrado.",
+    );
+  });
+
+  it("combina detalhes com errosCampos parciais sem descartar os demais campos inválidos e apaga somente a senha", async () => {
+    const resetField = vi.fn();
+    const setError = vi.fn();
+    const setErroEnvio = vi.fn();
+
+    await processarEnvioCadastroUsuario(dadosFormularioValidos, {
+      reset: vi.fn(),
+      resetField: resetField as never,
+      setError: setError as never,
+      setAberto: vi.fn(),
+      setErroEnvio,
+      atualizarLista: vi.fn(),
+      enviarCadastro: async () => ({
+        sucesso: false,
+        erro: "Dados de cadastro inválidos.",
+        errosCampos: {
+          email: "E-mail já informado anteriormente.",
+        },
+        detalhes: {
+          email: ["Erro original do detalhe de e-mail"],
+          senha: ["A senha deve conter ao menos um caractere especial."],
+        },
+      }),
+    });
+
+    expect(setError).toHaveBeenCalledWith("email", {
+      type: "server",
+      message: "E-mail já informado anteriormente.",
+    });
+    expect(resetField).toHaveBeenCalledTimes(1);
+    expect(resetField).toHaveBeenCalledWith("senha");
+    expect(setError).toHaveBeenCalledWith("senha", {
+      type: "server",
+      message: "A senha deve conter ao menos um caractere especial.",
+    });
+    expect(setErroEnvio).toHaveBeenCalledWith("Dados de cadastro inválidos.");
+  });
+
+  it("apaga somente o campo de senha quando a validação de senha falha no envio ou no backend e não salva o usuário", async () => {
+    const createSpy = vi.spyOn(prisma.usuario, "create");
+    const resetFieldValidacaoLocal = vi.fn();
+
+    tratarFalhaValidacaoSenha(
+      {
+        senha: {
+          type: "custom",
+          message: "A senha deve ter no mínimo 8 caracteres.",
+        },
+      },
+      "fraca",
+      resetFieldValidacaoLocal as never,
+    );
+
+    expect(resetFieldValidacaoLocal).toHaveBeenCalledTimes(1);
+    expect(resetFieldValidacaoLocal).toHaveBeenCalledWith("senha", {
+      keepError: true,
+    });
+
+    const resetFieldBackend = vi.fn();
+    const setErrorBackend = vi.fn();
+
+    await processarEnvioCadastroUsuario(
+      {
+        ...dadosFormularioValidos,
+        senha: "fraca",
+        confirmarSenha: "fraca",
+      },
+      {
+        reset: vi.fn(),
+        resetField: resetFieldBackend as never,
+        setError: setErrorBackend as never,
+        setAberto: vi.fn(),
+        setErroEnvio: vi.fn(),
+        atualizarLista: vi.fn(),
+        enviarCadastro: (dados) =>
+          cadastrarUsuario(dados, fetchDiretoNoRouteHandler),
+      },
+    );
+
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(resetFieldBackend).toHaveBeenCalledTimes(1);
+    expect(resetFieldBackend).toHaveBeenCalledWith("senha");
+    expect(setErrorBackend).toHaveBeenCalledWith(
+      "senha",
+      expect.objectContaining({ type: "server" }),
+    );
+  });
+
+  it("exige nome, email, cargo e senha e impede o cadastro quando qualquer campo obrigatório está ausente", async () => {
+    const createSpy = vi.spyOn(prisma.usuario, "create");
+
+    expect(
+      usuarioFormSchema.safeParse({ ...dadosFormularioValidos, nome: "" })
+        .success,
+    ).toBe(false);
+    expect(
+      usuarioFormSchema.safeParse({ ...dadosFormularioValidos, email: "" })
+        .success,
+    ).toBe(false);
+    expect(
+      usuarioFormSchema.safeParse({
+        ...dadosFormularioValidos,
+        tipoConta: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      usuarioFormSchema.safeParse({ ...dadosFormularioValidos, senha: "" })
+        .success,
+    ).toBe(false);
+
+    const setError = vi.fn();
+    await processarEnvioCadastroUsuario(
+      {
+        ...dadosFormularioValidos,
+        nome: "",
+        email: "",
+      },
+      {
+        reset: vi.fn(),
+        resetField: vi.fn() as never,
+        setError: setError as never,
+        setAberto: vi.fn(),
+        setErroEnvio: vi.fn(),
+        atualizarLista: vi.fn(),
+        enviarCadastro: (dados) =>
+          cadastrarUsuario(dados, fetchDiretoNoRouteHandler),
+      },
+    );
+
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(setError).toHaveBeenCalledWith(
+      "nome",
+      expect.objectContaining({ type: "server" }),
+    );
+    expect(setError).toHaveBeenCalledWith(
+      "email",
+      expect.objectContaining({ type: "server" }),
+    );
   });
 
   it("extrai erros por campo para email, nome, cargo (tipoConta) e senha", () => {
