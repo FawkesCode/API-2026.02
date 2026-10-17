@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { UsuarioFormDialog } from "@/components/usuarios/usuario-form-dialog";
 import UsuariosFilter from "@/components/usuarios/usuarios-filter";
 import UsuariosPagination from "@/components/usuarios/usuarios-pagination";
 import UsuariosTable from "@/components/usuarios/usuarios-table";
@@ -35,9 +36,12 @@ export default async function UsuariosPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="border-b pb-3 text-3xl font-semibold italic">
-        Gerenciar Usuários
-      </h1>
+      <div className="flex items-center justify-between border-b border-blue-900 pb-3">
+        <h1 className="text-3xl font-semibold italic text-card-foreground">
+          Gerenciar Usuários
+        </h1>
+        <UsuarioFormDialog />
+      </div>
 
       {/* useSearchParams no filtro exige Suspense para o build estático. */}
       <Suspense fallback={null}>
