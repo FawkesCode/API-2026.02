@@ -47,6 +47,16 @@ const VALORES_INICIAIS: UsuarioFormInput = {
   confirmarSenha: "",
 };
 
+function extrairMensagemCampo(valor: unknown): string | undefined {
+  if (typeof valor === "string" && valor.trim().length > 0) {
+    return valor;
+  }
+  if (Array.isArray(valor) && typeof valor[0] === "string" && valor[0].trim().length > 0) {
+    return valor[0];
+  }
+  return undefined;
+}
+
 export function UsuarioFormDialog() {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -113,20 +123,25 @@ export function UsuarioFormDialog() {
 
       const corpo = await res.json().catch(() => null);
 
-      if (corpo?.detalhes) {
-        const detalhes = corpo.detalhes as Record<string, string[] | undefined>;
-        if (detalhes.email?.[0]) {
-          setError("email", { type: "server", message: detalhes.email[0] });
+      if (corpo?.detalhes && typeof corpo.detalhes === "object") {
+        const detalhes = corpo.detalhes as Record<string, unknown>;
+        const erroEmail = extrairMensagemCampo(detalhes.email);
+        const erroNome = extrairMensagemCampo(detalhes.nome);
+        const erroCargo = extrairMensagemCampo(detalhes.cargo);
+        const erroSenha = extrairMensagemCampo(detalhes.senha);
+
+        if (erroEmail) {
+          setError("email", { type: "server", message: erroEmail });
         }
-        if (detalhes.nome?.[0]) {
-          setError("nome", { type: "server", message: detalhes.nome[0] });
+        if (erroNome) {
+          setError("nome", { type: "server", message: erroNome });
         }
-        if (detalhes.cargo?.[0]) {
-          setError("tipoConta", { type: "server", message: detalhes.cargo[0] });
+        if (erroCargo) {
+          setError("tipoConta", { type: "server", message: erroCargo });
         }
-        if (detalhes.senha?.[0]) {
+        if (erroSenha) {
           resetField("senha");
-          setError("senha", { type: "server", message: detalhes.senha[0] });
+          setError("senha", { type: "server", message: erroSenha });
         }
       }
 
@@ -170,6 +185,7 @@ export function UsuarioFormDialog() {
             <FormInput
               label="Email:"
               type="email"
+              required
               placeholder="Digite o que o input pede..."
               error={errors.email?.message}
               {...register("email")}
@@ -178,6 +194,7 @@ export function UsuarioFormDialog() {
             <div className="flex flex-col gap-4 sm:flex-row">
               <FormInput
                 label="Nome:"
+                required
                 placeholder="Digite o que o input pede..."
                 error={errors.nome?.message}
                 {...register("nome")}
@@ -189,6 +206,7 @@ export function UsuarioFormDialog() {
                 render={({ field }) => (
                   <FormSelect
                     label="Tipo de conta:"
+                    required
                     placeholder="Selecione uma opção"
                     options={OPCOES_TIPO_CONTA}
                     error={errors.tipoConta?.message}
@@ -203,6 +221,7 @@ export function UsuarioFormDialog() {
             <FormInput
               label="Senha:"
               type="password"
+              required
               placeholder="Digite o que o input pede..."
               error={errors.senha?.message}
               {...register("senha")}
@@ -211,6 +230,7 @@ export function UsuarioFormDialog() {
             <FormInput
               label="Confirmar Senha:"
               type="password"
+              required
               placeholder="Digite o que o input pede..."
               error={errors.confirmarSenha?.message}
               {...register("confirmarSenha")}
