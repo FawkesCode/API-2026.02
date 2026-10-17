@@ -30,6 +30,7 @@ import { FormInput, FormSelect } from "@/components/form/form-field";
 import {
   cadastrarUsuario,
   mapearErrosCamposUsuario,
+  MENSAGEM_ERRO_CADASTRO_USUARIO,
 } from "@/lib/usuarios-client";
 import { cn } from "@/lib/utils";
 import {
@@ -76,7 +77,14 @@ export async function processarEnvioCadastroUsuario(
   acoes.setErroEnvio(null);
 
   const enviar = acoes.enviarCadastro ?? cadastrarUsuario;
-  const resultado = await enviar(data);
+  let resultado: Awaited<ReturnType<typeof cadastrarUsuario>>;
+
+  try {
+    resultado = await enviar(data);
+  } catch {
+    acoes.setErroEnvio(MENSAGEM_ERRO_CADASTRO_USUARIO);
+    return;
+  }
 
   if (resultado.sucesso) {
     acoes.reset(VALORES_INICIAIS_USUARIO_FORM);

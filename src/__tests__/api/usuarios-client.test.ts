@@ -385,7 +385,7 @@ describe("cadastrarUsuario e integração com UsuarioFormDialog", () => {
     });
   });
 
-  it("retorna mensagem de erro padrão quando ocorre falha de rede", async () => {
+  it("retorna mensagem de erro padrão quando ocorre falha de rede ou rejeição inesperada em enviarCadastro", async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error("Network error"));
 
     const resultado = await cadastrarUsuario(
@@ -397,5 +397,22 @@ describe("cadastrarUsuario e integração com UsuarioFormDialog", () => {
       sucesso: false,
       erro: MENSAGEM_ERRO_CADASTRO_USUARIO,
     });
+
+    const setErroEnvio = vi.fn();
+    await processarEnvioCadastroUsuario(dadosFormularioValidos, {
+      reset: vi.fn(),
+      resetField: vi.fn() as never,
+      setError: vi.fn() as never,
+      setAberto: vi.fn(),
+      setErroEnvio,
+      atualizarLista: vi.fn(),
+      enviarCadastro: async () => {
+        throw new Error("Erro inesperado no callback customizado");
+      },
+    });
+
+    expect(setErroEnvio).toHaveBeenLastCalledWith(
+      MENSAGEM_ERRO_CADASTRO_USUARIO,
+    );
   });
 });
