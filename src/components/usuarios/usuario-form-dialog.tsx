@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { FormInput, FormSelect } from "@/components/form/form-field";
+import { cadastrarUsuario } from "@/lib/usuarios-client";
 import { cn } from "@/lib/utils";
 import {
   OPCOES_TIPO_CONTA,
@@ -28,11 +29,6 @@ import {
   type UsuarioFormInput,
   type UsuarioFormValues,
 } from "@/schemas/usuario-form.schema";
-
-const URL_USUARIOS = "/api/usuarios";
-
-const MENSAGEM_ERRO_PADRAO =
-  "Não foi possível cadastrar o usuário. Tente novamente.";
 
 const VALORES_INICIAIS: UsuarioFormInput = {
   email: "",
@@ -74,54 +70,37 @@ export function UsuarioFormDialog() {
   async function aoEnviar(data: UsuarioFormValues) {
     setErroEnvio(null);
 
-    try {
-      const res = await fetch(URL_USUARIOS, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: data.nome,
-          email: data.email,
-          cargo: data.tipoConta.value,
-          senha: data.senha,
-        }),
+    const resultado = await cadastrarUsuario(data);
+
+    if (resultado.sucesso) {
+      reset(VALORES_INICIAIS);
+      setAberto(false);
+      toast.add({
+        type: "success",
+        title: "Usuário cadastrado",
+        description: "O novo usuário foi cadastrado com sucesso.",
       });
-
-      if (res.ok) {
-        await res.json().catch(() => null);
-        reset(VALORES_INICIAIS);
-        setAberto(false);
-        toast.add({
-          type: "success",
-          title: "Usuário cadastrado",
-          description: "O novo usuário foi cadastrado com sucesso.",
-        });
-        router.refresh();
-        return;
-      }
-
-      const corpo = await res.json().catch(() => null);
-
-      if (corpo?.detalhes) {
-        const detalhes = corpo.detalhes as Record<string, string[] | undefined>;
-        if (detalhes.email?.[0]) {
-          setError("email", { type: "server", message: detalhes.email[0] });
-        }
-        if (detalhes.nome?.[0]) {
-          setError("nome", { type: "server", message: detalhes.nome[0] });
-        }
-        if (detalhes.cargo?.[0]) {
-          setError("tipoConta", { type: "server", message: detalhes.cargo[0] });
-        }
-        if (detalhes.senha?.[0]) {
-          setError("senha", { type: "server", message: detalhes.senha[0] });
-        }
-      }
-
-      const mensagem = corpo?.erro ?? corpo?.message ?? MENSAGEM_ERRO_PADRAO;
-      setErroEnvio(mensagem);
-    } catch {
-      setErroEnvio(MENSAGEM_ERRO_PADRAO);
+      router.refresh();
+      return;
     }
+
+    if (resultado.errosCampos) {
+      const { email, nome, tipoConta, senha } = resultado.errosCampos;
+      if (email) {
+        setError("email", { type: "server", message: email });
+      }
+      if (nome) {
+        setError("nome", { type: "server", message: nome });
+      }
+      if (tipoConta) {
+        setError("tipoConta", { type: "server", message: tipoConta });
+      }
+      if (senha) {
+        setError("senha", { type: "server", message: senha });
+      }
+    }
+
+    setErroEnvio(resultado.erro);
   }
 
   return (

@@ -154,8 +154,9 @@ export class ServicoUsuario {
     email: string;
     cargo: Cargo;
     password: string;
+    criadoPorId?: string | null;
   }) {
-    const { password, ...userData } = data;
+    const { password, criadoPorId, ...userData } = data;
 
     return prisma.usuario.create({
       data: {
@@ -163,6 +164,7 @@ export class ServicoUsuario {
         senhaHash: await hash(password, 12),
         senhaProvisoria: true,
         equipeId: null,
+        ...(criadoPorId ? { criadoPorId } : {}),
       },
       select: createdUserData,
     });
