@@ -22,24 +22,43 @@ export function toCriarUsuarioPayload(
   };
 }
 
+function extrairMensagemCampo(valor: unknown): string | undefined {
+  if (typeof valor === "string" && valor.trim().length > 0) {
+    return valor;
+  }
+  if (
+    Array.isArray(valor) &&
+    typeof valor[0] === "string" &&
+    valor[0].trim().length > 0
+  ) {
+    return valor[0];
+  }
+  return undefined;
+}
+
 export function mapearErrosCamposUsuario(
-  detalhes?: Record<string, string[] | undefined>,
+  detalhes?: Record<string, unknown>,
 ): CamposErroCadastroUsuario {
-  if (!detalhes) return {};
+  if (!detalhes || typeof detalhes !== "object") return {};
 
   const errosCampos: CamposErroCadastroUsuario = {};
 
-  if (detalhes.email?.[0]) {
-    errosCampos.email = detalhes.email[0];
+  const erroEmail = extrairMensagemCampo(detalhes.email);
+  const erroNome = extrairMensagemCampo(detalhes.nome);
+  const erroCargo = extrairMensagemCampo(detalhes.cargo);
+  const erroSenha = extrairMensagemCampo(detalhes.senha);
+
+  if (erroEmail) {
+    errosCampos.email = erroEmail;
   }
-  if (detalhes.nome?.[0]) {
-    errosCampos.nome = detalhes.nome[0];
+  if (erroNome) {
+    errosCampos.nome = erroNome;
   }
-  if (detalhes.cargo?.[0]) {
-    errosCampos.tipoConta = detalhes.cargo[0];
+  if (erroCargo) {
+    errosCampos.tipoConta = erroCargo;
   }
-  if (detalhes.senha?.[0]) {
-    errosCampos.senha = detalhes.senha[0];
+  if (erroSenha) {
+    errosCampos.senha = erroSenha;
   }
 
   return errosCampos;
@@ -63,7 +82,9 @@ export async function cadastrarUsuario(
     });
 
     if (resposta.ok) {
-      const usuario = (await resposta.json()) as UsuarioCriadoDTO;
+      const usuario = (await resposta
+        .json()
+        .catch(() => null)) as UsuarioCriadoDTO | null;
       return {
         sucesso: true,
         usuario,
@@ -73,7 +94,7 @@ export async function cadastrarUsuario(
     const corpo = (await resposta.json().catch(() => null)) as {
       erro?: string;
       message?: string;
-      detalhes?: Record<string, string[] | undefined>;
+      detalhes?: Record<string, unknown>;
     } | null;
 
     const errosCampos = mapearErrosCamposUsuario(corpo?.detalhes);

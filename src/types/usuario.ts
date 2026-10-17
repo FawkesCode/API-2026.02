@@ -73,7 +73,7 @@ export type CamposErroCadastroUsuario = Partial<{
 }>;
 
 export type CriarUsuarioResultado =
-  | { sucesso: true; usuario: UsuarioCriadoDTO }
+  | { sucesso: true; usuario: UsuarioCriadoDTO | null }
   | {
       sucesso: false;
       erro: string;

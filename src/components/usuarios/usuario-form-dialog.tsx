@@ -149,6 +149,7 @@ export function UsuarioFormDialog() {
             <FormInput
               label="Email:"
               type="email"
+              required
               placeholder="Digite o que o input pede..."
               error={errors.email?.message}
               {...register("email")}
@@ -157,6 +158,7 @@ export function UsuarioFormDialog() {
             <div className="flex flex-col gap-4 sm:flex-row">
               <FormInput
                 label="Nome:"
+                required
                 placeholder="Digite o que o input pede..."
                 error={errors.nome?.message}
                 {...register("nome")}
@@ -168,6 +170,7 @@ export function UsuarioFormDialog() {
                 render={({ field }) => (
                   <FormSelect
                     label="Tipo de conta:"
+                    required
                     placeholder="Selecione uma opção"
                     options={OPCOES_TIPO_CONTA}
                     error={errors.tipoConta?.message}
@@ -182,6 +185,7 @@ export function UsuarioFormDialog() {
             <FormInput
               label="Senha:"
               type="password"
+              required
               placeholder="Digite o que o input pede..."
               error={errors.senha?.message}
               {...register("senha")}
@@ -190,6 +194,7 @@ export function UsuarioFormDialog() {
             <FormInput
               label="Confirmar Senha:"
               type="password"
+              required
               placeholder="Digite o que o input pede..."
               error={errors.confirmarSenha?.message}
               {...register("confirmarSenha")}
