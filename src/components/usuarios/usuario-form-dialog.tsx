@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import {
+  Controller,
+  useForm,
+  useWatch,
+  type FieldErrors,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
 
@@ -52,6 +57,7 @@ export function UsuarioFormDialog() {
     control,
     handleSubmit,
     reset,
+    resetField,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<UsuarioFormInput, unknown, UsuarioFormValues>({
@@ -68,6 +74,12 @@ export function UsuarioFormDialog() {
     if (!valor) {
       reset(VALORES_INICIAIS);
       setErroEnvio(null);
+    }
+  }
+
+  function aoFalhar(errosValidacao: FieldErrors<UsuarioFormInput>) {
+    if (errosValidacao.senha && senhaDigitada.length > 0) {
+      resetField("senha", { keepError: true });
     }
   }
 
@@ -113,6 +125,7 @@ export function UsuarioFormDialog() {
           setError("tipoConta", { type: "server", message: detalhes.cargo[0] });
         }
         if (detalhes.senha?.[0]) {
+          resetField("senha");
           setError("senha", { type: "server", message: detalhes.senha[0] });
         }
       }
@@ -149,7 +162,7 @@ export function UsuarioFormDialog() {
         </DialogHeader>
 
         <form
-          onSubmit={handleSubmit(aoEnviar)}
+          onSubmit={handleSubmit(aoEnviar, aoFalhar)}
           className="flex flex-1 flex-col"
           noValidate
         >
