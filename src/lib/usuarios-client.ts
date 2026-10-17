@@ -105,6 +105,7 @@ export async function cadastrarUsuario(
       sucesso: false,
       erro,
       errosCampos,
+      ...(corpo?.detalhes ? { detalhes: corpo.detalhes } : {}),
     };
   } catch {
     return {

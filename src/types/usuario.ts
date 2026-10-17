@@ -78,4 +78,5 @@ export type CriarUsuarioResultado =
       sucesso: false;
       erro: string;
       errosCampos?: CamposErroCadastroUsuario;
+      detalhes?: Record<string, unknown>;
     };

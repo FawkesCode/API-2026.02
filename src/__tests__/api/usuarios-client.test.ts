@@ -6,6 +6,7 @@ import { getUsuarios } from "@/lib/data/usuarios";
 import { parseFiltrosUsuario } from "@/schemas/usuario-filtros.schema";
 import {
   cadastrarUsuario,
+  mapearErrosCamposUsuario,
   MENSAGEM_ERRO_CADASTRO_USUARIO,
 } from "@/lib/usuarios-client";
 import { OPCOES_TIPO_CONTA } from "@/schemas/usuario-form.schema";
@@ -184,9 +185,28 @@ describe("cadastrarUsuario", () => {
     expect(segundoCadastroDuplicado).toEqual({
       sucesso: false,
       erro: "Este e-mail já está cadastrado.",
+      detalhes: {
+        email: ["Este e-mail já está cadastrado."],
+      },
       errosCampos: {
         email: "Este e-mail já está cadastrado.",
       },
+    });
+  });
+
+  it("extrai erros por campo para email, nome, cargo (tipoConta) e senha", () => {
+    expect(
+      mapearErrosCamposUsuario({
+        email: ["E-mail inválido."],
+        nome: "Nome é obrigatório.",
+        cargo: ["Cargo inválido."],
+        senha: ["A senha deve ter no mínimo 8 caracteres."],
+      }),
+    ).toEqual({
+      email: "E-mail inválido.",
+      nome: "Nome é obrigatório.",
+      tipoConta: "Cargo inválido.",
+      senha: "A senha deve ter no mínimo 8 caracteres.",
     });
   });
 

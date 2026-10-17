@@ -25,7 +25,10 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { FormInput, FormSelect } from "@/components/form/form-field";
-import { cadastrarUsuario } from "@/lib/usuarios-client";
+import {
+  cadastrarUsuario,
+  mapearErrosCamposUsuario,
+} from "@/lib/usuarios-client";
 import { cn } from "@/lib/utils";
 import {
   OPCOES_TIPO_CONTA,
@@ -96,21 +99,22 @@ export function UsuarioFormDialog() {
       return;
     }
 
-    if (resultado.errosCampos) {
-      const { email, nome, tipoConta, senha } = resultado.errosCampos;
-      if (email) {
-        setError("email", { type: "server", message: email });
-      }
-      if (nome) {
-        setError("nome", { type: "server", message: nome });
-      }
-      if (tipoConta) {
-        setError("tipoConta", { type: "server", message: tipoConta });
-      }
-      if (senha) {
-        resetField("senha");
-        setError("senha", { type: "server", message: senha });
-      }
+    const errosCampos =
+      resultado.errosCampos ?? mapearErrosCamposUsuario(resultado.detalhes);
+    const { email, nome, tipoConta, senha } = errosCampos;
+
+    if (email) {
+      setError("email", { type: "server", message: email });
+    }
+    if (nome) {
+      setError("nome", { type: "server", message: nome });
+    }
+    if (tipoConta) {
+      setError("tipoConta", { type: "server", message: tipoConta });
+    }
+    if (senha) {
+      resetField("senha");
+      setError("senha", { type: "server", message: senha });
     }
 
     setErroEnvio(resultado.erro);
