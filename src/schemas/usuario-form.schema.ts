@@ -3,6 +3,10 @@ import { Cargo } from "@/types/ticket-enums";
 import type { SelectInterface } from "@/lib/data/dropdown";
 
 export const OPCOES_TIPO_CONTA: SelectInterface[] = [
+  { label: "Suporte Interno", value: Cargo.SUPORTE_INTERNO },
+  { label: "Comercial", value: Cargo.COMERCIAL },
+  { label: "Suporte Externo", value: Cargo.SUPORTE },
+  { label: "Gestor", value: Cargo.GESTOR },
   { label: "Técnico", value: Cargo.TECNICO },
 ];
 
@@ -52,9 +56,11 @@ export const usuarioFormSchema = z
       .trim()
       .min(1, "Informe o nome do usuário.")
       .max(120, "O nome deve ter no máximo 120 caracteres."),
-    tipoConta: tipoContaSelecionadaSchema.nullable().refine((val) => val !== null, {
-      message: "Selecione o tipo de conta.",
-    }),
+    tipoConta: tipoContaSelecionadaSchema
+      .nullable()
+      .refine((val) => val !== null, {
+        message: "Selecione o tipo de conta.",
+      }),
     senha: z
       .string()
       .min(1, "Informe a senha.")
@@ -63,9 +69,7 @@ export const usuarioFormSchema = z
       .regex(/[A-Z]/, "A senha deve conter pelo menos uma letra maiúscula.")
       .regex(/\d/, "A senha deve conter números.")
       .regex(/[^A-Za-z0-9]/, "A senha deve conter caracteres especiais."),
-    confirmarSenha: z
-      .string()
-      .min(1, "Confirme a senha."),
+    confirmarSenha: z.string().min(1, "Confirme a senha."),
   })
   .refine((data) => data.senha === data.confirmarSenha, {
     message: "As senhas não coincidem.",

@@ -26,7 +26,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
-import { FormInput, FormSelect } from "@/components/form/form-field";
+import {
+  FormInput,
+  FormPassword,
+  FormSelect,
+} from "@/components/form/form-field";
 import {
   cadastrarUsuario,
   mapearErrosCamposUsuario,
@@ -204,7 +208,7 @@ export function UsuarioFormDialog() {
               label="Email:"
               type="email"
               required
-              placeholder="Digite o que o input pede..."
+              placeholder="Digite o email..."
               error={errors.email?.message}
               {...register("email")}
             />
@@ -213,7 +217,7 @@ export function UsuarioFormDialog() {
               <FormInput
                 label="Nome:"
                 required
-                placeholder="Digite o que o input pede..."
+                placeholder="Digite o nome do usuário.."
                 error={errors.nome?.message}
                 {...register("nome")}
               />
@@ -236,20 +240,18 @@ export function UsuarioFormDialog() {
               />
             </div>
 
-            <FormInput
+            <FormPassword
               label="Senha:"
-              type="password"
               required
-              placeholder="Digite o que o input pede..."
+              placeholder="Digite a senha..."
               error={errors.senha?.message}
               {...register("senha")}
             />
 
-            <FormInput
+            <FormPassword
               label="Confirmar Senha:"
-              type="password"
               required
-              placeholder="Digite o que o input pede..."
+              placeholder="Confirme a senha informada..."
               error={errors.confirmarSenha?.message}
               {...register("confirmarSenha")}
             />
