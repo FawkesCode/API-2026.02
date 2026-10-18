@@ -76,7 +76,7 @@ function FormField({
 
   return (
     <Field className={formVariants[variant].label} data-invalid={!!error}>
-      <FieldLabel>
+      <FieldLabel htmlFor={fieldId}>
         {label}
         {required && (
           <span aria-hidden className="ml-0.5 text-red-600">
@@ -151,7 +151,13 @@ export function FormPassword({
   const styles = formVariants[variant];
 
   return (
-    <FormField label={label} error={error} required={required} id={id}>
+    <FormField
+      label={label}
+      error={error}
+      required={required}
+      variant={variant}
+      id={id}
+    >
       {(inputProps) => (
         <InputGroup className={cn(styles.group, className)}>
           <InputGroupInput
