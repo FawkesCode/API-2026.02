@@ -33,10 +33,10 @@ import {
 import type { EquipeEdicao } from "@/types/equipe";
 
 /**
- * Contrato do endpoint (alinhado a `DadosAtualizarEquipe` em equipe.service.ts):
- *   PATCH /api/equipes/:id
+ * Contrato do endpoint (BACK #1): PATCH /api/equipes/:id, validado por
+ * `updateTeamSchema` em schemas/team.schema.ts.
  *   body: { nome: string; descricao: string; tecnicosIds: string[] }
- *   sucesso: 2xx | erro: { erro: string } (mensagem exibida no modal)
+ *   sucesso: 200 | erro: { erro: string; codigo: string } (`erro` aparece no modal)
  */
 const urlEquipe = (id: string) => `/api/equipes/${id}`;
 
@@ -120,7 +120,7 @@ export function GerenciarEquipeDialog({
       }
 
       const corpo = await res.json().catch(() => null);
-      mensagem = corpo?.erro ?? corpo?.message ?? mensagem;
+      mensagem = corpo?.erro ?? mensagem;
     } catch {
       // Falha de rede: mantém a mensagem padrão.
     }

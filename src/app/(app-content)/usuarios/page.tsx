@@ -44,7 +44,10 @@ export default async function UsuariosPage({
       </div>
 
       {/* useSearchParams no filtro exige Suspense para o build estático. */}
-      <Suspense fallback={null}>
+      <Suspense
+        key={JSON.stringify(searchParams)}
+        fallback={<p className="text-sm text-muted-foreground">Carregando usuários…</p>}
+      >
         <UsuariosFilter />
       </Suspense>
 
