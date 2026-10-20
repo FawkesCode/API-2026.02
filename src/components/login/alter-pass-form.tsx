@@ -1,10 +1,10 @@
 import { SubmitHandler, useForm } from "react-hook-form";
-import { FormPassword } from "./login-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "../ui/button";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { FormPassword } from "../form/form-field";
 
 const schema = z.object({
   password: z
@@ -65,15 +65,19 @@ function AlterPassForm() {
       onSubmit={handleSubmit(onSubmit)}
     >
       <FormPassword
-        title="Nova Senha"
+        label="Nova Senha"
         id="password"
+        variant="login"
+        placeholder="Digite sua nova senha"
         {...register("password")}
         error={errors.password?.message}
       />
 
       <FormPassword
-        title="Confirmar Senha"
+        label="Confirmar Senha"
         id="confirmPassword"
+        variant="login"
+        placeholder="Confirme sua senha"
         {...register("confirmPassword")}
         error={errors.confirmPassword?.message}
       />

@@ -17,6 +17,7 @@ import {
   LogOut,
   LucideIcon,
   Ticket,
+  UserCog,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +27,7 @@ import LogoSidebar from "./logo-sidebar";
 import { cn } from "cn";
 import LogoFawkes from "./logo-fawkes";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { podeVerUsuarios } from "@/lib/access-control";
 
 interface NavItem {
   title: string;
@@ -40,21 +42,12 @@ export function AppSidebar() {
   const loggedUser = useCurrentUser();
 
   const items: NavItem[] = [
-    {
-      title: "Projetos",
-      url: "/projetos",
-      icon: ClipboardList,
-    },
-    {
-      title: "Tickets",
-      url: "/tickets",
-      icon: Ticket,
-    },
-    {
-      title: "Minha Equipe",
-      url: "/equipe",
-      icon: Users,
-    },
+    { title: "Projetos", url: "/projetos", icon: ClipboardList },
+    { title: "Tickets", url: "/tickets", icon: Ticket },
+    { title: "Minha Equipe", url: "/equipe", icon: Users },
+    ...(podeVerUsuarios(loggedUser?.cargo)
+      ? [{ title: "Usuários", url: "/usuarios", icon: UserCog }]
+      : []),
   ];
 
   return (
@@ -64,7 +57,9 @@ export function AppSidebar() {
         {loggedUser ? (
           <UserSidebar user={loggedUser} />
         ) : (
-          <p className="text-sm text-muted-foreground">Nenhum usuário selecionado.</p>
+          <p className="text-sm text-muted-foreground">
+            Nenhum usuário selecionado.
+          </p>
         )}
       </SidebarHeader>
       <div className="sidebar-divider"></div>

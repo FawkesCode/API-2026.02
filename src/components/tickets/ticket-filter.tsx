@@ -28,7 +28,7 @@ interface SelectItemsOptions {
   value: string;
 }
 
-const CLEAR_BUTTON_CLASS =
+export const CLEAR_BUTTON_CLASS =
   "!absolute !right-2 !top-1/2 !-translate-y-1/2 !w-auto !inline-flex !items-center !justify-center rounded-full p-0.5 bg-transparent hover:bg-transparent text-muted-foreground hover:text-foreground cursor-pointer z-10 border-0 outline-none appearance-none";
 
 interface TicketFilterProps {
@@ -486,7 +486,7 @@ interface FilterInputProps {
   onClear?: () => void;
 }
 
-function FilterInput({
+export function FilterInput({
   title,
   id,
   type,

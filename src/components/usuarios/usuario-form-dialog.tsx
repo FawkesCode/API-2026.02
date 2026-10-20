@@ -1,0 +1,318 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Controller,
+  useForm,
+  useWatch,
+  type FieldErrors,
+  type UseFormResetField,
+  type UseFormSetError,
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogDivider,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { toast } from "@/components/ui/toast";
+import {
+  FormInput,
+  FormPassword,
+  FormSelect,
+} from "@/components/form/form-field";
+import {
+  cadastrarUsuario,
+  mapearErrosCamposUsuario,
+  MENSAGEM_ERRO_CADASTRO_USUARIO,
+} from "@/lib/usuarios-client";
+import { cn } from "@/lib/utils";
+import {
+  OPCOES_TIPO_CONTA,
+  REGRAS_SENHA,
+  usuarioFormSchema,
+  type UsuarioFormInput,
+  type UsuarioFormValues,
+} from "@/schemas/usuario-form.schema";
+
+export const VALORES_INICIAIS_USUARIO_FORM: UsuarioFormInput = {
+  email: "",
+  nome: "",
+  tipoConta: null,
+  senha: "",
+  confirmarSenha: "",
+};
+
+export interface AcoesSubmissaoUsuarioForm {
+  reset: (values?: UsuarioFormInput) => void;
+  resetField: UseFormResetField<UsuarioFormInput>;
+  setError: UseFormSetError<UsuarioFormInput>;
+  setAberto: (aberto: boolean) => void;
+  setErroEnvio: (erro: string | null) => void;
+  atualizarLista: () => void;
+  notificarSucesso?: () => void;
+  enviarCadastro?: typeof cadastrarUsuario;
+}
+
+export function tratarFalhaValidacaoSenha(
+  errosValidacao: FieldErrors<UsuarioFormInput>,
+  senhaDigitada: string,
+  resetField: UseFormResetField<UsuarioFormInput>,
+): void {
+  if (errosValidacao.senha && senhaDigitada.length > 0) {
+    resetField("senha", { keepError: true });
+  }
+}
+
+export async function processarEnvioCadastroUsuario(
+  data: UsuarioFormValues,
+  acoes: AcoesSubmissaoUsuarioForm,
+): Promise<void> {
+  acoes.setErroEnvio(null);
+
+  const enviar = acoes.enviarCadastro ?? cadastrarUsuario;
+  let resultado: Awaited<ReturnType<typeof cadastrarUsuario>>;
+
+  try {
+    resultado = await enviar(data);
+  } catch {
+    acoes.setErroEnvio(MENSAGEM_ERRO_CADASTRO_USUARIO);
+    return;
+  }
+
+  if (resultado.sucesso) {
+    acoes.reset(VALORES_INICIAIS_USUARIO_FORM);
+    acoes.setAberto(false);
+    if (acoes.notificarSucesso) {
+      acoes.notificarSucesso();
+    } else {
+      toast.add({
+        type: "success",
+        title: "Usuário cadastrado",
+        description: "O novo usuário foi cadastrado com sucesso.",
+      });
+    }
+    acoes.atualizarLista();
+    return;
+  }
+
+  const errosCampos = {
+    ...mapearErrosCamposUsuario(resultado.detalhes),
+    ...resultado.errosCampos,
+  };
+  const { email, nome, tipoConta, senha } = errosCampos;
+
+  if (email) {
+    acoes.setError("email", { type: "server", message: email });
+  }
+  if (nome) {
+    acoes.setError("nome", { type: "server", message: nome });
+  }
+  if (tipoConta) {
+    acoes.setError("tipoConta", { type: "server", message: tipoConta });
+  }
+  if (senha) {
+    acoes.resetField("senha");
+    acoes.setError("senha", { type: "server", message: senha });
+  }
+
+  acoes.setErroEnvio(resultado.erro);
+}
+
+export function UsuarioFormDialog() {
+  const router = useRouter();
+  const [aberto, setAberto] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    resetField,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<UsuarioFormInput, unknown, UsuarioFormValues>({
+    resolver: zodResolver(usuarioFormSchema),
+    defaultValues: VALORES_INICIAIS_USUARIO_FORM,
+  });
+
+  const senhaDigitada =
+    useWatch({ control, name: "senha", defaultValue: "" }) ?? "";
+  const usuarioComecouADigitarSenha = senhaDigitada.length > 0;
+
+  function aoMudarAbertura(valor: boolean) {
+    setAberto(valor);
+    if (!valor) {
+      reset(VALORES_INICIAIS_USUARIO_FORM);
+      setErroEnvio(null);
+    }
+  }
+
+  function aoFalhar(errosValidacao: FieldErrors<UsuarioFormInput>) {
+    tratarFalhaValidacaoSenha(errosValidacao, senhaDigitada, resetField);
+  }
+
+  async function aoEnviar(data: UsuarioFormValues) {
+    await processarEnvioCadastroUsuario(data, {
+      reset,
+      resetField,
+      setError,
+      setAberto,
+      setErroEnvio,
+      atualizarLista: () => router.refresh(),
+    });
+  }
+
+  return (
+    <Dialog open={aberto} onOpenChange={aoMudarAbertura}>
+      <DialogTrigger
+        render={
+          <Button
+            type="button"
+            variant="default"
+            className="cursor-pointer rounded-md bg-accent px-4 text-white hover:bg-cyan-400"
+          />
+        }
+      >
+        <Plus className="size-4" />
+        Criar Novo
+      </DialogTrigger>
+
+      <DialogContent className="flex max-h-[90vh] flex-col gap-5 overflow-y-auto">
+        <DialogHeader className="h-fit">
+          <DialogTitle>Cadastrar novo Usuário</DialogTitle>
+          <DialogDivider />
+          <DialogDescription>
+            Os campos com (*) são obrigatórios.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          onSubmit={handleSubmit(aoEnviar, aoFalhar)}
+          className="flex flex-1 flex-col"
+          noValidate
+        >
+          <DialogBody>
+            <FormInput
+              label="Email:"
+              type="email"
+              required
+              placeholder="Digite o email..."
+              error={errors.email?.message}
+              {...register("email")}
+            />
+
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <FormInput
+                label="Nome:"
+                required
+                placeholder="Digite o nome do usuário.."
+                error={errors.nome?.message}
+                {...register("nome")}
+              />
+
+              <Controller
+                control={control}
+                name="tipoConta"
+                render={({ field }) => (
+                  <FormSelect
+                    label="Tipo de conta:"
+                    required
+                    placeholder="Selecione uma opção"
+                    options={OPCOES_TIPO_CONTA}
+                    error={errors.tipoConta?.message}
+                    value={field.value}
+                    onChange={field.onChange}
+                    ref={field.ref}
+                  />
+                )}
+              />
+            </div>
+
+            <FormPassword
+              label="Senha:"
+              required
+              placeholder="Digite a senha..."
+              error={errors.senha?.message}
+              {...register("senha")}
+            />
+
+            <FormPassword
+              label="Confirmar Senha:"
+              required
+              placeholder="Confirme a senha informada..."
+              error={errors.confirmarSenha?.message}
+              {...register("confirmarSenha")}
+            />
+
+            <div className="flex flex-col gap-1.5 text-xs">
+              <p className="font-semibold text-card-foreground">
+                Senha deve conter:
+              </p>
+              <ul className="list-disc space-y-1 pl-5">
+                {REGRAS_SENHA.map((regra) => {
+                  const atendida = regra.validar(senhaDigitada);
+                  return (
+                    <li
+                      key={regra.id}
+                      data-testid={`regra-senha-${regra.id}`}
+                      data-status={
+                        !usuarioComecouADigitarSenha
+                          ? "pending"
+                          : atendida
+                            ? "valid"
+                            : "invalid"
+                      }
+                      className={cn(
+                        "transition-colors",
+                        !usuarioComecouADigitarSenha && "text-muted-foreground",
+                        usuarioComecouADigitarSenha &&
+                          atendida &&
+                          "text-emerald-600",
+                        usuarioComecouADigitarSenha &&
+                          !atendida &&
+                          "text-destructive",
+                      )}
+                    >
+                      {regra.label}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </DialogBody>
+
+          {erroEnvio && (
+            <p
+              role="alert"
+              className="mt-3 text-sm font-medium text-destructive"
+            >
+              {erroEnvio}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="cursor-pointer rounded-md bg-accent px-6 text-white hover:bg-cyan-400"
+            >
+              {isSubmitting ? "Cadastrando..." : "Cadastrar Usuário"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

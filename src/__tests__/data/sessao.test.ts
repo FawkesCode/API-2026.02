@@ -41,7 +41,17 @@ afterEach(() => {
 });
 
 describe("usuário da interface", () => {
-  it("não inventa uma identidade quando a sessão está ausente", async () => {
+  it("usa o usuário Massa do seed como fallback somente em desenvolvimento", async () => {
+    vi.mocked(servicoUsuario.buscarPorEmail).mockResolvedValue(massa);
+
+    expect(await getUsuarioAtual()).toEqual(massa);
+    expect(servicoUsuario.buscarPorEmail).toHaveBeenCalledWith(massa.email);
+    expect(servicoUsuario.buscarPorId).not.toHaveBeenCalled();
+  });
+
+  it("não seleciona usuário automaticamente em produção", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+
     expect(await getUsuarioAtual()).toBeNull();
     expect(servicoUsuario.buscarPorEmail).not.toHaveBeenCalled();
     expect(servicoUsuario.buscarPorId).not.toHaveBeenCalled();

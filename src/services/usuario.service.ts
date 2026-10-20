@@ -1,6 +1,10 @@
 import { hash } from "bcryptjs";
+import { endOfDay, isValid, parseISO, startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { Cargo } from "@/lib/generated/prisma/client";
+import { Cargo, Prisma } from "@/lib/generated/prisma/client";
+import type { FiltrosUsuario } from "@/schemas/usuario-filtros.schema";
+
+export const TAMANHO_PAGINA_USUARIOS = 10;
 
 const dadosUsuarioAtual = {
   id: true,
@@ -33,6 +37,22 @@ const detailedUserFields = {
   equipe: { select: { nome: true } },
 } as const;
 
+/** Campos da tabela paginada de usuários. */
+const camposListaUsuario = {
+  id: true,
+  nome: true,
+  email: true,
+  cargo: true,
+  ativo: true,
+  criadoEm: true,
+  equipe: { select: { nome: true } },
+  criadoPor: { select: { nome: true, email: true } },
+} as const;
+
+export type UsuarioListaRegistro = Prisma.UsuarioGetPayload<{
+  select: typeof camposListaUsuario;
+}>;
+
 const createdUserData = {
   id: true,
   nome: true,
@@ -44,6 +64,20 @@ const createdUserData = {
   criadoEm: true,
   atualizadoEm: true,
 } as const;
+
+function paraDia(valor?: string) {
+  if (!valor) return undefined;
+  const data = parseISO(valor);
+  return isValid(data) ? data : undefined;
+}
+
+/** Um dia (?data=) ou período (?dataInicio=&dataFim=), inclusivo nas pontas. */
+function intervaloCriadoEm(filtros: FiltrosUsuario) {
+  const inicio = paraDia(filtros.dataInicio ?? filtros.data);
+  if (!inicio) return undefined;
+  const fim = paraDia(filtros.dataFim) ?? inicio;
+  return { gte: startOfDay(inicio), lte: endOfDay(fim) };
+}
 
 export class ServicoUsuario {
   /**
@@ -83,13 +117,54 @@ export class ServicoUsuario {
     });
   }
 
+  /**
+   * Tabela de gestão: filtros + paginação no banco.
+   * Sem `status`, só usuários ativos; `status=inativo` mostra os inativos.
+   */
+  async listarPaginado(filtros: FiltrosUsuario) {
+    const criadoEm = intervaloCriadoEm(filtros);
+    const busca = filtros.busca;
+
+    const where: Prisma.UsuarioWhereInput = {
+      ativo: filtros.status !== "inativo",
+      ...(filtros.cargo ? { cargo: filtros.cargo } : {}),
+      ...(criadoEm ? { criadoEm } : {}),
+      ...(busca
+        ? {
+            OR: [
+              { nome: { contains: busca } },
+              { email: { contains: busca } },
+              { id: { contains: busca } },
+            ],
+          }
+        : {}),
+    };
+
+    const total = await prisma.usuario.count({ where });
+    const totalPaginas = Math.max(1, Math.ceil(total / TAMANHO_PAGINA_USUARIOS));
+    // Link antigo / edição manual da URL: nunca cai numa página vazia.
+    const pagina = Math.min(filtros.pagina, totalPaginas);
+
+    const itens = await prisma.usuario.findMany({
+      where,
+      select: camposListaUsuario,
+      // `id` desempata nomes iguais para a paginação ficar estável.
+      orderBy: [{ ativo: "desc" }, { nome: "asc" }, { id: "asc" }],
+      skip: (pagina - 1) * TAMANHO_PAGINA_USUARIOS,
+      take: TAMANHO_PAGINA_USUARIOS,
+    });
+
+    return { itens, total, pagina, totalPaginas };
+  }
+
   async createUser(data: {
     nome: string;
     email: string;
     cargo: Cargo;
     password: string;
+    criadoPorId?: string | null;
   }) {
-    const { password, ...userData } = data;
+    const { password, criadoPorId, ...userData } = data;
 
     return prisma.usuario.create({
       data: {
@@ -97,6 +172,7 @@ export class ServicoUsuario {
         senhaHash: await hash(password, 12),
         senhaProvisoria: true,
         equipeId: null,
+        ...(criadoPorId ? { criadoPorId } : {}),
       },
       select: createdUserData,
     });

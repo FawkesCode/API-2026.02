@@ -1,20 +1,12 @@
 "use client";
 
-import { Eye, EyeClosed, TriangleAlert, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Field, FieldError, FieldLabel } from "../ui/field";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "../ui/input-group";
-import { ChangeEvent, Ref, useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { FormInput, FormPassword } from "../form/form-field";
 
 const schema = z.object({
   email: z.email("Este não parece ser um email válido"),
@@ -70,13 +62,18 @@ function LoginForm({ onTempPass }: { onTempPass: () => void }) {
       onSubmit={handleSubmit(onSubmit)}
     >
       <FormInput
-        title="Email"
+        variant="login"
+        label="Email"
         id="email"
+        placeholder="Digite seu email"
         {...register("email")}
         error={errors.email?.message}
       />
       <FormPassword
+        variant="login"
+        label="Senha"
         id="password"
+        placeholder="Digite sua senha"
         {...register("password")}
         error={errors.password?.message}
       />
@@ -105,86 +102,3 @@ function LoginForm({ onTempPass }: { onTempPass: () => void }) {
 }
 
 export default LoginForm;
-
-interface FormInputProps {
-  title?: string;
-  id: string;
-  error?: string;
-  name?: string;
-  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
-  onBlur?: (e: ChangeEvent<HTMLInputElement>) => void;
-  ref?: Ref<HTMLInputElement>;
-  value?: string;
-}
-
-export function FormInput({
-  title,
-  id,
-  error,
-  ...registerProps
-}: FormInputProps) {
-  return (
-    <Field>
-      <FieldLabel className="text-xs sm:text-regular" htmlFor={id}>
-        {title}
-      </FieldLabel>
-      <Input
-        id={id}
-        placeholder={`Digite seu ${title?.toLowerCase()}`}
-        className="border-0 border-b-2 border-[#236588] pt-6 pb-6 placeholder:text-[#9BAFC0] text-xs sm:text-regular"
-        {...registerProps}
-      />
-      {error && (
-        <FieldError className="text-xs flex gap-1 items-center">
-          <TriangleAlert size={15} /> {error}
-        </FieldError>
-      )}
-    </Field>
-  );
-}
-
-export function FormPassword({
-  title = "Senha",
-  id,
-  error,
-  ...registerProps
-}: FormInputProps) {
-  const [visible, setIsVisible] = useState(false);
-
-  return (
-    <Field>
-      <FieldLabel className="text-xs sm:text-regular" htmlFor={id}>
-        {title}
-      </FieldLabel>
-
-      <InputGroup className="rounded-xl border-0 border-b-2 border-[#236588] pt-6 pb-6">
-        <InputGroupInput
-          id={id}
-          name={id}
-          type={visible ? "text" : "password"}
-          className="placeholder:text-[#9BAFC0] text-xs sm:text-regular"
-          placeholder={`Digite a senha`}
-          {...registerProps}
-        />
-
-        <InputGroupAddon align="inline-end">
-          <InputGroupButton
-            aria-label={!visible ? "Mostrar senha" : "Esconder senha"}
-            title={!visible ? "Mostrar senha" : "Esconder senha"}
-            size="icon-xs"
-            type="button"
-            className="hover:bg-transparent hover:text-primary-foreground text-[#9BAFC0]"
-            onClick={() => setIsVisible((h) => !h)}
-          >
-            {!visible ? <Eye /> : <EyeClosed />}
-          </InputGroupButton>
-        </InputGroupAddon>
-      </InputGroup>
-      {error && (
-        <FieldError className="text-xs flex gap-1 items-center">
-          <TriangleAlert size={15} /> {error}
-        </FieldError>
-      )}
-    </Field>
-  );
-}
