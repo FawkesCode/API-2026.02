@@ -120,11 +120,21 @@ export class ControladorAuth {
     }
 
     try {
-      const usuario = await servicoUsuario.buscarPorId(sessao.usuarioId);
+      const usuario = await servicoUsuario.buscarEstadoSenhaPorId(sessao.usuarioId);
       if (!usuario?.ativo) {
         return NextResponse.json(
           { erro: "Não autenticado.", codigo: "NAO_AUTENTICADO" },
           { status: 401 },
+        );
+      }
+
+      if (!usuario.senhaProvisoria) {
+        return NextResponse.json(
+          {
+            erro: "A troca de senha só está disponível para senhas provisórias.",
+            codigo: "SENHA_NAO_PROVISORIA",
+          },
+          { status: 403 },
         );
       }
 

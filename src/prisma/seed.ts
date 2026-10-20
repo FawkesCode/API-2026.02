@@ -72,11 +72,12 @@ async function main() {
         email,
         senhaHash: senhaTecnico,
         cargo: Cargo.TECNICO,
+        ativo: seedDevelopmentUsers,
         senhaProvisoria: false,
         equipeId: equipe.id,
       },
       update: {
-        ativo: true,
+        ativo: seedDevelopmentUsers,
         cargo: Cargo.TECNICO,
         equipeId: equipe.id,
         ...(seedDevelopmentUsers
@@ -92,11 +93,12 @@ async function main() {
         email: EMAIL_GESTOR_SEED,
         senhaHash: senhaGestor,
         cargo: Cargo.GESTOR,
+        ativo: seedDevelopmentUsers,
         senhaProvisoria: false,
         equipeId: equipe.id,
       },
       update: {
-        ativo: true,
+        ativo: seedDevelopmentUsers,
         cargo: Cargo.GESTOR,
         equipeId: equipe.id,
         ...(seedDevelopmentUsers

@@ -227,6 +227,64 @@ describe("rotas de tickets", () => {
     expect(criar).not.toHaveBeenCalled();
   });
 
+  it("nega criação quando usuário e projeto não têm equipe", async () => {
+    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+      id: usuarioDaSessaoId,
+      nome: "Gestor sem equipe",
+      email: "gestor@example.com",
+      cargo: "GESTOR",
+      ativo: true,
+      equipeId: null,
+      equipe: null,
+    });
+    vi.spyOn(servicoProjeto, "buscarDetalhePorId").mockResolvedValue({
+      id: projetoId,
+      ativo: true,
+      equipeId: null,
+    } as unknown as Awaited<ReturnType<typeof servicoProjeto.buscarDetalhePorId>>);
+    const criar = vi.spyOn(servicoTicket, "criar");
+
+    const resposta = await POST(
+      requisicao(
+        "http://localhost/api/tickets",
+        dadosValidosParaCriacao(),
+        tokenDaSessao,
+      ),
+    );
+
+    expect(resposta.status).toBe(403);
+    expect(criar).not.toHaveBeenCalled();
+  });
+
+  it("nega criação quando técnico não tem equipe, mesmo em projeto de equipe", async () => {
+    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+      id: usuarioDaSessaoId,
+      nome: "Técnico sem equipe",
+      email: "tecnico@example.com",
+      cargo: "TECNICO",
+      ativo: true,
+      equipeId: null,
+      equipe: null,
+    });
+    vi.spyOn(servicoProjeto, "buscarDetalhePorId").mockResolvedValue({
+      id: projetoId,
+      ativo: true,
+      equipeId,
+    } as Awaited<ReturnType<typeof servicoProjeto.buscarDetalhePorId>>);
+    const criar = vi.spyOn(servicoTicket, "criar");
+
+    const resposta = await POST(
+      requisicao(
+        "http://localhost/api/tickets",
+        dadosValidosParaCriacao(),
+        tokenDaSessao,
+      ),
+    );
+
+    expect(resposta.status).toBe(403);
+    expect(criar).not.toHaveBeenCalled();
+  });
+
   it("rejeita uma prioridade inválida antes de atualizar o ticket", async () => {
     const atualizar = vi.spyOn(servicoTicket, "atualizarPrioridade");
     const resposta = await PUT(

@@ -209,6 +209,13 @@ export class ServicoUsuario {
       select: dadosUsuarioAtual,
     });
   }
+
+  async buscarEstadoSenhaPorId(usuarioId: string) {
+    return prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { id: true, ativo: true, senhaProvisoria: true },
+    });
+  }
 }
 
 export const servicoUsuario = new ServicoUsuario();

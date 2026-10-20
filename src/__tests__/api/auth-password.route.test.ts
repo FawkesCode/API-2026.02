@@ -9,6 +9,7 @@ const usuario = {
   email: "teste@example.com",
   cargo: "TECNICO" as const,
   ativo: true,
+  senhaProvisoria: true,
   equipeId: null,
   equipe: null,
 };
@@ -34,7 +35,7 @@ function request(body: unknown, authenticated = true) {
 describe("PATCH /api/auth/password", () => {
   beforeEach(() => {
     vi.stubEnv("SESSION_SECRET", "segredo-de-teste-para-sessao");
-    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue(usuario);
+    vi.spyOn(servicoUsuario, "buscarEstadoSenhaPorId").mockResolvedValue(usuario);
     vi.spyOn(servicoUsuario, "alterarSenha").mockResolvedValue({ id: usuario.id });
   });
 
@@ -61,6 +62,21 @@ describe("PATCH /api/auth/password", () => {
     const response = await PATCH(request({ novaSenha: "fraca" }));
 
     expect(response.status).toBe(400);
+    expect(servicoUsuario.alterarSenha).not.toHaveBeenCalled();
+  });
+
+  it("rejeita troca de senha para usuário sem senha provisória", async () => {
+    vi.spyOn(servicoUsuario, "buscarEstadoSenhaPorId").mockResolvedValue({
+      ...usuario,
+      senhaProvisoria: false,
+    });
+
+    const response = await PATCH(request({ novaSenha: "NovaSenha@123" }));
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      codigo: "SENHA_NAO_PROVISORIA",
+    });
     expect(servicoUsuario.alterarSenha).not.toHaveBeenCalled();
   });
 });

@@ -135,7 +135,8 @@ export class ControladorTicket {
 
       if (
         acesso.usuario.cargo !== Cargo.SUPORTE &&
-        projeto.equipeId !== acesso.usuario.equipeId
+        (!acesso.usuario.equipeId ||
+          projeto.equipeId !== acesso.usuario.equipeId)
       ) {
         return NextResponse.json(
           { erro: "Você só pode abrir tickets em projetos da sua equipe." },

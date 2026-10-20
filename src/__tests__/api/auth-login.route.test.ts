@@ -87,4 +87,18 @@ describe("POST /api/auth/login", () => {
     expect(await resposta.json()).toMatchObject({ codigo: "DADOS_INVALIDOS" });
     expect(buscar).not.toHaveBeenCalled();
   });
+
+  it("rejeita senha vazia como erro de validação antes da busca", async () => {
+    const buscar = vi.spyOn(servicoUsuario, "buscarCredenciaisPorEmail");
+    const resposta = await POST(
+      request({ email: "ana@example.com", senha: "" }),
+    );
+
+    expect(resposta.status).toBe(400);
+    expect(await resposta.json()).toMatchObject({
+      codigo: "DADOS_INVALIDOS",
+      detalhes: { senha: ["Senha é obrigatória."] },
+    });
+    expect(buscar).not.toHaveBeenCalled();
+  });
 });
