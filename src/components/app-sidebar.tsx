@@ -21,13 +21,14 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import UserSidebar from "./user-sidebar";
 import LogoSidebar from "./logo-sidebar";
 import { cn } from "cn";
 import LogoFawkes from "./logo-fawkes";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { podeVerUsuarios } from "@/lib/access-control";
+import { useState } from "react";
 
 interface NavItem {
   title: string;
@@ -38,7 +39,10 @@ interface NavItem {
 export function AppSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
   const loggedUser = useCurrentUser();
+  const [erroLogout, setErroLogout] = useState<string | null>(null);
+  const [saindo, setSaindo] = useState(false);
 
   const items: NavItem[] = [
     { title: "Projetos", url: "/projetos", icon: ClipboardList },
@@ -91,11 +95,33 @@ export function AppSidebar() {
           <SidebarMenuButton
             tooltip="Sair"
             className="flex cursor-pointer justify-center"
+            disabled={saindo}
+            onClick={async () => {
+              setSaindo(true);
+              setErroLogout(null);
+              try {
+                const response = await fetch("/api/auth/logout", { method: "POST" });
+                if (!response.ok) {
+                  throw new Error("Não foi possível encerrar a sessão. Tente novamente.");
+                }
+                router.replace("/");
+                router.refresh();
+              } catch {
+                setErroLogout("Não foi possível encerrar a sessão. Tente novamente.");
+              } finally {
+                setSaindo(false);
+              }
+            }}
           >
             <LogOut aria-hidden={true} className="ml-1" />
             <span>SAIR</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
+        {erroLogout && (
+          <p role="alert" className="px-2 text-center text-xs text-destructive">
+            {erroLogout}
+          </p>
+        )}
 
         <div
           className={cn(" p-5 text-center flex flex-col gap-2", {

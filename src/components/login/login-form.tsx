@@ -15,12 +15,6 @@ const schema = z.object({
 
 type FormFields = z.infer<typeof schema>;
 
-const temporaryUser = {
-  email: "teste@gmail.com",
-  password: "teste123",
-  tempPass: true,
-};
-
 function LoginForm({ onTempPass }: { onTempPass: () => void }) {
   const {
     register,
@@ -36,18 +30,25 @@ function LoginForm({ onTempPass }: { onTempPass: () => void }) {
 
   const onSubmit: SubmitHandler<FormFields> = async (data) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      if (
-        data.email === temporaryUser.email &&
-        data.password === temporaryUser.password
-      ) {
-        if (temporaryUser.tempPass) {
-          onTempPass();
-        } else {
-          router.push("/projetos");
-        }
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, senha: data.password }),
+      });
+      const result = (await response.json()) as {
+        erro?: string;
+        senhaProvisoria?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error(result.erro ?? "Não foi possível entrar.");
+      }
+
+      if (result.senhaProvisoria) {
+        onTempPass();
       } else {
-        throw new Error("Email ou senha incorretos");
+        router.replace("/projetos");
+        router.refresh();
       }
     } catch (error) {
       const err = error as Error;

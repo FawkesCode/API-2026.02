@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "@/app/api/tickets/route";
 import { PUT } from "@/app/api/tickets/[id]/route";
 import { criarTokenDeSessao } from "@/auth/sessao";
@@ -6,6 +6,8 @@ import {
   ErroNaoAutorizadoParaAlterarPrioridade,
   servicoTicket,
 } from "@/services/ticket.service";
+import { servicoUsuario } from "@/services/usuario.service";
+import { servicoProjeto } from "@/services/projeto.service";
 
 process.env.SESSION_SECRET = "segredo-de-teste-com-32-caracteres";
 
@@ -13,6 +15,7 @@ const ticketId = "550e8400-e29b-41d4-a716-446655440010";
 const usuarioDaSessaoId = "550e8400-e29b-41d4-a716-446655440002";
 const usuarioForjadoId = "550e8400-e29b-41d4-a716-446655440009";
 const equipeId = "550e8400-e29b-41d4-a716-446655440003";
+const projetoId = "550e8400-e29b-41d4-a716-446655440000";
 const tokenDaSessao = criarTokenDeSessao({
   usuarioId: usuarioDaSessaoId,
   exp: Math.floor(Date.now() / 1000) + 60,
@@ -75,16 +78,62 @@ function ticketComRelacoes(id = ticketId, prioridade = "CRITICA") {
   } as unknown as Awaited<ReturnType<typeof servicoTicket.criar>>;
 }
 
+beforeEach(() => {
+  vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+    id: usuarioDaSessaoId,
+    nome: "Gestor",
+    email: "gestor@example.com",
+    cargo: "GESTOR",
+    ativo: true,
+    equipeId,
+    equipe: { nome: "Equipe Teste" },
+  });
+});
+
 afterEach(() => vi.restoreAllMocks());
 
 describe("rotas de tickets", () => {
+  it("rejeita a abertura sem sessão autenticada", async () => {
+    const criar = vi.spyOn(servicoTicket, "criar");
+    const resposta = await POST(
+      requisicao("http://localhost/api/tickets", dadosValidosParaCriacao()),
+    );
+
+    expect(resposta.status).toBe(401);
+    expect(criar).not.toHaveBeenCalled();
+  });
+
+  it("impede Comercial de abrir ticket mesmo com requisição direta", async () => {
+    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+      id: usuarioDaSessaoId,
+      nome: "Comercial",
+      email: "comercial@example.com",
+      cargo: "COMERCIAL",
+      ativo: true,
+      equipeId: null,
+      equipe: null,
+    });
+    const criar = vi.spyOn(servicoTicket, "criar");
+    const resposta = await POST(
+      requisicao(
+        "http://localhost/api/tickets",
+        dadosValidosParaCriacao(),
+        tokenDaSessao,
+      ),
+    );
+
+    expect(resposta.status).toBe(403);
+    expect(criar).not.toHaveBeenCalled();
+  });
+
   it("rejeita uma prioridade inválida antes de criar o ticket", async () => {
     const criar = vi.spyOn(servicoTicket, "criar");
     const resposta = await POST(
-      requisicao("http://localhost/api/tickets", {
-        ...dadosValidosParaCriacao(),
-        prioridade: "URGENTE",
-      }),
+      requisicao(
+        "http://localhost/api/tickets",
+        { ...dadosValidosParaCriacao(), prioridade: "URGENTE" },
+        tokenDaSessao,
+      ),
     );
 
     expect(resposta.status).toBe(400);
@@ -94,22 +143,146 @@ describe("rotas de tickets", () => {
 
   it("valida e encaminha uma prioridade crítica para a persistência na criação", async () => {
     const ticketCriado = ticketComRelacoes();
+    vi.spyOn(servicoProjeto, "buscarDetalhePorId").mockResolvedValue({
+      id: projetoId,
+      ativo: true,
+      equipeId,
+    } as Awaited<ReturnType<typeof servicoProjeto.buscarDetalhePorId>>);
     const criar = vi
       .spyOn(servicoTicket, "criar")
       .mockResolvedValue(ticketCriado);
     const resposta = await POST(
-      requisicao("http://localhost/api/tickets", dadosValidosParaCriacao()),
+      requisicao(
+        "http://localhost/api/tickets",
+        dadosValidosParaCriacao(),
+        tokenDaSessao,
+      ),
     );
 
     expect(resposta.status).toBe(201);
     expect(criar).toHaveBeenCalledWith(
-      expect.objectContaining({ prioridade: "CRITICA", equipeIds: [equipeId] }),
+      expect.objectContaining({
+        prioridade: "CRITICA",
+        equipeIds: [equipeId],
+        abertoPorId: usuarioDaSessaoId,
+      }),
     );
     expect(await resposta.json()).toMatchObject({
       id: ticketId,
       createdBy: "Gestor Teste",
       teams: [{ id: equipeId, nome: "Equipe Suporte" }],
     });
+  });
+
+  it("permite Suporte criar ticket em projeto fora da sua equipe e usa sua identidade", async () => {
+    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+      id: usuarioDaSessaoId,
+      nome: "Suporte",
+      email: "suporte@example.com",
+      cargo: "SUPORTE",
+      ativo: true,
+      equipeId: null,
+      equipe: null,
+    });
+    vi.spyOn(servicoProjeto, "buscarDetalhePorId").mockResolvedValue({
+      id: projetoId,
+      ativo: true,
+      equipeId: "550e8400-e29b-41d4-a716-446655440099",
+    } as Awaited<ReturnType<typeof servicoProjeto.buscarDetalhePorId>>);
+    const criar = vi
+      .spyOn(servicoTicket, "criar")
+      .mockResolvedValue(ticketComRelacoes());
+
+    const resposta = await POST(
+      requisicao(
+        "http://localhost/api/tickets",
+        dadosValidosParaCriacao(),
+        tokenDaSessao,
+      ),
+    );
+
+    expect(resposta.status).toBe(201);
+    expect(criar).toHaveBeenCalledWith(
+      expect.objectContaining({ abertoPorId: usuarioDaSessaoId }),
+    );
+  });
+
+  it("limita Técnico/Gestor a projetos da equipe vinculada", async () => {
+    vi.spyOn(servicoProjeto, "buscarDetalhePorId").mockResolvedValue({
+      id: projetoId,
+      ativo: true,
+      equipeId: "550e8400-e29b-41d4-a716-446655440099",
+    } as Awaited<ReturnType<typeof servicoProjeto.buscarDetalhePorId>>);
+    const criar = vi.spyOn(servicoTicket, "criar");
+
+    const resposta = await POST(
+      requisicao(
+        "http://localhost/api/tickets",
+        dadosValidosParaCriacao(),
+        tokenDaSessao,
+      ),
+    );
+
+    expect(resposta.status).toBe(403);
+    expect(criar).not.toHaveBeenCalled();
+  });
+
+  it("nega criação quando usuário e projeto não têm equipe", async () => {
+    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+      id: usuarioDaSessaoId,
+      nome: "Gestor sem equipe",
+      email: "gestor@example.com",
+      cargo: "GESTOR",
+      ativo: true,
+      equipeId: null,
+      equipe: null,
+    });
+    vi.spyOn(servicoProjeto, "buscarDetalhePorId").mockResolvedValue({
+      id: projetoId,
+      ativo: true,
+      equipeId: null,
+    } as unknown as Awaited<ReturnType<typeof servicoProjeto.buscarDetalhePorId>>);
+    const criar = vi.spyOn(servicoTicket, "criar");
+
+    const resposta = await POST(
+      requisicao(
+        "http://localhost/api/tickets",
+        dadosValidosParaCriacao(),
+        tokenDaSessao,
+      ),
+    );
+
+    expect(resposta.status).toBe(403);
+    expect(criar).not.toHaveBeenCalled();
+  });
+
+  it("nega criação quando técnico não tem equipe, mesmo em projeto de equipe", async () => {
+    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+      id: usuarioDaSessaoId,
+      nome: "Técnico sem equipe",
+      email: "tecnico@example.com",
+      cargo: "TECNICO",
+      ativo: true,
+      equipeId: null,
+      equipe: null,
+    });
+    vi.spyOn(servicoProjeto, "buscarDetalhePorId").mockResolvedValue({
+      id: projetoId,
+      ativo: true,
+      equipeId,
+    } as Awaited<ReturnType<typeof servicoProjeto.buscarDetalhePorId>>);
+    const criar = vi.spyOn(servicoTicket, "criar");
+
+    const resposta = await POST(
+      requisicao(
+        "http://localhost/api/tickets",
+        dadosValidosParaCriacao(),
+        tokenDaSessao,
+      ),
+    );
+
+    expect(resposta.status).toBe(403);
+    expect(criar).not.toHaveBeenCalled();
   });
 
   it("rejeita uma prioridade inválida antes de atualizar o ticket", async () => {
@@ -170,6 +343,33 @@ describe("rotas de tickets", () => {
     );
 
     expect(resposta.status).toBe(401);
+    expect(atualizar).not.toHaveBeenCalled();
+  });
+
+  it("retorna 403 quando o cargo não tem permissão para alterar prioridade", async () => {
+    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+      id: usuarioDaSessaoId,
+      nome: "Técnico",
+      email: "tecnico@example.com",
+      cargo: "TECNICO",
+      ativo: true,
+      equipeId,
+      equipe: { nome: "Equipe Teste" },
+    });
+    const atualizar = vi.spyOn(servicoTicket, "atualizarPrioridade");
+
+    const resposta = await PUT(
+      requisicao(
+        `http://localhost/api/tickets/${ticketId}`,
+        { prioridade: "CRITICA" },
+        tokenDaSessao,
+        "PUT",
+      ),
+      { params: Promise.resolve({ id: ticketId }) },
+    );
+
+    expect(resposta.status).toBe(403);
+    expect(await resposta.json()).toMatchObject({ codigo: "SEM_PERMISSAO" });
     expect(atualizar).not.toHaveBeenCalled();
   });
 

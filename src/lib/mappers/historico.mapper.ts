@@ -46,6 +46,7 @@ const CargoLabel: Record<Cargo, string> = {
   TECNICO: "Técnico",
   GESTOR: "Gestor",
   SUPORTE: "Suporte",
+  SUPORTE_INTERNO: "Suporte Interno",
   COMERCIAL: "Comercial",
 };
 

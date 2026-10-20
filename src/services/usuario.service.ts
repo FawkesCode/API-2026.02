@@ -16,7 +16,15 @@ const dadosUsuarioAtual = {
   equipe: { select: { nome: true } },
 } as const;
 
-
+const credenciaisLogin = {
+  id: true,
+  nome: true,
+  email: true,
+  senhaHash: true,
+  cargo: true,
+  ativo: true,
+  senhaProvisoria: true,
+} as const;
 
 /** Campos expostos na listagem de gestão. `senhaHash` nunca entra aqui. */
 const detailedUserFields = {
@@ -177,10 +185,35 @@ export class ServicoUsuario {
     });
   }
 
+  async buscarCredenciaisPorEmail(email: string) {
+    return prisma.usuario.findUnique({
+      where: { email },
+      select: credenciaisLogin,
+    });
+  }
+
+  async alterarSenha(usuarioId: string, senha: string) {
+    return prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        senhaHash: await hash(senha, 12),
+        senhaProvisoria: false,
+      },
+      select: { id: true },
+    });
+  }
+
   async buscarPorId(usuarioId: string) {
     return prisma.usuario.findUnique({
       where: { id: usuarioId },
       select: dadosUsuarioAtual,
+    });
+  }
+
+  async buscarEstadoSenhaPorId(usuarioId: string) {
+    return prisma.usuario.findUnique({
+      where: { id: usuarioId },
+      select: { id: true, ativo: true, senhaProvisoria: true },
     });
   }
 }

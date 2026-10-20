@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@/lib/generated/prisma/client";
+import { Cargo, Prisma } from "@/lib/generated/prisma/client";
+import { exigirCargo } from "@/auth/exigir-cargo";
 import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import {
   ErroConflitoPrioridade,
@@ -11,6 +12,7 @@ import {
   ProjetoNaoEncontradoError,
   servicoTicket,
 } from "@/services/ticket.service";
+import { servicoProjeto } from "@/services/projeto.service";
 import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
 import {
   atualizarPrioridadeTicketSchema,
@@ -105,6 +107,14 @@ function tratarErroInesperado(erro: unknown) {
 
 export class ControladorTicket {
   async criar(requisicao: Request) {
+    const acesso = await exigirCargo(
+      requisicao,
+      Cargo.TECNICO,
+      Cargo.SUPORTE,
+      Cargo.GESTOR,
+    );
+    if (!acesso.autorizado) return acesso.resposta;
+
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
@@ -115,7 +125,29 @@ export class ControladorTicket {
     if (erroDeValidacao) return erroDeValidacao;
 
     try {
-      const ticket = await servicoTicket.criar(dados);
+      const projeto = await servicoProjeto.buscarDetalhePorId(dados.projetoId);
+      if (!projeto?.ativo) {
+        return NextResponse.json(
+          { erro: "Projeto não encontrado ou inativo." },
+          { status: 400 },
+        );
+      }
+
+      if (
+        acesso.usuario.cargo !== Cargo.SUPORTE &&
+        (!acesso.usuario.equipeId ||
+          projeto.equipeId !== acesso.usuario.equipeId)
+      ) {
+        return NextResponse.json(
+          { erro: "Você só pode abrir tickets em projetos da sua equipe." },
+          { status: 403 },
+        );
+      }
+
+      const ticket = await servicoTicket.criar({
+        ...dados,
+        abertoPorId: acesso.usuario.id,
+      });
       return NextResponse.json(toTicketDTO(ticket), { status: 201 });
     } catch (erro) {
       return tratarErroInesperado(erro);
@@ -161,10 +193,8 @@ export class ControladorTicket {
       );
     }
 
-    const sessao = obterSessaoDaRequisicao(requisicao);
-    if (!sessao) {
-      return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
-    }
+    const acesso = await exigirCargo(requisicao, Cargo.GESTOR);
+    if (!acesso.autorizado) return acesso.resposta;
 
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
@@ -178,7 +208,7 @@ export class ControladorTicket {
     try {
       const ticket = await servicoTicket.atualizarPrioridade(idValidado.data, {
         ...dados,
-        usuarioId: sessao.usuarioId,
+        usuarioId: acesso.usuario.id,
       });
       if (!ticket) {
         return NextResponse.json(

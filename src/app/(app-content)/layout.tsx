@@ -8,7 +8,13 @@ import { getUsuarioAtual } from "@/lib/data/sessao";
 // O <Toaster /> já é montado no app/layout.tsx (raiz). Montar de novo aqui
 // faria cada toast aparecer duas vezes nas telas deste grupo.
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const usuario = await getUsuarioAtual();
+  const usuarioAutenticado = await getUsuarioAtual();
+  const usuario = usuarioAutenticado
+    ? {
+        ...usuarioAutenticado,
+        equipeNome: usuarioAutenticado.equipe?.nome ?? null,
+      }
+    : null;
 
   return (
     <CurrentUserProvider usuario={usuario}>

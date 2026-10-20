@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { POST } from "@/app/api/usuarios/route";
 import { prisma } from "@/lib/prisma";
+import { criarTokenDeSessao } from "@/auth/sessao";
+import { servicoUsuario } from "@/services/usuario.service";
 import { getUsuarios } from "@/lib/data/usuarios";
 import { parseFiltrosUsuario } from "@/schemas/usuario-filtros.schema";
 import {
@@ -15,17 +17,23 @@ import {
   VALORES_INICIAIS_USUARIO_FORM,
 } from "@/components/usuarios/usuario-form-dialog";
 import {
-  OPCOES_TIPO_CONTA,
   usuarioFormSchema,
 } from "@/schemas/usuario-form.schema";
 
 const dadosFormularioValidos = {
   email: "novo.tecnico@altave.com",
   nome: "Novo Técnico",
-  tipoConta: OPCOES_TIPO_CONTA[0],
+  tipoConta: { label: "Técnico", value: "TECNICO" as const },
   senha: "Senha@123",
   confirmarSenha: "Senha@123",
 };
+
+process.env.SESSION_SECRET = "segredo-de-teste-com-32-caracteres";
+const suporteId = "550e8400-e29b-41d4-a716-446655440002";
+const token = criarTokenDeSessao({
+  usuarioId: suporteId,
+  exp: Math.floor(Date.now() / 1000) + 60,
+});
 
 const fetchDiretoNoRouteHandler = ((
   input: RequestInfo | URL,
@@ -37,8 +45,22 @@ const fetchDiretoNoRouteHandler = ((
       : input instanceof URL
         ? input.toString()
         : input.url;
-  return POST(new Request(url, init));
+  const headers = new Headers(init?.headers);
+  headers.set("cookie", `session=${token}`);
+  return POST(new Request(url, { ...init, headers }));
 }) as typeof fetch;
+
+beforeEach(() => {
+  vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
+    id: suporteId,
+    nome: "Suporte",
+    email: "suporte@example.com",
+    cargo: "SUPORTE",
+    ativo: true,
+    equipeId: null,
+    equipe: null,
+  });
+});
 
 afterEach(() => vi.restoreAllMocks());
 
