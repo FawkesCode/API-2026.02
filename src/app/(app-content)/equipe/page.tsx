@@ -3,15 +3,17 @@ import MyTeamTickets from "@/components/tickets/my-team-tickets";
 import { GerenciarEquipeDialog } from "@/components/equipe/gerenciar-equipe-dialog";
 import { getTeamsTickets } from "@/lib/data/my-team";
 import { getEquipeParaEdicao } from "@/lib/data/equipe";
-import { podeEditarEquipe } from "@/lib/access-control";
+import { podeEditarEquipe, podeVerMinhaEquipe } from "@/lib/access-control";
 import { connection } from "next/server";
 import { getUsuarioAtual } from "@/lib/data/sessao";
+import { notFound } from "next/navigation";
 
 export default async function Team() {
   // A equipe depende do usuário da requisição e não deve ser renderizada no build.
   await connection();
 
   const usuario = await getUsuarioAtual();
+  if (!podeVerMinhaEquipe(usuario?.cargo)) notFound();
   const [{ equipeNome, tickets }, dadosEdicao] = await Promise.all([
     usuario
       ? getTeamsTickets(usuario.id)

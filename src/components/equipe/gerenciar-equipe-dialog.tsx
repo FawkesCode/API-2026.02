@@ -25,12 +25,11 @@ import {
   FormTextarea,
 } from "@/components/form/form-field";
 import { TecnicosSelecionados } from "@/components/equipe/tecnicos-selecionados";
-import type { SelectInterface } from "@/lib/data/dropdown";
 import {
   equipeFormSchema,
   type EquipeFormValues,
 } from "@/schemas/equipe-form.schema";
-import type { EquipeEdicao } from "@/types/equipe";
+import type { EquipeEdicao, TecnicoDisponivelEquipe } from "@/types/equipe";
 
 /**
  * Contrato do endpoint (BACK #1): PATCH /api/equipes/:id, validado por
@@ -45,7 +44,7 @@ const MENSAGEM_ERRO_PADRAO =
 
 interface GerenciarEquipeDialogProps {
   equipe: EquipeEdicao;
-  tecnicosDisponiveis: SelectInterface[];
+  tecnicosDisponiveis: TecnicoDisponivelEquipe[];
 }
 
 export function GerenciarEquipeDialog({
@@ -95,6 +94,24 @@ export function GerenciarEquipeDialog({
 
   async function aoEnviar(data: EquipeFormValues) {
     setErroEnvio(null);
+
+    const transferencias = data.tecnicos.flatMap((tecnico) => {
+      const disponivel = tecnicosDisponiveis.find(
+        (opcao) => opcao.value === tecnico.value,
+      );
+      if (!disponivel?.equipeId || disponivel.equipeId === equipe.id) return [];
+      return [{ nome: tecnico.label, equipe: disponivel.equipeNome ?? "outra equipe" }];
+    });
+
+    if (transferencias.length > 0) {
+      const resumo = transferencias
+        .map(({ nome, equipe: equipeAtual }) => `• ${nome} (atualmente em ${equipeAtual})`)
+        .join("\n");
+      const confirmar = window.confirm(
+        `Os seguintes técnicos já pertencem a outra equipe:\n\n${resumo}\n\nSe continuar, eles serão transferidos para ${equipe.nome}. Deseja prosseguir?`,
+      );
+      if (!confirmar) return;
+    }
 
     let mensagem = MENSAGEM_ERRO_PADRAO;
     try {

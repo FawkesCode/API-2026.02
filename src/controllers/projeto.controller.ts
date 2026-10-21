@@ -2,7 +2,8 @@ import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import { servicoUsuario } from "@/services/usuario.service";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@/lib/generated/prisma/client";
+import { Cargo, Prisma } from "@/lib/generated/prisma/client";
+import { exigirCargo } from "@/auth/exigir-cargo";
 import {
   servicoProjeto,
   GestorNaoEncontradoError,
@@ -71,6 +72,9 @@ export class ControladorProjeto {
 
   // [BACK #2] Rota de post para criação de projetos na plataforma.
   async criar(requisicao: Request) {
+    const acesso = await exigirCargo(requisicao, Cargo.COMERCIAL);
+    if (!acesso.autorizado) return acesso.resposta;
+
     const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
     if (erroDeParse) return erroDeParse;
 
@@ -87,7 +91,10 @@ export class ControladorProjeto {
 
     try {
       const { projeto, ticketInstalacao } =
-        await servicoProjeto.criarComTicketDeInstalacao(resultado.data);
+        await servicoProjeto.criarComTicketDeInstalacao(
+          resultado.data,
+          acesso.usuario.id,
+        );
       return NextResponse.json(
         { ...projeto, ticketInstalacao: toTicketDTO(ticketInstalacao) },
         { status: 201 },

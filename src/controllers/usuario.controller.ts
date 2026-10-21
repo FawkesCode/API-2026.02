@@ -9,7 +9,7 @@ const CARGOS_VALIDOS = new Set<string>(Object.values(Cargo));
 
 export class ControladorUsuario {
   async createUser(request: Request) {
-    const acesso = await exigirCargo(request, Cargo.SUPORTE);
+    const acesso = await exigirCargo(request, Cargo.SUPORTE_INTERNO);
     if (!acesso.autorizado) return acesso.resposta;
 
     let body: unknown;
@@ -72,6 +72,9 @@ export class ControladorUsuario {
   }
 
   async listar(requisicao: Request) {
+    const acesso = await exigirCargo(requisicao, Cargo.SUPORTE_INTERNO);
+    if (!acesso.autorizado) return acesso.resposta;
+
     const url = new URL(requisicao.url);
     const cargoParam = url.searchParams.get("cargo");
 
@@ -99,7 +102,7 @@ export class ControladorUsuario {
   }
 
   async listDetailed(requisicao: Request) {
-    const acesso = await exigirCargo(requisicao, Cargo.SUPORTE);
+    const acesso = await exigirCargo(requisicao, Cargo.SUPORTE_INTERNO);
     if (!acesso.autorizado) return acesso.resposta;
 
     try {

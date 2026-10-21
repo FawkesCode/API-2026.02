@@ -6,8 +6,8 @@ export async function getEquipeParaEdicao(equipeId: string) {
   try {
     const [equipe, tecnicos] = await Promise.all([
       servicoEquipe.buscarParaEdicao(equipeId),
-      // Técnicos ativos sem equipe + os que já são desta equipe.
-      servicoUsuario.listarTecnicosParaEquipe(equipeId),
+      // Todos os técnicos ativos; o gestor pode transferi-los para sua equipe.
+      servicoUsuario.listarTecnicosParaEquipe(),
     ]);
 
     if (!equipe) return null;
@@ -17,6 +17,8 @@ export async function getEquipeParaEdicao(equipeId: string) {
       tecnicosDisponiveis: tecnicos.map((u) => ({
         value: u.id,
         label: u.nome,
+        equipeId: u.equipeId,
+        equipeNome: u.equipe?.nome ?? null,
       })),
     };
   } catch (error) {

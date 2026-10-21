@@ -27,7 +27,7 @@ import LogoSidebar from "./logo-sidebar";
 import { cn } from "cn";
 import LogoFawkes from "./logo-fawkes";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { podeVerUsuarios } from "@/lib/access-control";
+import { podeVerMinhaEquipe, podeVerUsuarios } from "@/lib/access-control";
 import { useState } from "react";
 
 interface NavItem {
@@ -47,7 +47,9 @@ export function AppSidebar() {
   const items: NavItem[] = [
     { title: "Projetos", url: "/projetos", icon: ClipboardList },
     { title: "Tickets", url: "/tickets", icon: Ticket },
-    { title: "Minha Equipe", url: "/equipe", icon: Users },
+    ...(podeVerMinhaEquipe(loggedUser?.cargo)
+      ? [{ title: "Minha Equipe", url: "/equipe", icon: Users }]
+      : []),
     ...(podeVerUsuarios(loggedUser?.cargo)
       ? [{ title: "Usuários", url: "/usuarios", icon: UserCog }]
       : []),

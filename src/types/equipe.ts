@@ -6,6 +6,12 @@ export interface TecnicoEquipe extends SelectInterface {
   adicionadoEm?: string;
 }
 
+/** Técnico elegível e sua equipe atual, usado para confirmar transferências. */
+export interface TecnicoDisponivelEquipe extends SelectInterface {
+  equipeId: string | null;
+  equipeNome: string | null;
+}
+
 /** Formato que vem do banco (DTO) para a leitura da equipe. */
 export interface EquipeComUsuariosDTO {
   id: string;

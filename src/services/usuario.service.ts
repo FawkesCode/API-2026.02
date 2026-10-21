@@ -86,14 +86,18 @@ export class ServicoUsuario {
    * projeto). Sem `cargo`, retorna todos os usuários ativos.
    */
 
-  async listarTecnicosParaEquipe(equipeId: string) {
+  async listarTecnicosParaEquipe() {
     return prisma.usuario.findMany({
       where: {
         ativo: true,
         cargo: Cargo.TECNICO,
-        OR: [{ equipeId: null }, { equipeId }],
       },
-      select: { id: true, nome: true },
+      select: {
+        id: true,
+        nome: true,
+        equipeId: true,
+        equipe: { select: { nome: true } },
+      },
       orderBy: { nome: "asc" },
     });
   }
@@ -166,15 +170,75 @@ export class ServicoUsuario {
   }) {
     const { password, criadoPorId, ...userData } = data;
 
-    return prisma.usuario.create({
-      data: {
-        ...userData,
-        senhaHash: await hash(password, 12),
-        senhaProvisoria: true,
-        equipeId: null,
-        ...(criadoPorId ? { criadoPorId } : {}),
-      },
-      select: createdUserData,
+    const senhaHash = await hash(password, 12);
+    return prisma.$transaction(async (tx) => {
+      if (userData.cargo === Cargo.GESTOR) {
+        // Cada novo gestor recebe uma equipe própria desde o cadastro.
+        // Nome único do banco: em caso de homônimos, acrescenta um sufixo.
+        const base = `Equipe ${userData.nome}`.slice(0, 88);
+        let nomeEquipe = base;
+        let sufixo = 2;
+        while (
+          await tx.equipe.findUnique({
+            where: { nome: nomeEquipe },
+            select: { id: true },
+          })
+        ) {
+          const final = ` (${sufixo++})`;
+          nomeEquipe = `${base.slice(0, 100 - final.length)}${final}`;
+        }
+        const equipe = await tx.equipe.create({
+          data: { nome: nomeEquipe, descricao: `Equipe gerenciada por ${userData.nome}.` },
+          select: { id: true },
+        });
+        const gestor = await tx.usuario.create({
+          data: {
+            ...userData,
+            senhaHash,
+            senhaProvisoria: true,
+            equipeId: equipe.id,
+            ...(criadoPorId ? { criadoPorId } : {}),
+          },
+          select: createdUserData,
+        });
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId: gestor.id,
+            tipo: "EQUIPE",
+            descricao: `Equipe ${nomeEquipe} criada automaticamente para sua conta.`,
+          },
+        });
+        if (criadoPorId) {
+          await tx.atividadeConta.create({
+            data: {
+              usuarioId: criadoPorId,
+              tipo: "CADASTRO",
+              descricao: `Cadastrou o usuário ${gestor.nome} (${gestor.cargo}).`,
+            },
+          });
+        }
+        return gestor;
+      }
+      const usuario = await tx.usuario.create({
+        data: {
+          ...userData,
+          senhaHash,
+          senhaProvisoria: true,
+          equipeId: null,
+          ...(criadoPorId ? { criadoPorId } : {}),
+        },
+        select: createdUserData,
+      });
+      if (criadoPorId) {
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId: criadoPorId,
+            tipo: "CADASTRO",
+            descricao: `Cadastrou o usuário ${usuario.nome} (${usuario.cargo}).`,
+          },
+        });
+      }
+      return usuario;
     });
   }
 

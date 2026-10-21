@@ -53,8 +53,9 @@ model Usuario {
   ticketsResponsaveis Ticket[]          @relation("TicketsResponsaveis")
   relatorios          Relatorio[]
   eventosHistorico    HistoricoTicket[]
+  atividadesConta     AtividadeConta[]
 
-  criadoPorId String?   // siga o padrão de @map do seu schema
+  criadoPorId String?   @map("criado_por_id") @db.Char(36)
   criadoPor   Usuario?  @relation("UsuarioCriadoPor", fields: [criadoPorId], references: [id])
   criados     Usuario[] @relation("UsuarioCriadoPor")
 
@@ -197,4 +198,17 @@ model HistoricoTicket {
   @@index([ticketId, criadoEm], map: "ix_historico_ticket_data")
   @@index([usuarioId], map: "ix_historico_usuario")
   @@map("historico_ticket")
+}
+
+model AtividadeConta {
+  id        String   @id @default(uuid()) @db.Char(36)
+  tipo      String   @db.VarChar(20)
+  descricao String   @db.Text
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+
+  usuarioId String  @map("usuario_id") @db.Char(36)
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, criadoEm], map: "ix_atividades_conta_usuario_data")
+  @@map("atividades_conta")
 }

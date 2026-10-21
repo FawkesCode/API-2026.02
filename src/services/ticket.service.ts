@@ -227,29 +227,41 @@ export class ServicoTicket {
 
   async criar(dados: CriarTicketSchema) {
     const equipeIds = [...new Set(dados.equipeIds ?? [])];
-    const ticket = await this.db.ticket.create({
-      data: {
-        titulo: dados.titulo,
-        descricao: dados.descricao,
-        categoria: dados.categoria,
-        prioridade: dados.prioridade,
-        status: StatusTicket.EM_ANDAMENTO,
-        projetoId: dados.projetoId,
-        abertoPorId: dados.abertoPorId,
-        slaEm: dados.slaEm,
-
-        equipesAlocadas: equipeIds.length
-          ? {
-              create: equipeIds.map((equipeId) => ({
-                equipeId,
-              })),
-            }
-          : undefined,
-      },
-      include: RELACOES_TICKET,
+    return this.db.$transaction(async (tx) => {
+      const ticket = await tx.ticket.create({
+        data: {
+          titulo: dados.titulo,
+          descricao: dados.descricao,
+          categoria: dados.categoria,
+          prioridade: dados.prioridade,
+          status: StatusTicket.EM_ANDAMENTO,
+          projetoId: dados.projetoId,
+          abertoPorId: dados.abertoPorId,
+          slaEm: dados.slaEm,
+          equipesAlocadas: equipeIds.length
+            ? {
+                create: equipeIds.map((equipeId) => ({ equipeId })),
+              }
+            : undefined,
+        },
+        select: { id: true, titulo: true },
+      });
+      const projeto = await tx.projeto.findUnique({
+        where: { id: dados.projetoId },
+        select: { nome: true },
+      });
+      await tx.atividadeConta.create({
+        data: {
+          usuarioId: dados.abertoPorId,
+          tipo: "TICKET",
+          descricao: `Abriu o ticket ${ticket.titulo}${projeto ? ` no projeto ${projeto.nome}` : ""}.`,
+        },
+      });
+      return tx.ticket.findUniqueOrThrow({
+        where: { id: ticket.id },
+        include: RELACOES_TICKET,
+      });
     });
-
-    return ticket;
   }
 
   async buscarTicketsDaEquipeDoUsuario(usuarioId: string) {
@@ -387,14 +399,32 @@ export class ServicoTicket {
     });
   }
 
-  async alocarEquipe(ticketId: string, equipeId: string) {
-    const ticket = await this.db.ticket.findUnique({ where: { id: ticketId } });
+  async alocarEquipe(ticketId: string, equipeId: string, usuarioId?: string) {
+    const ticket = await this.db.ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, titulo: true },
+    });
     if (!ticket) return null;
 
-    await this.db.ticketEquipe.upsert({
-      where: { ticketId_equipeId: { ticketId, equipeId } },
-      create: { ticketId, equipeId },
-      update: {},
+    await this.db.$transaction(async (tx) => {
+      await tx.ticketEquipe.upsert({
+        where: { ticketId_equipeId: { ticketId, equipeId } },
+        create: { ticketId, equipeId },
+        update: {},
+      });
+      if (usuarioId) {
+        const equipe = await tx.equipe.findUnique({
+          where: { id: equipeId },
+          select: { nome: true },
+        });
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId,
+            tipo: "TICKET",
+            descricao: `Atribuiu a equipe ${equipe?.nome ?? "equipe"} ao ticket ${ticket.titulo}.`,
+          },
+        });
+      }
     });
 
     try {
@@ -478,7 +508,7 @@ export class ServicoTicket {
     }
 
     // Reaproveita a lógica existente (upsert + e-mail ao gestor da equipe).
-    return this.alocarEquipe(ticketId, equipeId);
+    return this.alocarEquipe(ticketId, equipeId, usuarioId);
   }
 
   async desatribuirEquipe(
@@ -502,7 +532,18 @@ export class ServicoTicket {
         throw new ErroUltimaEquipeDoTicket();
       }
 
+      const equipe = await tx.equipe.findUnique({
+        where: { id: equipeId },
+        select: { nome: true },
+      });
       await tx.ticketEquipe.deleteMany({ where: { ticketId, equipeId } });
+      await tx.atividadeConta.create({
+        data: {
+          usuarioId,
+          tipo: "TICKET",
+          descricao: `Desatribuiu a equipe ${equipe?.nome ?? "equipe"} do ticket ${ticket.titulo}.`,
+        },
+      });
 
       return tx.ticket.findUniqueOrThrow({
         where: { id: ticketId },

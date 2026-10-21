@@ -111,6 +111,7 @@ export class ControladorTicket {
       requisicao,
       Cargo.TECNICO,
       Cargo.SUPORTE,
+      Cargo.SUPORTE_INTERNO,
       Cargo.GESTOR,
     );
     if (!acesso.autorizado) return acesso.resposta;
@@ -135,6 +136,7 @@ export class ControladorTicket {
 
       if (
         acesso.usuario.cargo !== Cargo.SUPORTE &&
+        acesso.usuario.cargo !== Cargo.SUPORTE_INTERNO &&
         (!acesso.usuario.equipeId ||
           projeto.equipeId !== acesso.usuario.equipeId)
       ) {

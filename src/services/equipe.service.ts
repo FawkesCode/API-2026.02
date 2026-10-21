@@ -131,6 +131,21 @@ export class ServicoEquipe {
           await this.substituirTecnicos(tx, equipeId, dados.tecnicosIds);
         }
 
+        const mudancas = [
+          dados.nome !== undefined ? "nome" : null,
+          dados.descricao !== undefined ? "descrição" : null,
+          dados.tecnicosIds !== undefined ? "integrantes" : null,
+        ].filter((item): item is string => item !== null);
+        if (mudancas.length) {
+          await tx.atividadeConta.create({
+            data: {
+              usuarioId,
+              tipo: "EQUIPE",
+              descricao: `Atualizou ${mudancas.join(", ")} da equipe.`,
+            },
+          });
+        }
+
         return tx.equipe.findUniqueOrThrow({
           where: { id: equipeId },
           select: {
@@ -163,14 +178,13 @@ export class ServicoEquipe {
     // Remove IDs repetidos para evitar contagens incorretas.
     const tecnicosIds = [...new Set(ids)];
 
-    // Aceita técnicos ativos que estejam sem equipe ou já pertençam
-    // à equipe editada. Não transfere técnicos de outras equipes.
+    // Um técnico pertence a uma única equipe. Ao ser escolhido aqui, é
+    // transferido da equipe anterior para a equipe do gestor solicitante.
     const candidatos = await tx.usuario.findMany({
       where: {
         id: { in: tecnicosIds },
         ativo: true,
         cargo: Cargo.TECNICO,
-        OR: [{ equipeId: null }, { equipeId }],
       },
       select: { id: true, equipeId: true },
     });
@@ -191,26 +205,12 @@ export class ServicoEquipe {
       data: { equipeId: null },
     });
 
-    // Vincula só quem ainda está sem equipe. A condição `equipeId: null`
-    // vai no próprio UPDATE: se outra requisição alocar o técnico entre a
-    // leitura acima e esta escrita, a contagem diverge e a transação é
-    // desfeita (sem depender de como o driver conta linhas afetadas).
-    const livres = candidatos
-      .filter((c) => c.equipeId === null)
-      .map((c) => c.id);
-
-    if (livres.length > 0) {
+    if (tecnicosIds.length > 0) {
       const { count } = await tx.usuario.updateMany({
-        where: {
-          id: { in: livres },
-          ativo: true,
-          cargo: Cargo.TECNICO,
-          equipeId: null,
-        },
+        where: { id: { in: tecnicosIds }, ativo: true, cargo: Cargo.TECNICO },
         data: { equipeId },
       });
-
-      if (count !== livres.length) {
+      if (count !== tecnicosIds.length) {
         throw new ErroTecnicosInvalidos();
       }
     }
@@ -250,7 +250,7 @@ export class ServicoEquipe {
 
       const users = await transaction.usuario.findMany({
         where: { id: { in: uniqueIds } },
-        select: { id: true, cargo: true },
+        select: { id: true, nome: true, cargo: true },
       });
 
       if (
@@ -259,6 +259,11 @@ export class ServicoEquipe {
       ) {
         throw new InvalidTechnicianError();
       }
+
+      const atuais = await transaction.usuario.findMany({
+        where: { equipeId: teamId, cargo: Cargo.TECNICO },
+        select: { id: true, nome: true },
+      });
 
       // Remove da equipe os técnicos que não foram selecionados.
       await transaction.usuario.updateMany({
@@ -278,6 +283,27 @@ export class ServicoEquipe {
             cargo: Cargo.TECNICO,
           },
           data: { equipeId: teamId },
+        });
+      }
+
+      const idsAtuais = new Set(atuais.map((user) => user.id));
+      const idsNovos = new Set(uniqueIds);
+      for (const tecnico of users.filter((user) => !idsAtuais.has(user.id))) {
+        await transaction.atividadeConta.create({
+          data: {
+            usuarioId,
+            tipo: "EQUIPE",
+            descricao: `Adicionou ${tecnico.nome} à equipe.`,
+          },
+        });
+      }
+      for (const tecnico of atuais.filter((user) => !idsNovos.has(user.id))) {
+        await transaction.atividadeConta.create({
+          data: {
+            usuarioId,
+            tipo: "EQUIPE",
+            descricao: `Removeu ${tecnico.nome} da equipe.`,
+          },
         });
       }
 

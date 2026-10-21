@@ -2,6 +2,8 @@ import { servicoProjeto } from "@/services/projeto.service";
 import ProjectsView from "@/components/projects/projects-view";
 import { notFound } from "next/navigation";
 import { getClients, getUsers } from "@/lib/data/dropdown";
+import { getUsuarioAtual } from "@/lib/data/sessao";
+import { podeCriarProjeto } from "@/lib/access-control";
 
 async function getProjects() {
   let data;
@@ -30,13 +32,18 @@ async function getProjects() {
 
 export default async function Projects() {
   const initialProjects = await getProjects();
-  const [clients, supervisors] = await Promise.all([getClients(), getUsers()]);
+  const usuario = await getUsuarioAtual();
+  const podeCriar = podeCriarProjeto(usuario?.cargo);
+  const [clients, supervisors] = podeCriar
+    ? await Promise.all([getClients(), getUsers()])
+    : [[], []];
 
   return (
     <ProjectsView
       projects={initialProjects}
       clients={clients}
       supervisors={supervisors}
+      podeCriar={podeCriar}
     />
   );
 }

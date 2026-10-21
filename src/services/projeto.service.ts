@@ -40,7 +40,10 @@ const RANKING_PRIORIDADE: Record<Prioridade, number> = {
 };
 
 export class ServicoProjeto {
-  async criarComTicketDeInstalacao(dados: CriarProjetoSchema) {
+  async criarComTicketDeInstalacao(
+    dados: CriarProjetoSchema,
+    criadoPorId?: string,
+  ) {
     return prisma.$transaction(async (tx) => {
       const gestor = await tx.usuario.findUnique({
         where: { id: dados.gestorId },
@@ -64,6 +67,16 @@ export class ServicoProjeto {
           gestorId: dados.gestorId,
         },
       });
+
+      if (criadoPorId) {
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId: criadoPorId,
+            tipo: "PROJETO",
+            descricao: `Cadastrou o projeto ${projeto.nome}.`,
+          },
+        });
+      }
 
       const ticketInstalacao = await tx.ticket.create({
         data: {

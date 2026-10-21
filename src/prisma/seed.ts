@@ -126,6 +126,14 @@ async function main() {
           senhaProvisoria: false,
         },
         {
+          nome: "Suporte Interno de Teste",
+          email: "suporte.interno.seed@example.com",
+          senha: "SuporteInterno@123",
+          cargo: Cargo.SUPORTE_INTERNO,
+          equipeId: null,
+          senhaProvisoria: false,
+        },
+        {
           nome: "Comercial de Teste",
           email: "comercial.seed@example.com",
           senha: "Comercial@123",
@@ -229,6 +237,7 @@ async function main() {
     console.log("Credenciais locais: teste@gmail.com / teste123 (troca obrigatória)");
     console.log("Gestor: gestor.seed@example.com / Gestor@123");
     console.log("Suporte: suporte.seed@example.com / Suporte@123");
+    console.log("Suporte Interno: suporte.interno.seed@example.com / SuporteInterno@123");
     console.log("Comercial: comercial.seed@example.com / Comercial@123");
     console.log("Técnico: fernando@massanori.japa / Tecnico@123");
   }

@@ -4,7 +4,8 @@ import { SidebarMenu, SidebarMenuItem } from "./ui/sidebar";
 export const AccountTypeLabel: Record<string, string> = {
   TECNICO: "Técnico",
   GESTOR: "Gestor",
-  SUPORTE: "Suporte Interno",
+  SUPORTE: "Suporte Externo",
+  SUPORTE_INTERNO: "Suporte Interno",
   COMERCIAL: "Analista Comercial",
 };
 

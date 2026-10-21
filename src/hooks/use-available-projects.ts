@@ -20,7 +20,9 @@ export interface ProjetoResumo {
 
 export function useProjetosDisponiveis() {
   const usuario = useCurrentUser();
-  const suportePodeVerTodos = usuario?.cargo === Cargo.SUPORTE;
+  const suportePodeVerTodos =
+    usuario?.cargo === Cargo.SUPORTE ||
+    usuario?.cargo === Cargo.SUPORTE_INTERNO;
   const [projetos, setProjetos] = useState<ProjetoResumo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
