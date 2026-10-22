@@ -26,7 +26,7 @@ function UserSidebar({ user }: { user: UsuarioAtual }) {
             <span className="truncate text-xs text-blue-200 font-extralight">
               {user.email}
             </span>
-            <span className="truncate text-xs text-blue-200 font-extralight">
+            <span className="truncate text-xs italic text-blue-200 font-extralight">
               {user.equipeNome ? `Equipe: ${user.equipeNome}` : "Sem equipe"}
             </span>
           </div>

@@ -18,6 +18,7 @@ import {
   LucideIcon,
   Ticket,
   UserCog,
+  UserRound,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -53,6 +54,7 @@ export function AppSidebar() {
     ...(podeVerUsuarios(loggedUser?.cargo)
       ? [{ title: "Usuários", url: "/usuarios", icon: UserCog }]
       : []),
+    { title: "Perfil", url: "/perfil", icon: UserRound },
   ];
 
   return (
@@ -102,14 +104,20 @@ export function AppSidebar() {
               setSaindo(true);
               setErroLogout(null);
               try {
-                const response = await fetch("/api/auth/logout", { method: "POST" });
+                const response = await fetch("/api/auth/logout", {
+                  method: "POST",
+                });
                 if (!response.ok) {
-                  throw new Error("Não foi possível encerrar a sessão. Tente novamente.");
+                  throw new Error(
+                    "Não foi possível encerrar a sessão. Tente novamente.",
+                  );
                 }
                 router.replace("/");
                 router.refresh();
               } catch {
-                setErroLogout("Não foi possível encerrar a sessão. Tente novamente.");
+                setErroLogout(
+                  "Não foi possível encerrar a sessão. Tente novamente.",
+                );
               } finally {
                 setSaindo(false);
               }

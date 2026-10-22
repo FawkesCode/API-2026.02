@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, MoreHorizontal } from "lucide-react";
-import { Button } from "../ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Check, Copy } from "lucide-react";
+// import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import type { UsuarioListaItem } from "@/types/usuario";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "../ui/accordion";
 
 // Mesmas colunas no cabeçalho e nas linhas para tudo alinhar.
 const COLUNAS = "grid grid-cols-[2fr_1.3fr_1.6fr_1fr] items-center gap-2";
@@ -27,23 +32,35 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
   return (
     <div role="table" className="w-full">
       <div role="row" className="flex items-center border-b px-2 pb-3">
-        <div className={`${COLUNAS} flex-1 text-sm font-medium`}>
-          <span role="columnheader">Conta</span>
-          <span role="columnheader" className="text-center">Adicionado em</span>
-          <span role="columnheader" className="text-center">Tipo de acesso</span>
-          <span role="columnheader" className="text-center">Status</span>
+        <div className={`${COLUNAS} flex-1 text-sm  font-medium`}>
+          <span role="columnheader" className="text-gray-400">
+            Conta
+          </span>
+          <span role="columnheader" className="text-center text-gray-400">
+            Adicionado em
+          </span>
+          <span role="columnheader" className="text-center text-gray-400">
+            Tipo de acesso
+          </span>
+          <span role="columnheader" className="text-center text-gray-400">
+            Status
+          </span>
         </div>
         <div className="w-8" />
       </div>
 
-      {usuarios.map((usuario) => (
-        <UsuarioRow
-          key={usuario.id}
-          usuario={usuario}
-          aberto={abertoId === usuario.id}
-          onToggle={() => setAbertoId(abertoId === usuario.id ? null : usuario.id)}
-        />
-      ))}
+      <Accordion>
+        {usuarios.map((usuario) => (
+          <UsuarioRow
+            key={usuario.id}
+            usuario={usuario}
+            aberto={abertoId === usuario.id}
+            onToggle={() =>
+              setAbertoId(abertoId === usuario.id ? null : usuario.id)
+            }
+          />
+        ))}
+      </Accordion>
     </div>
   );
 }
@@ -68,13 +85,12 @@ function UsuarioRow({ usuario, aberto, onToggle }: UsuarioRowProps) {
   }
 
   return (
-    <div role="row" className="border-b last:border-b-0">
-      <div className={`flex items-center px-2 ${aberto ? "bg-slate-100" : ""}`}>
-        <button
-          type="button"
-          aria-expanded={aberto}
-          onClick={onToggle}
-          className={`${COLUNAS} flex-1 cursor-pointer py-3 text-left text-xs`}
+    <AccordionItem role="row" className="border-b last:border-b-0">
+      <AccordionTrigger
+        className={`flex items-center px-4 pt-1 pb-1 hover:no-underline ${aberto ? "bg-slate-100 rounded-t-xl" : ""}`}
+      >
+        <div
+          className={`${COLUNAS} flex-1 cursor-pointer py-3 text-left text-sm`}
         >
           <span className="flex items-center gap-2">
             <span
@@ -84,9 +100,13 @@ function UsuarioRow({ usuario, aberto, onToggle }: UsuarioRowProps) {
             >
               {usuario.inicial}
             </span>
-            <span className="truncate">{usuario.nome}</span>
+            <span className={`truncate ${aberto && "text-gray-400"}`}>
+              {usuario.nome}
+            </span>
           </span>
-          <span className="text-center">{usuario.adicionadoEm}</span>
+          <span className={`text-center ${aberto && "text-gray-400"}`}>
+            {usuario.adicionadoEm}
+          </span>
           <span
             className="text-center font-medium"
             style={{ color: usuario.cor }}
@@ -95,18 +115,18 @@ function UsuarioRow({ usuario, aberto, onToggle }: UsuarioRowProps) {
           </span>
           <span className="flex justify-center">
             <span
-              className={`rounded px-2 py-0.5 text-[10px] ${
+              className={`rounded px-3 py- text-xs font-bold ${
                 usuario.ativo
-                  ? "bg-sky-200 text-sky-800"
+                  ? "bg-sky-200 text-accent"
                   : "bg-slate-200 text-slate-500"
               }`}
             >
               {usuario.ativo ? "Ativo" : "Inativo"}
             </span>
           </span>
-        </button>
+        </div>
 
-        <Popover>
+        {/* <Popover>
           <PopoverTrigger
             render={
               <Button
@@ -121,45 +141,58 @@ function UsuarioRow({ usuario, aberto, onToggle }: UsuarioRowProps) {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-40 p-1">
             <p className="px-2 py-1 text-[10px] text-muted-foreground">Ações</p>
-            {/* TODO: ligar às ações de editar/inativar (fora do escopo agora). */}
-            <button type="button" className="w-full rounded px-2 py-1.5 text-left text-xs hover:bg-slate-100">
+           
+            <button
+              type="button"
+              className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-100"
+            >
               Editar usuário
             </button>
-            <button type="button" className="w-full rounded px-2 py-1.5 text-left text-xs hover:bg-slate-100">
+            <button
+              type="button"
+              className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-100"
+            >
               Inativar usuário
             </button>
           </PopoverContent>
-        </Popover>
-      </div>
+        </Popover> */}
+      </AccordionTrigger>
 
-      {aberto && (
-        <div className="grid grid-cols-1 gap-x-8 gap-y-2 bg-slate-100 px-6 py-4 text-xs sm:grid-cols-2">
-          <p>
-            <span className="text-muted-foreground">Email de contato: </span>
-            {usuario.email}
-          </p>
-          <p className="flex items-center gap-2">
-            <span className="text-muted-foreground">UUID: </span>
-            <span className="font-mono">{usuario.id}</span>
-            <button
-              type="button"
-              onClick={copiarUuid}
-              aria-label="Copiar UUID"
-              className="cursor-pointer text-muted-foreground hover:text-foreground"
-            >
-              {copiado ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-            </button>
-          </p>
-          <p>
-            <span className="text-muted-foreground">Equipe: </span>
-            {usuario.equipe ?? "Sem equipe"}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Adicionado por: </span>
-            {usuario.adicionadoPor ?? "—"}
-          </p>
+      <AccordionContent>
+        <div>
+          <div className="border border-muted"></div>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-2 rounded-b-xl border-0  bg-slate-100 py-6 px-4 text-sm sm:grid-cols-2">
+            <p className="text-gray-400  font-medium">
+              <span className="text-gray-300">Email de contato: </span>
+              {usuario.email}
+            </p>
+            <p className="flex items-center gap-2 text-gray-400  font-medium">
+              <span className="text-gray-300">UUID: </span>
+              <span className="font-medium">{usuario.id}</span>
+              <button
+                type="button"
+                onClick={copiarUuid}
+                aria-label="Copiar UUID"
+                className="cursor-pointer text-gray-300 font-medium hover:text-foreground"
+              >
+                {copiado ? (
+                  <Check className="size-3.5" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+              </button>
+            </p>
+            <p className="text-gray-400  font-medium">
+              <span className="text-gray-300">Equipe: </span>
+              {usuario.equipe ?? "Sem equipe"}
+            </p>
+            <p className="text-gray-400  font-medium">
+              <span className="text-gray-300">Adicionado por: </span>
+              {usuario.adicionadoPor ?? "Sistema"}
+            </p>
+          </div>
         </div>
-      )}
-    </div>
+      </AccordionContent>
+    </AccordionItem>
   );
 }

@@ -14,6 +14,7 @@ const dadosUsuarioAtual = {
   ativo: true,
   equipeId: true,
   equipe: { select: { nome: true } },
+  criadoEm: true,
 } as const;
 
 const credenciaisLogin = {
@@ -145,7 +146,10 @@ export class ServicoUsuario {
     };
 
     const total = await prisma.usuario.count({ where });
-    const totalPaginas = Math.max(1, Math.ceil(total / TAMANHO_PAGINA_USUARIOS));
+    const totalPaginas = Math.max(
+      1,
+      Math.ceil(total / TAMANHO_PAGINA_USUARIOS),
+    );
     // Link antigo / edição manual da URL: nunca cai numa página vazia.
     const pagina = Math.min(filtros.pagina, totalPaginas);
 
@@ -188,7 +192,10 @@ export class ServicoUsuario {
           nomeEquipe = `${base.slice(0, 100 - final.length)}${final}`;
         }
         const equipe = await tx.equipe.create({
-          data: { nome: nomeEquipe, descricao: `Equipe gerenciada por ${userData.nome}.` },
+          data: {
+            nome: nomeEquipe,
+            descricao: `Equipe gerenciada por ${userData.nome}.`,
+          },
           select: { id: true },
         });
         const gestor = await tx.usuario.create({

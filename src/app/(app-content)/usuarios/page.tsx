@@ -8,6 +8,7 @@ import { podeVerUsuarios } from "@/lib/access-control";
 import { getUsuarioAtual } from "@/lib/data/sessao";
 import { getUsuarios } from "@/lib/data/usuarios";
 import { parseFiltrosUsuario } from "@/schemas/usuario-filtros.schema";
+import PageHeader from "@/components/page-header";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -35,23 +36,20 @@ export default async function UsuariosPage({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between border-b border-blue-900 pb-3">
-        <h1 className="text-3xl font-semibold italic text-card-foreground">
-          Gerenciar Usuários
-        </h1>
-        <UsuarioFormDialog />
-      </div>
+    <div className="flex flex-col">
+      <PageHeader other={<UsuarioFormDialog />}>Gerenciar Usuários</PageHeader>
 
       {/* useSearchParams no filtro exige Suspense para o build estático. */}
       <Suspense
         key={JSON.stringify(searchParams)}
-        fallback={<p className="text-sm text-muted-foreground">Carregando usuários…</p>}
+        fallback={
+          <p className="text-sm text-muted-foreground">Carregando usuários…</p>
+        }
       >
         <UsuariosFilter />
       </Suspense>
 
-      <section className="rounded-xl border bg-white p-4">
+      <section className="rounded-xl border mt-6 bg-white p-4">
         <UsuariosTable usuarios={itens} />
         <UsuariosPagination
           pagina={pagina}

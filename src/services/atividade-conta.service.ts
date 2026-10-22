@@ -48,7 +48,9 @@ export async function buscarPerfilComAtividades(usuarioId: string) {
       descricao: `${item.descricao} — ticket ${item.ticket.titulo}`,
       criadoEm: item.criadoEm,
     })),
-  ].sort((a, b) => b.criadoEm.getTime() - a.criadoEm.getTime()).slice(0, 20);
+  ]
+    .sort((a, b) => b.criadoEm.getTime() - a.criadoEm.getTime())
+    .slice(0, 20);
   return {
     id: usuario.id,
     nome: usuario.nome,
