@@ -68,7 +68,9 @@ export default function UsuariosFilter() {
     });
     params.delete("pagina");
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
   }
 
   function updateParam(chave: string, valor: string | undefined) {
@@ -88,7 +90,11 @@ export default function UsuariosFilter() {
   }
 
   function limparData() {
-    updateParams({ data: undefined, dataInicio: undefined, dataFim: undefined });
+    updateParams({
+      data: undefined,
+      dataInicio: undefined,
+      dataFim: undefined,
+    });
   }
 
   function limparFiltros() {

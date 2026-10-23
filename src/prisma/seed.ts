@@ -204,10 +204,13 @@ async function main() {
             descricao: `${titulo} no projeto ${dados.nome}, sob responsabilidade do Massa.`,
             categoria: dados.categoria,
             prioridade: prioridades[ticketIndex],
-            status: ticketIndex < 2
-              ? StatusTicket.NAO_INICIADO
-              : StatusTicket.EM_ANDAMENTO,
-            slaEm: new Date(agora + diasDeSla[ticketIndex] * 24 * 60 * 60 * 1000),
+            status:
+              ticketIndex < 2
+                ? StatusTicket.NAO_INICIADO
+                : StatusTicket.EM_ANDAMENTO,
+            slaEm: new Date(
+              agora + diasDeSla[ticketIndex] * 24 * 60 * 60 * 1000,
+            ),
             projetoId: projeto.id,
             abertoPorId: gestor.id,
             responsavelId: massa.id,
@@ -234,15 +237,24 @@ async function main() {
   console.log("Massa:", resultado.massa.email, "— ID:", resultado.massa.id);
   console.log("Gestor:", resultado.gestor.email, "— ID:", resultado.gestor.id);
   if (seedDevelopmentUsers) {
-    console.log("Credenciais locais: teste@gmail.com / teste123 (troca obrigatória)");
+    console.log(
+      "Credenciais locais: teste@gmail.com / teste123 (troca obrigatória)",
+    );
     console.log("Gestor: gestor.seed@example.com / Gestor@123");
     console.log("Suporte: suporte.seed@example.com / Suporte@123");
-    console.log("Suporte Interno: suporte.interno.seed@example.com / SuporteInterno@123");
+    console.log(
+      "Suporte Interno: suporte.interno.seed@example.com / SuporteInterno@123",
+    );
     console.log("Comercial: comercial.seed@example.com / Comercial@123");
     console.log("Técnico: fernando@massanori.japa / Tecnico@123");
   }
   console.log("Equipe:", resultado.equipe.nome, "— ID:", resultado.equipe.id);
-  console.log("Cliente:", resultado.cliente.nome, "— ID:", resultado.cliente.id);
+  console.log(
+    "Cliente:",
+    resultado.cliente.nome,
+    "— ID:",
+    resultado.cliente.id,
+  );
   console.log("Tickets:", resultado.ticketsIds);
 }
 

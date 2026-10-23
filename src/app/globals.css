@@ -73,6 +73,8 @@
 
 @theme inline {
   --color-gray-100: #e2e4f2;
+  --color-gray-300: #a6aec0;
+  --color-gray-400: #6f748d;
   --color-gray-500: oklch(55.912% 0.06509 280.899);
 
   --color-blue-200: #d0eeff;

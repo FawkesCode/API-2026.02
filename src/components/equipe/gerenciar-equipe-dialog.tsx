@@ -100,12 +100,20 @@ export function GerenciarEquipeDialog({
         (opcao) => opcao.value === tecnico.value,
       );
       if (!disponivel?.equipeId || disponivel.equipeId === equipe.id) return [];
-      return [{ nome: tecnico.label, equipe: disponivel.equipeNome ?? "outra equipe" }];
+      return [
+        {
+          nome: tecnico.label,
+          equipe: disponivel.equipeNome ?? "outra equipe",
+        },
+      ];
     });
 
     if (transferencias.length > 0) {
       const resumo = transferencias
-        .map(({ nome, equipe: equipeAtual }) => `• ${nome} (atualmente em ${equipeAtual})`)
+        .map(
+          ({ nome, equipe: equipeAtual }) =>
+            `• ${nome} (atualmente em ${equipeAtual})`,
+        )
         .join("\n");
       const confirmar = window.confirm(
         `Os seguintes técnicos já pertencem a outra equipe:\n\n${resumo}\n\nSe continuar, eles serão transferidos para ${equipe.nome}. Deseja prosseguir?`,
@@ -152,7 +160,7 @@ export function GerenciarEquipeDialog({
           <button
             type="button"
             aria-label="Editar equipe"
-            className="grid size-9 place-items-center rounded-md border border-muted-foreground/40 bg-muted/50 text-muted-foreground transition-colors hover:text-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="grid size-9 place-items-center rounded-xl border border-muted-foreground/40 bg-muted/50 text-muted-foreground transition-colors hover:text-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 roundex-xl cursor-pointer"
           />
         }
       >
@@ -166,8 +174,8 @@ export function GerenciarEquipeDialog({
           </DialogTitle>
           <DialogDivider />
           <DialogDescription>
-            Você pode editar os técnicos que fazem parte da sua equipe, o nome
-            e a descrição da mesma.
+            Você pode editar os técnicos que fazem parte da sua equipe, o nome e
+            a descrição da mesma.
           </DialogDescription>
         </DialogHeader>
 
