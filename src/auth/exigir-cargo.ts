@@ -62,3 +62,8 @@ export async function exigirCargo(
     };
   }
 }
+
+/** Confere sessão e usuário ativo, aceitando qualquer cargo. */
+export function exigirSessao(requisicao: Request): Promise<ResultadoAcesso> {
+  return exigirCargo(requisicao, ...Object.values(Cargo));
+}

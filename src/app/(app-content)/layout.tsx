@@ -4,17 +4,19 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CurrentUserProvider } from "@/components/current-user-provider";
 import { getUsuarioAtual } from "@/lib/data/sessao";
+import { redirect } from "next/navigation";
 
 // O <Toaster /> já é montado no app/layout.tsx (raiz). Montar de novo aqui
 // faria cada toast aparecer duas vezes nas telas deste grupo.
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const usuarioAutenticado = await getUsuarioAtual();
-  const usuario = usuarioAutenticado
-    ? {
-        ...usuarioAutenticado,
-        equipeNome: usuarioAutenticado.equipe?.nome ?? null,
-      }
-    : null;
+  // O proxy só valida o cookie; aqui também caem usuários desativados.
+  if (!usuarioAutenticado) redirect("/");
+
+  const usuario = {
+    ...usuarioAutenticado,
+    equipeNome: usuarioAutenticado.equipe?.nome ?? null,
+  };
 
   return (
     <CurrentUserProvider usuario={usuario}>

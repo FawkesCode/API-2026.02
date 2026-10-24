@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { exigirCargo } from "@/auth/exigir-cargo";
+import { exigirCargo, exigirSessao } from "@/auth/exigir-cargo";
 import { Cargo } from "@/lib/generated/prisma/client";
 import {
   ErroEquipeNaoEncontrada,
@@ -49,7 +49,10 @@ function handleUpdateTeamError(error: unknown) {
 }
 
 export class ControladorEquipe {
-  async listar() {
+  async listar(request: Request) {
+    const acesso = await exigirSessao(request);
+    if (!acesso.autorizado) return acesso.resposta;
+
     try {
       const equipes = await servicoEquipe.listar();
       return NextResponse.json(equipes, { status: 200 });
