@@ -10,7 +10,7 @@ const sessionUser = {
   id: "550e8400-e29b-41d4-a716-446655440002",
   nome: "Analista",
   email: "analista@example.com",
-  cargo: "SUPORTE" as const,
+  cargo: "SUPORTE_INTERNO" as const,
   ativo: true,
   equipeId: null,
   equipe: null,
@@ -66,7 +66,7 @@ describe("GET /api/usuarios/detalhado", () => {
     },
   );
 
-  it.each(["TECNICO", "GESTOR", "COMERCIAL"] as const)(
+  it.each(["TECNICO", "GESTOR", "SUPORTE", "COMERCIAL"] as const)(
     "retorna 403 para usuário ativo com cargo %s",
     async (cargo) => {
       vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue({
@@ -111,9 +111,11 @@ describe("GET /api/usuarios/detalhado", () => {
 describe("GET /api/usuarios (dropdowns)", () => {
   it("continua retornando apenas id e nome", async () => {
     const selection = [{ id: sessionUser.id, nome: sessionUser.nome }];
+    vi.spyOn(servicoUsuario, "buscarPorId").mockResolvedValue(sessionUser);
     vi.spyOn(servicoUsuario, "listarParaSelecao").mockResolvedValue(selection);
+    const { headers } = request();
     const resposta = await GET_SELECAO(
-      new Request("http://localhost/api/usuarios?cargo=GESTOR"),
+      new Request("http://localhost/api/usuarios?cargo=GESTOR", { headers }),
     );
 
     expect(resposta.status).toBe(200);
