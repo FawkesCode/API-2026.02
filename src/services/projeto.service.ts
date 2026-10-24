@@ -68,16 +68,6 @@ export class ServicoProjeto {
         },
       });
 
-      if (criadoPorId) {
-        await tx.atividadeConta.create({
-          data: {
-            usuarioId: criadoPorId,
-            tipo: "PROJETO",
-            descricao: `Cadastrou o projeto ${projeto.nome}.`,
-          },
-        });
-      }
-
       const ticketInstalacao = await tx.ticket.create({
         data: {
           titulo: `Instalação — ${dados.nome}`,
@@ -99,6 +89,16 @@ export class ServicoProjeto {
           equipeId: gestor.equipeId,
         },
       });
+
+      if (criadoPorId) {
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId: criadoPorId,
+            tipo: "PROJETO",
+            descricao: `Cadastrou o projeto ${projeto.nome} com ticket de instalação ${ticketInstalacao.titulo}.`,
+          },
+        });
+      }
 
       const ticketInstalacaoComRelacoes = await tx.ticket.findUniqueOrThrow({
         where: { id: ticketInstalacao.id },

@@ -9,6 +9,7 @@ import {
 type TeamDatabase = ConstructorParameters<typeof ServicoEquipe>[0];
 type MockTransaction = {
   equipe: { findUnique: ReturnType<typeof vi.fn> };
+  atividadeConta: { create: ReturnType<typeof vi.fn> };
   usuario: {
     findUnique: ReturnType<typeof vi.fn>;
     findMany: ReturnType<typeof vi.fn>;
@@ -21,8 +22,9 @@ const technicianId = "550e8400-e29b-41d4-a716-446655440001";
 const managerId = "550e8400-e29b-41d4-a716-446655440002";
 
 function createService(options?: {
-  team?: { id: string; ativo: boolean } | null;
-  users?: { id: string; cargo: Cargo }[];
+  team?: { id: string; ativo: boolean; nome?: string } | null;
+  users?: { id: string; nome: string; cargo: Cargo }[];
+  currentUsers?: { id: string; nome: string }[];
   result?: unknown[];
 }) {
   const transaction = {
@@ -30,9 +32,10 @@ function createService(options?: {
       findUnique: vi
         .fn()
         .mockResolvedValue(
-          options?.team === undefined ? { id: teamId, ativo: true } : options.team,
+          options?.team === undefined ? { id: teamId, ativo: true, nome: "Equipe A" } : options.team,
         ),
     },
+    atividadeConta: { create: vi.fn().mockResolvedValue({}) },
     usuario: {
       findUnique: vi.fn().mockResolvedValue({
         ativo: true,
@@ -42,8 +45,9 @@ function createService(options?: {
       findMany: vi
         .fn()
         .mockResolvedValueOnce(
-          options?.users ?? [{ id: technicianId, cargo: Cargo.TECNICO }],
+          options?.users ?? [{ id: technicianId, nome: "Técnico A", cargo: Cargo.TECNICO }],
         )
+        .mockResolvedValueOnce(options?.currentUsers ?? [])
         .mockResolvedValueOnce(options?.result ?? []),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
@@ -91,11 +95,18 @@ describe("ServicoEquipe.replaceTechnicians", () => {
       where: { id: { in: [technicianId] }, cargo: Cargo.TECNICO },
       data: { equipeId: teamId },
     });
+    expect(transaction.atividadeConta.create).toHaveBeenCalledWith({
+      data: {
+        usuarioId: managerId,
+        tipo: "EQUIPE",
+        descricao: "Adicionou usuário Técnico A à equipe Equipe A.",
+      },
+    });
   });
 
   it("não altera usuários se algum ID não for de um técnico", async () => {
     const { service, transaction } = createService({
-      users: [{ id: technicianId, cargo: Cargo.GESTOR }],
+      users: [{ id: technicianId, nome: "Gestor A", cargo: Cargo.GESTOR }],
     });
 
     await expect(
@@ -140,14 +151,14 @@ describe("ServicoEquipe.replaceTechnicians", () => {
 
   it("considera IDs repetidos uma única vez", async () => {
     const { service, transaction } = createService({
-      users: [{ id: technicianId, cargo: Cargo.TECNICO }],
+      users: [{ id: technicianId, nome: "Técnico A", cargo: Cargo.TECNICO }],
     });
 
     await service.replaceTechnicians(teamId, [technicianId, technicianId], managerId);
 
     expect(transaction.usuario.findMany).toHaveBeenNthCalledWith(1, {
       where: { id: { in: [technicianId] } },
-      select: { id: true, cargo: true },
+      select: { id: true, nome: true, cargo: true, equipeId: true },
     });
   });
 });

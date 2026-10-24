@@ -6,6 +6,14 @@ import type { FiltrosUsuario } from "@/schemas/usuario-filtros.schema";
 
 export const TAMANHO_PAGINA_USUARIOS = 10;
 
+const ROTULO_CARGO: Record<Cargo, string> = {
+  [Cargo.TECNICO]: "Técnico",
+  [Cargo.GESTOR]: "Gestor",
+  [Cargo.SUPORTE]: "Suporte Externo",
+  [Cargo.SUPORTE_INTERNO]: "Suporte Interno",
+  [Cargo.COMERCIAL]: "Analista de Compras",
+};
+
 const dadosUsuarioAtual = {
   id: true,
   nome: true,
@@ -220,7 +228,7 @@ export class ServicoUsuario {
             data: {
               usuarioId: criadoPorId,
               tipo: "CADASTRO",
-              descricao: `Cadastrou o usuário ${gestor.nome} (${gestor.cargo}).`,
+              descricao: `Criou usuário ${gestor.nome} do tipo ${ROTULO_CARGO[gestor.cargo]}.`,
             },
           });
         }
@@ -241,7 +249,7 @@ export class ServicoUsuario {
           data: {
             usuarioId: criadoPorId,
             tipo: "CADASTRO",
-            descricao: `Cadastrou o usuário ${usuario.nome} (${usuario.cargo}).`,
+            descricao: `Criou usuário ${usuario.nome} do tipo ${ROTULO_CARGO[usuario.cargo]}.`,
           },
         });
       }

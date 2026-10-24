@@ -1,5 +1,60 @@
 import { prisma } from "@/lib/prisma";
 
+function formatarPrioridade(valor: string) {
+  const nomes: Record<string, string> = {
+    CRITICA: "Crítica",
+    ALTA: "Alta",
+    MEDIA: "Média",
+    BAIXA: "Baixa",
+  };
+  return nomes[valor] ?? valor;
+}
+
+function formatarEventoHistorico(item: {
+  evento: string;
+  descricao: string;
+  ticket: { titulo: string };
+}) {
+  const titulo = item.ticket.titulo;
+  switch (item.evento) {
+    case "ATIVIDADE_INICIADA":
+      return {
+        tipo: "LOG",
+        descricao: `Enviou "Equipe iniciou trabalhos" para o ticket ${titulo}.`,
+      };
+    case "ENCERRAMENTO_SOLICITADO":
+      return {
+        tipo: "LOG",
+        descricao: `Enviou "Solicitação de encerramento" para o ticket ${titulo}.`,
+      };
+    case "ENCERRAMENTO_APROVADO":
+      return {
+        tipo: "LOG",
+        descricao: `Aprovou solicitação de encerramento do ticket ${titulo}.`,
+      };
+    case "ENCERRAMENTO_NEGADO":
+      return {
+        tipo: "LOG",
+        descricao: `Recusou solicitação de encerramento do ticket ${titulo}.`,
+      };
+    case "PRIORIDADE_ALTERADA": {
+      const match = item.descricao.match(/de\s+([A-Z_]+)\s+para\s+([A-Z_]+)/i);
+      const antes = match
+        ? formatarPrioridade(match[1].toUpperCase())
+        : "desconhecida";
+      const depois = match
+        ? formatarPrioridade(match[2].toUpperCase())
+        : "desconhecida";
+      return {
+        tipo: "TICKET",
+        descricao: `Atualizou o status de prioridade do ticket ${titulo}. ${antes} → ${depois}`,
+      };
+    }
+    default:
+      return { tipo: "LOG", descricao: `Enviou log de título ${item.evento} para o ticket ${titulo}.` };
+  }
+}
+
 export async function registrarAtividadeConta(
   usuarioId: string,
   tipo: string,
@@ -44,8 +99,7 @@ export async function buscarPerfilComAtividades(usuarioId: string) {
     })),
     ...usuario.eventosHistorico.map((item) => ({
       id: item.id,
-      tipo: item.evento.startsWith("PRIORIDADE") ? "TICKET" : "LOG",
-      descricao: `${item.descricao} — ticket ${item.ticket.titulo}`,
+      ...formatarEventoHistorico(item),
       criadoEm: item.criadoEm,
     })),
   ]

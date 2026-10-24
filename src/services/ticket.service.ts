@@ -253,8 +253,8 @@ export class ServicoTicket {
       await tx.atividadeConta.create({
         data: {
           usuarioId: dados.abertoPorId,
-          tipo: "TICKET",
-          descricao: `Abriu o ticket ${ticket.titulo}${projeto ? ` no projeto ${projeto.nome}` : ""}.`,
+          tipo: "TICKET | ABERTURA",
+          descricao: `Abriu o ticket ${ticket.titulo} vinculado ao projeto ${projeto?.nome ?? "desconhecido"}.`,
         },
       });
       return tx.ticket.findUniqueOrThrow({
@@ -363,7 +363,6 @@ export class ServicoTicket {
           usuarioId: dados.usuarioId,
         },
       });
-
       return atualizado;
     });
   }
@@ -421,7 +420,7 @@ export class ServicoTicket {
           data: {
             usuarioId,
             tipo: "TICKET",
-            descricao: `Atribuiu a equipe ${equipe?.nome ?? "equipe"} ao ticket ${ticket.titulo}.`,
+            descricao: `Atribuiu equipe ${equipe?.nome ?? "equipe"} ao ticket ${ticket.titulo}.`,
           },
         });
       }
@@ -460,12 +459,27 @@ export class ServicoTicket {
     });
   }
 
-  async desalocarEquipe(ticketId: string, equipeId: string) {
+  async desalocarEquipe(ticketId: string, equipeId: string, usuarioId?: string) {
     const ticket = await this.db.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return null;
 
-    await this.db.ticketEquipe.deleteMany({
-      where: { ticketId, equipeId },
+    await this.db.$transaction(async (tx) => {
+      const { count } = await tx.ticketEquipe.deleteMany({
+        where: { ticketId, equipeId },
+      });
+      if (usuarioId && count > 0) {
+        const equipe = await tx.equipe.findUnique({
+          where: { id: equipeId },
+          select: { nome: true },
+        });
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId,
+            tipo: "TICKET",
+            descricao: `Desatribuiu equipe ${equipe?.nome ?? "equipe"} do ticket ${ticket.titulo}.`,
+          },
+        });
+      }
     });
 
     return this.db.ticket.findUniqueOrThrow({
@@ -541,7 +555,7 @@ export class ServicoTicket {
         data: {
           usuarioId,
           tipo: "TICKET",
-          descricao: `Desatribuiu a equipe ${equipe?.nome ?? "equipe"} do ticket ${ticket.titulo}.`,
+          descricao: `Desatribuiu equipe ${equipe?.nome ?? "equipe"} do ticket ${ticket.titulo}.`,
         },
       });
 
@@ -553,6 +567,7 @@ export class ServicoTicket {
   }
 
 }
+
 
 export class ErroNaoAutorizadoParaGerenciarEquipes extends Error {
   constructor(

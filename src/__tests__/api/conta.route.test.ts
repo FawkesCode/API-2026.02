@@ -93,7 +93,7 @@ describe("GET /api/conta", () => {
         {
           id: "evento-recente",
           tipo: "LOG",
-          descricao: "Solicitou encerramento. — ticket Ticket de teste",
+          descricao: 'Enviou "Solicitação de encerramento" para o ticket Ticket de teste.',
           criadoEm: dataRecente.toISOString(),
         },
         {
@@ -107,6 +107,52 @@ describe("GET /api/conta", () => {
     expect(prisma.usuario.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: usuarioId } }),
     );
+  });
+
+  it("formata os eventos do mockup como LOG e prioridade com valores legíveis", async () => {
+    vi.mocked(prisma.usuario.findUnique).mockResolvedValue({
+      id: usuarioId,
+      nome: "Gestor",
+      email: "gestor@example.com",
+      cargo: "GESTOR",
+      ativo: true,
+      criadoEm,
+      atividadesConta: [],
+      eventosHistorico: [
+        {
+          id: "prioridade",
+          evento: "PRIORIDADE_ALTERADA",
+          descricao: "Prioridade alterada de MEDIA para CRITICA.",
+          criadoEm: dataRecente,
+          ticket: { titulo: "Ticket de teste" },
+        },
+        {
+          id: "manual",
+          evento: "Título informado",
+          descricao: "Conteúdo do log",
+          criadoEm: dataAntiga,
+          ticket: { titulo: "Ticket de teste" },
+        },
+      ],
+    } as never);
+
+    const resposta = await GET(requisicao());
+    const corpo = await resposta.json();
+
+    expect(corpo.atividades).toEqual([
+      {
+        id: "prioridade",
+        tipo: "TICKET",
+        descricao: "Atualizou o status de prioridade do ticket Ticket de teste. Média → Crítica",
+        criadoEm: dataRecente.toISOString(),
+      },
+      {
+        id: "manual",
+        tipo: "LOG",
+        descricao: "Enviou log de título Título informado para o ticket Ticket de teste.",
+        criadoEm: dataAntiga.toISOString(),
+      },
+    ]);
   });
 
   it("retorna 404 se o usuário autenticado não for encontrado", async () => {

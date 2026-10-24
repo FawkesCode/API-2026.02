@@ -96,7 +96,7 @@ export class ServicoEquipe {
         // Existência antes da permissão: equipe inexistente responde 404.
         const equipe = await tx.equipe.findUnique({
           where: { id: equipeId },
-          select: { ativo: true },
+          select: { ativo: true, nome: true },
         });
 
         if (!equipe?.ativo) {
@@ -128,22 +128,13 @@ export class ServicoEquipe {
         }
 
         if (dados.tecnicosIds !== undefined) {
-          await this.substituirTecnicos(tx, equipeId, dados.tecnicosIds);
-        }
-
-        const mudancas = [
-          dados.nome !== undefined ? "nome" : null,
-          dados.descricao !== undefined ? "descrição" : null,
-          dados.tecnicosIds !== undefined ? "integrantes" : null,
-        ].filter((item): item is string => item !== null);
-        if (mudancas.length) {
-          await tx.atividadeConta.create({
-            data: {
-              usuarioId,
-              tipo: "EQUIPE",
-              descricao: `Atualizou ${mudancas.join(", ")} da equipe.`,
-            },
-          });
+          await this.substituirTecnicos(
+            tx,
+            equipeId,
+            dados.tecnicosIds,
+            usuarioId,
+            dados.nome ?? equipe.nome,
+          );
         }
 
         return tx.equipe.findUniqueOrThrow({
@@ -174,19 +165,25 @@ export class ServicoEquipe {
     tx: Prisma.TransactionClient,
     equipeId: string,
     ids: string[],
+    usuarioId: string,
+    nomeEquipe: string,
   ) {
     // Remove IDs repetidos para evitar contagens incorretas.
     const tecnicosIds = [...new Set(ids)];
 
     // Um técnico pertence a uma única equipe. Ao ser escolhido aqui, é
     // transferido da equipe anterior para a equipe do gestor solicitante.
+    const atuais = await tx.usuario.findMany({
+      where: { equipeId, cargo: Cargo.TECNICO, ativo: true },
+      select: { id: true, nome: true },
+    });
     const candidatos = await tx.usuario.findMany({
       where: {
         id: { in: tecnicosIds },
         ativo: true,
         cargo: Cargo.TECNICO,
       },
-      select: { id: true, equipeId: true },
+      select: { id: true, nome: true, equipeId: true },
     });
 
     if (candidatos.length !== tecnicosIds.length) {
@@ -214,6 +211,27 @@ export class ServicoEquipe {
         throw new ErroTecnicosInvalidos();
       }
     }
+
+    const idsAtuais = new Set(atuais.map((tecnico) => tecnico.id));
+    const idsNovos = new Set(tecnicosIds);
+    for (const tecnico of candidatos.filter((item) => !idsAtuais.has(item.id))) {
+      await tx.atividadeConta.create({
+        data: {
+          usuarioId,
+          tipo: "EQUIPE",
+          descricao: `Adicionou usuário ${tecnico.nome} à equipe ${nomeEquipe}.`,
+        },
+      });
+    }
+    for (const tecnico of atuais.filter((item) => !idsNovos.has(item.id))) {
+      await tx.atividadeConta.create({
+        data: {
+          usuarioId,
+          tipo: "EQUIPE",
+          descricao: `Retirou usuário ${tecnico.nome} da equipe ${nomeEquipe}.`,
+        },
+      });
+    }
   }
 
   /**
@@ -229,7 +247,7 @@ export class ServicoEquipe {
     return this.db.$transaction(async (transaction) => {
       const team = await transaction.equipe.findUnique({
         where: { id: teamId },
-        select: { id: true, ativo: true },
+        select: { id: true, ativo: true, nome: true },
       });
 
       if (!team?.ativo) {
@@ -250,7 +268,7 @@ export class ServicoEquipe {
 
       const users = await transaction.usuario.findMany({
         where: { id: { in: uniqueIds } },
-        select: { id: true, nome: true, cargo: true },
+        select: { id: true, nome: true, cargo: true, equipeId: true },
       });
 
       if (
@@ -293,7 +311,7 @@ export class ServicoEquipe {
           data: {
             usuarioId,
             tipo: "EQUIPE",
-            descricao: `Adicionou ${tecnico.nome} à equipe.`,
+            descricao: `Adicionou usuário ${tecnico.nome} à equipe ${team.nome}.`,
           },
         });
       }
@@ -302,7 +320,7 @@ export class ServicoEquipe {
           data: {
             usuarioId,
             tipo: "EQUIPE",
-            descricao: `Removeu ${tecnico.nome} da equipe.`,
+            descricao: `Retirou usuário ${tecnico.nome} da equipe ${team.nome}.`,
           },
         });
       }

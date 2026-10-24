@@ -6,6 +6,8 @@ import {
 } from "../../services/ticket.service";
 import { servicoHistoricoTicket } from "../../services/historico.service";
 import { toLogItem } from "../mappers/historico.mapper";
+import { getUsuarioLogado } from "@/lib/data/sessao";
+import { Cargo } from "@/lib/generated/prisma/client";
 
 type ActionResponse<T> =
   | { success: true; data: T }
@@ -24,7 +26,23 @@ export async function addMyTeamAction(
   }
 
   try {
-    const updatedTicket = await servicoTicket.alocarEquipe(ticketId, equipeId);
+    const usuario = await getUsuarioLogado();
+    if (
+      !usuario ||
+      usuario.cargo !== Cargo.GESTOR ||
+      usuario.equipeId !== equipeId
+    ) {
+      return {
+        success: false,
+        error: "Apenas o gestor da equipe pode atribuí-la ao ticket.",
+      };
+    }
+
+    const updatedTicket = await servicoTicket.alocarEquipe(
+      ticketId,
+      equipeId,
+      usuario.id,
+    );
 
     if (!updatedTicket) {
       return {
@@ -65,9 +83,22 @@ export async function removeMyTeamAction(
   }
 
   try {
+    const usuario = await getUsuarioLogado();
+    if (
+      !usuario ||
+      usuario.cargo !== Cargo.GESTOR ||
+      usuario.equipeId !== equipeId
+    ) {
+      return {
+        success: false,
+        error: "Apenas o gestor da equipe pode removê-la do ticket.",
+      };
+    }
+
     const updatedTicket = await servicoTicket.desalocarEquipe(
       ticketId,
       equipeId,
+      usuario.id,
     );
 
     if (!updatedTicket) {

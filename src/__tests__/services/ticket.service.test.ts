@@ -212,11 +212,19 @@ describe("ServicoTicket.atualizarPrioridade", () => {
 
 describe("ServicoTicket equipes", () => {
   it("persiste as equipes selecionadas ao criar ticket, sem duplicar IDs repetidos", async () => {
-    const ticket = { id: ticketId };
+    const ticket = { id: ticketId, titulo: "Falha no equipamento" };
     const criar = vi.fn().mockResolvedValue(ticket);
-    const servico = new ServicoTicket({
-      ticket: { create: criar },
-    } as unknown as BancoTicket);
+    const atividade = vi.fn().mockResolvedValue({});
+    const tx = {
+      ticket: { create: criar, findUniqueOrThrow: vi.fn().mockResolvedValue(ticket) },
+      projeto: { findUnique: vi.fn().mockResolvedValue({ nome: "Projeto A" }) },
+      atividadeConta: { create: atividade },
+    };
+    const banco = {
+      ...tx,
+      $transaction: vi.fn((operacao: (tx: typeof tx) => unknown) => operacao(tx)),
+    };
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
 
     await servico.criar({
       titulo: "Falha no equipamento",
@@ -238,18 +246,31 @@ describe("ServicoTicket equipes", () => {
         }),
       }),
     );
+    expect(atividade).toHaveBeenCalledWith({
+      data: {
+        usuarioId: gestorId,
+        tipo: "TICKET | ABERTURA",
+        descricao: "Abriu o ticket Falha no equipamento vinculado ao projeto Projeto A.",
+      },
+    });
   });
 
   it("atribui equipe de forma idempotente", async () => {
-    const ticket = { id: ticketId };
+    const ticket = { id: ticketId, titulo: "Falha no equipamento" };
     const upsert = vi.fn();
-    const servico = new ServicoTicket({
+    const transaction = {
       ticket: {
         findUnique: vi.fn().mockResolvedValue(ticket),
         findUniqueOrThrow: vi.fn().mockResolvedValue(ticket),
       },
       ticketEquipe: { upsert },
-    } as unknown as BancoTicket);
+    };
+    const banco = {
+      ...transaction,
+      $transaction: vi.fn((operacao: (tx: typeof transaction) => unknown) => operacao(transaction)),
+      usuario: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
 
     await servico.alocarEquipe(ticketId, equipeId);
 
@@ -257,6 +278,34 @@ describe("ServicoTicket equipes", () => {
       where: { ticketId_equipeId: { ticketId, equipeId } },
       create: { ticketId, equipeId },
       update: {},
+    });
+  });
+
+  it("registra no perfil do gestor quando ele desatribui a equipe", async () => {
+    const ticket = { id: ticketId, titulo: "Falha no equipamento" };
+    const atividade = vi.fn().mockResolvedValue({});
+    const transaction = {
+      ticketEquipe: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      equipe: { findUnique: vi.fn().mockResolvedValue({ nome: "Equipe Azul" }) },
+      atividadeConta: { create: atividade },
+    };
+    const banco = {
+      ticket: {
+        findUnique: vi.fn().mockResolvedValue(ticket),
+        findUniqueOrThrow: vi.fn().mockResolvedValue(ticket),
+      },
+      $transaction: vi.fn((operacao: (tx: typeof transaction) => unknown) => operacao(transaction)),
+    };
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    await servico.desalocarEquipe(ticketId, equipeId, gestorId);
+
+    expect(atividade).toHaveBeenCalledWith({
+      data: {
+        usuarioId: gestorId,
+        tipo: "TICKET",
+        descricao: "Desatribuiu equipe Equipe Azul do ticket Falha no equipamento.",
+      },
     });
   });
 });

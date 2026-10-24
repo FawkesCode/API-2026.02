@@ -70,7 +70,7 @@ async function page() {
             Histórico de atividade recente
           </h2>
           <div className="flex flex-col gap-2">
-            {activities ? (
+            {activities && activities.length > 0 ? (
               activities.map((l) => (
                 <UserLog
                   key={l.id}
