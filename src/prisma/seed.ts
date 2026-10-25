@@ -54,6 +54,50 @@ async function main() {
     ? await hash("Tecnico@123", 12)
     : "hirosh-ima";
 
+  // O bcrypt é lento: calcular os hashes dentro da transação estoura o
+  // timeout padrão de 5 s do Prisma.
+  const contasDeTeste = seedDevelopmentUsers
+    ? await Promise.all(
+        [
+          {
+            nome: "Usuário de Teste",
+            email: "teste@gmail.com",
+            senha: "teste123",
+            cargo: Cargo.TECNICO,
+            naEquipeMassa: true,
+            senhaProvisoria: true,
+          },
+          {
+            nome: "Suporte de Teste",
+            email: "suporte.seed@example.com",
+            senha: "Suporte@123",
+            cargo: Cargo.SUPORTE,
+            naEquipeMassa: false,
+            senhaProvisoria: false,
+          },
+          {
+            nome: "Suporte Interno de Teste",
+            email: "suporte.interno.seed@example.com",
+            senha: "SuporteInterno@123",
+            cargo: Cargo.SUPORTE_INTERNO,
+            naEquipeMassa: false,
+            senhaProvisoria: false,
+          },
+          {
+            nome: "Comercial de Teste",
+            email: "comercial.seed@example.com",
+            senha: "Comercial@123",
+            cargo: Cargo.COMERCIAL,
+            naEquipeMassa: false,
+            senhaProvisoria: false,
+          },
+        ].map(async ({ senha, ...conta }) => ({
+          ...conta,
+          senhaHash: await hash(senha, 12),
+        })),
+      )
+    : [];
+
   const resultado = await prisma.$transaction(async (tx) => {
     const equipe = await tx.equipe.upsert({
       where: { nome: "Equipe Massa" },
@@ -107,63 +151,27 @@ async function main() {
       },
     });
 
-    if (seedDevelopmentUsers) {
-      const contasDeTeste = [
-        {
-          nome: "Usuário de Teste",
-          email: "teste@gmail.com",
-          senha: "teste123",
-          cargo: Cargo.TECNICO,
-          equipeId: equipe.id,
-          senhaProvisoria: true,
+    for (const conta of contasDeTeste) {
+      const equipeId = conta.naEquipeMassa ? equipe.id : null;
+      await tx.usuario.upsert({
+        where: { email: conta.email },
+        create: {
+          nome: conta.nome,
+          email: conta.email,
+          senhaHash: conta.senhaHash,
+          cargo: conta.cargo,
+          equipeId,
+          senhaProvisoria: conta.senhaProvisoria,
         },
-        {
-          nome: "Suporte de Teste",
-          email: "suporte.seed@example.com",
-          senha: "Suporte@123",
-          cargo: Cargo.SUPORTE,
-          equipeId: null,
-          senhaProvisoria: false,
+        update: {
+          nome: conta.nome,
+          ativo: true,
+          cargo: conta.cargo,
+          equipeId,
+          senhaHash: conta.senhaHash,
+          senhaProvisoria: conta.senhaProvisoria,
         },
-        {
-          nome: "Suporte Interno de Teste",
-          email: "suporte.interno.seed@example.com",
-          senha: "SuporteInterno@123",
-          cargo: Cargo.SUPORTE_INTERNO,
-          equipeId: null,
-          senhaProvisoria: false,
-        },
-        {
-          nome: "Comercial de Teste",
-          email: "comercial.seed@example.com",
-          senha: "Comercial@123",
-          cargo: Cargo.COMERCIAL,
-          equipeId: null,
-          senhaProvisoria: false,
-        },
-      ];
-
-      for (const conta of contasDeTeste) {
-        await tx.usuario.upsert({
-          where: { email: conta.email },
-          create: {
-            nome: conta.nome,
-            email: conta.email,
-            senhaHash: await hash(conta.senha, 12),
-            cargo: conta.cargo,
-            equipeId: conta.equipeId,
-            senhaProvisoria: conta.senhaProvisoria,
-          },
-          update: {
-            nome: conta.nome,
-            ativo: true,
-            cargo: conta.cargo,
-            equipeId: conta.equipeId,
-            senhaHash: await hash(conta.senha, 12),
-            senhaProvisoria: conta.senhaProvisoria,
-          },
-        });
-      }
+      });
     }
 
     const cliente = await tx.cliente.upsert({
