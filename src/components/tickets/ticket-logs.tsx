@@ -112,11 +112,19 @@ function TicketLogs({
   const jaRenderizou = useRef(false);
   const forcarRolagem = useRef(false);
   const pertoDoFim = useRef(true);
+  const rolagemDoCodigo = useRef(false);
 
   function aoRolar() {
     const lista = listaRef.current;
 
     if (!lista) return;
+
+    // O evento de uma rolagem feita aqui pode chegar depois de a lista
+    // encolher; ele não significa que o usuário saiu do fim.
+    if (rolagemDoCodigo.current) {
+      rolagemDoCodigo.current = false;
+      return;
+    }
 
     pertoDoFim.current =
       lista.scrollHeight - lista.scrollTop - lista.clientHeight < 80;
@@ -137,6 +145,8 @@ function TicketLogs({
       forcarRolagem.current ||
       pertoDoFim.current
     ) {
+      rolagemDoCodigo.current = true;
+      pertoDoFim.current = true;
       lista.scrollTo({
         top: lista.scrollHeight,
         behavior: primeiraRenderizacao ? "auto" : "smooth",
@@ -146,6 +156,26 @@ function TicketLogs({
     jaRenderizou.current = true;
     forcarRolagem.current = false;
   }, [logs]);
+
+  // A lista encolhe quando a área de envio cresce (o editor monta depois da
+  // primeira rolagem, a justificativa da recusa abre); quem estava no fim
+  // continua vendo os logs mais recentes.
+  useEffect(() => {
+    const lista = listaRef.current;
+
+    if (!lista) return;
+
+    const observador = new ResizeObserver(() => {
+      const fim = lista.scrollHeight - lista.clientHeight;
+      // Já no fim, mudar scrollTop não gera evento e a marca ficaria presa.
+      if (!pertoDoFim.current || lista.scrollTop >= fim - 1) return;
+      rolagemDoCodigo.current = true;
+      lista.scrollTop = lista.scrollHeight;
+    });
+    observador.observe(lista);
+
+    return () => observador.disconnect();
+  }, []);
 
   async function registrarLog(evento: string, descricao: string) {
     const log = await publicarLog(ticketId, {
@@ -238,61 +268,63 @@ function TicketLogs({
 
       {podeRegistrar && autor && (
         <section className="shrink-0 rounded-b-md border border-gray-200 bg-white p-6">
-          <div className="flex flex-wrap gap-2 pb-4">
-            {podeIniciar && (
-              <LogSuggestion
-                disabled={enviandoAviso}
-                onClick={() =>
-                  enviarAviso(
-                    EventoLog.AtividadeIniciada,
-                    `${autor.nome} deu início a atividade`,
-                  )
-                }
-              >
-                Enviar &quot;Equipe começou a trabalhar no ticket&quot;
-              </LogSuggestion>
-            )}
-
-            {podeSolicitarEncerramento && (
-              <LogSuggestion
-                disabled={enviandoAviso}
-                onClick={() =>
-                  enviarAviso(
-                    EventoLog.EncerramentoSolicitado,
-                    `${autor.nome} realizou a solicitação`,
-                  )
-                }
-              >
-                Enviar &quot;Solicito encerramento do ticket&quot;
-              </LogSuggestion>
-            )}
-
-            {podeDecidirAgora && (
-              <>
+          {(podeIniciar || podeSolicitarEncerramento || podeDecidirAgora) && (
+            <div className="flex flex-wrap gap-2 pb-4">
+              {podeIniciar && (
                 <LogSuggestion
-                  tone="approve"
                   disabled={enviandoAviso}
                   onClick={() =>
                     enviarAviso(
-                      EventoLog.EncerramentoAprovado,
-                      `${autor.nome} aprovou a solicitação de encerramento`,
+                      EventoLog.AtividadeIniciada,
+                      `${autor.nome} deu início a atividade`,
                     )
                   }
                 >
-                  Aprovar encerramento
+                  Enviar &quot;Equipe começou a trabalhar no ticket&quot;
                 </LogSuggestion>
+              )}
 
+              {podeSolicitarEncerramento && (
                 <LogSuggestion
-                  tone="deny"
                   disabled={enviandoAviso}
-                  aria-expanded={recusando}
-                  onClick={() => setRecusando((aberto) => !aberto)}
+                  onClick={() =>
+                    enviarAviso(
+                      EventoLog.EncerramentoSolicitado,
+                      `${autor.nome} realizou a solicitação`,
+                    )
+                  }
                 >
-                  Recusar encerramento
+                  Enviar &quot;Solicito encerramento do ticket&quot;
                 </LogSuggestion>
-              </>
-            )}
-          </div>
+              )}
+
+              {podeDecidirAgora && (
+                <>
+                  <LogSuggestion
+                    tone="approve"
+                    disabled={enviandoAviso}
+                    onClick={() =>
+                      enviarAviso(
+                        EventoLog.EncerramentoAprovado,
+                        `${autor.nome} aprovou a solicitação de encerramento`,
+                      )
+                    }
+                  >
+                    Aprovar encerramento
+                  </LogSuggestion>
+
+                  <LogSuggestion
+                    tone="deny"
+                    disabled={enviandoAviso}
+                    aria-expanded={recusando}
+                    onClick={() => setRecusando((aberto) => !aberto)}
+                  >
+                    Recusar encerramento
+                  </LogSuggestion>
+                </>
+              )}
+            </div>
+          )}
 
           {podeDecidirAgora && recusando && (
             <div className="flex flex-col gap-2 pb-4">
