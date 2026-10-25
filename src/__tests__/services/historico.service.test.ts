@@ -1,10 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { Cargo, StatusTicket } from "@/lib/generated/prisma/client";
+import { Cargo, Prisma, StatusTicket } from "@/lib/generated/prisma/client";
 import {
   ServicoHistoricoTicket,
   TransicaoTicketInvalidaError,
   UsuarioSemAcessoAoTicketError,
 } from "@/services/historico.service";
+
+function violacaoDoInicioUnico() {
+  return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+    code: "P2002",
+    clientVersion: "test",
+  });
+}
 
 function preparar({
   cargo = Cargo.GESTOR as Cargo,
@@ -12,8 +19,10 @@ function preparar({
   ativo = true,
   status = StatusTicket.SOLICITACAO_ENCERRAMENTO as StatusTicket,
   count = 1,
+  jaIniciou = true,
 } = {}) {
   const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ status }]),
     ticket: {
       findUnique: vi
         .fn()
@@ -26,7 +35,10 @@ function preparar({
     usuario: {
       findUnique: vi.fn().mockResolvedValue({ cargo, equipeId, ativo }),
     },
-    historicoTicket: { create: vi.fn().mockResolvedValue({ id: "log" }) },
+    historicoTicket: {
+      create: vi.fn().mockResolvedValue({ id: "log" }),
+      findFirst: vi.fn().mockResolvedValue(jaIniciou ? { id: "inicio" } : null),
+    },
   };
   const db = {
     $transaction: vi.fn(async (callback: (tx: unknown) => unknown) =>
@@ -117,5 +129,171 @@ describe("decisões de encerramento", () => {
     await expect(
       servico.criar("ticket", { ...dados, evento: "PRIORIDADE_ALTERADA" }),
     ).rejects.toBeInstanceOf(UsuarioSemAcessoAoTicketError);
+  });
+});
+
+describe("início dos trabalhos por equipe", () => {
+  const inicio = { ...dados, evento: "ATIVIDADE_INICIADA" };
+
+  it("registra o início sem mudar o status quando o ticket já está em andamento", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+      jaIniciou: false,
+    });
+    await servico.criar("ticket", inicio);
+    expect(tx.ticket.updateMany).not.toHaveBeenCalled();
+    // A equipe do momento fica gravada no log; o início ganha o marcador único.
+    expect(tx.historicoTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          equipeId: "equipe",
+          inicioEquipeId: "equipe",
+        }),
+      }),
+    );
+  });
+
+  it("grava a equipe sem o marcador de início nos outros eventos", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+    });
+    await servico.criar("ticket", { ...dados, evento: "ENCERRAMENTO_SOLICITADO" });
+    expect(tx.historicoTicket.findFirst).toHaveBeenCalledWith({
+      where: { ticketId: "ticket", inicioEquipeId: "equipe" },
+      select: { id: true },
+    });
+    expect(tx.historicoTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ equipeId: "equipe", inicioEquipeId: null }),
+      }),
+    );
+  });
+
+  it.each([StatusTicket.NAO_INICIADO, StatusTicket.EM_REVISAO])(
+    "leva o ticket de %s para em andamento",
+    async (status) => {
+      const { servico, tx } = preparar({
+        cargo: Cargo.TECNICO,
+        status,
+        jaIniciou: false,
+      });
+      await servico.criar("ticket", inicio);
+      expect(tx.ticket.updateMany).toHaveBeenCalledWith({
+        where: { id: "ticket", status },
+        data: { status: StatusTicket.EM_ANDAMENTO, encerradoEm: null },
+      });
+    },
+  );
+
+  it("converte a violação do índice único em transição inválida", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+    });
+    tx.historicoTicket.create.mockRejectedValue(violacaoDoInicioUnico());
+    await expect(servico.criar("ticket", inicio)).rejects.toBeInstanceOf(
+      TransicaoTicketInvalidaError,
+    );
+  });
+
+  it("aceita só um de dois inícios simultâneos da mesma equipe", async () => {
+    // Simula o banco: o índice único deixa passar só o primeiro insert do par
+    // (ticket, inicioEquipeId), mesmo que as duas transações tenham começado juntas.
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+    });
+    const inicios = new Set<string>();
+    tx.historicoTicket.create.mockImplementation(
+      async ({ data }: { data: { ticketId: string; inicioEquipeId: string | null } }) => {
+        await Promise.resolve();
+        const chave = `${data.ticketId}:${data.inicioEquipeId}`;
+        if (data.inicioEquipeId && inicios.has(chave)) throw violacaoDoInicioUnico();
+        inicios.add(chave);
+        return { id: "log" };
+      },
+    );
+
+    const resultados = await Promise.allSettled([
+      servico.criar("ticket", inicio),
+      servico.criar("ticket", { ...inicio, usuarioId: "outro-tecnico" }),
+    ]);
+
+    expect(resultados.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const recusado = resultados.find((r) => r.status === "rejected");
+    expect((recusado as PromiseRejectedResult).reason).toBeInstanceOf(
+      TransicaoTicketInvalidaError,
+    );
+  });
+
+  it.each([StatusTicket.SOLICITACAO_ENCERRAMENTO, StatusTicket.ENCERRADO])(
+    "não aceita início com o ticket em %s",
+    async (status) => {
+      const { servico, tx } = preparar({
+        cargo: Cargo.TECNICO,
+        status,
+        jaIniciou: false,
+      });
+      await expect(servico.criar("ticket", inicio)).rejects.toBeInstanceOf(
+        TransicaoTicketInvalidaError,
+      );
+      expect(tx.historicoTicket.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it("exige que a equipe tenha iniciado antes de solicitar encerramento", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+      jaIniciou: false,
+    });
+    await expect(
+      servico.criar("ticket", { ...dados, evento: "ENCERRAMENTO_SOLICITADO" }),
+    ).rejects.toBeInstanceOf(TransicaoTicketInvalidaError);
+    expect(tx.ticket.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("ticket encerrado", () => {
+  it("não aceita log manual depois do encerramento", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.ENCERRADO,
+    });
+    await expect(
+      servico.criar("ticket", { ...dados, evento: "Visita extra" }),
+    ).rejects.toBeInstanceOf(TransicaoTicketInvalidaError);
+    expect(tx.historicoTicket.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("usuário sem equipe", () => {
+  it.each(["ATIVIDADE_INICIADA", "ENCERRAMENTO_SOLICITADO"])(
+    "gestor sem equipe não registra %s",
+    async (evento) => {
+      const { servico, tx } = preparar({
+        status: StatusTicket.EM_ANDAMENTO,
+        equipeId: null as unknown as string,
+      });
+      await expect(servico.criar("ticket", { ...dados, evento })).rejects.toBeInstanceOf(
+        UsuarioSemAcessoAoTicketError,
+      );
+      // Barrado antes da consulta por inicioEquipeId, que com null casaria com qualquer log.
+      expect(tx.historicoTicket.findFirst).not.toHaveBeenCalled();
+      expect(tx.historicoTicket.create).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("trava do ticket", () => {
+  it("trava a linha do ticket antes de ler o status", async () => {
+    const { servico, tx } = preparar({ cargo: Cargo.TECNICO, status: StatusTicket.EM_ANDAMENTO });
+    await servico.criar("ticket", { ...dados, evento: "Visita técnica" });
+    expect(tx.$queryRaw).toHaveBeenCalledOnce();
+    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.ticket.findUnique.mock.invocationCallOrder[0],
+    );
   });
 });

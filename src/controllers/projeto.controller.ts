@@ -3,7 +3,7 @@ import { servicoUsuario } from "@/services/usuario.service";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Cargo, Prisma } from "@/lib/generated/prisma/client";
-import { exigirCargo } from "@/auth/exigir-cargo";
+import { exigirCargo, exigirSessao } from "@/auth/exigir-cargo";
 import {
   servicoProjeto,
   GestorNaoEncontradoError,
@@ -112,7 +112,10 @@ export class ControladorProjeto {
 
   // [BACK #3] Rota de get para pegar o ticket de instalação do projeto que
   // acabou de ser criado.
-  async buscarTicketDeInstalacao(_requisicao: Request, projetoId: string) {
+  async buscarTicketDeInstalacao(requisicao: Request, projetoId: string) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
     try {
       const { projeto, ticketInstalacao } =
         await servicoProjeto.buscarProjetoComTicketDeInstalacao(projetoId);
@@ -141,7 +144,10 @@ export class ControladorProjeto {
     }
   }
 
-  async buscarDetalhe(_requisicao: Request, projetoId: string) {
+  async buscarDetalhe(requisicao: Request, projetoId: string) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
     try {
       const projeto = await servicoProjeto.buscarDetalhePorId(projetoId);
 
@@ -162,7 +168,10 @@ export class ControladorProjeto {
     }
   }
 
-  async listarTickets(_requisicao: Request, projetoId: string) {
+  async listarTickets(requisicao: Request, projetoId: string) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
     try {
       const projeto = await servicoProjeto.buscarDetalhePorId(projetoId);
       if (!projeto) {

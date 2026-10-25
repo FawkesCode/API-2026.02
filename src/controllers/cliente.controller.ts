@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
+import { exigirSessao } from "@/auth/exigir-cargo";
 import { servicoCliente } from "@/services/cliente.service";
 
 export class ControladorCliente {
-  async listar(_requisicao: Request) {
+  async listar(requisicao: Request) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
     try {
       const clientes = await servicoCliente.listarParaSelecao();
       return NextResponse.json(clientes, { status: 200 });

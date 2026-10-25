@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Cargo, Prisma } from "@/lib/generated/prisma/client";
-import { exigirCargo } from "@/auth/exigir-cargo";
+import { exigirCargo, exigirSessao } from "@/auth/exigir-cargo";
 import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import {
   ErroConflitoPrioridade,
   ErroEquipeInvalida,
   ErroNaoAutorizadoParaAlterarPrioridade,
   ErroNaoAutorizadoParaGerenciarEquipes,
+  ErroTicketEncerrado,
   ErroUltimaEquipeDoTicket,
   ProjetoNaoEncontradoError,
   servicoTicket,
@@ -58,7 +59,7 @@ function tratarErroInesperado(erro: unknown) {
   if (erro instanceof ErroEquipeInvalida) {
     return NextResponse.json({ erro: erro.message }, { status: 400 });
   }
-  if (erro instanceof ErroUltimaEquipeDoTicket) {
+  if (erro instanceof ErroUltimaEquipeDoTicket || erro instanceof ErroTicketEncerrado) {
     return NextResponse.json({ erro: erro.message }, { status: 409 });
   }
   if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {
@@ -157,6 +158,9 @@ export class ControladorTicket {
   }
 
   async listar(requisicao: Request) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
     const usuarioId = new URL(requisicao.url).searchParams.get("usuarioId");
 
     if (usuarioId !== null) {
@@ -224,7 +228,10 @@ export class ControladorTicket {
     }
   }
 
-  async buscarDetalhe(_requisicao: Request, ticketId: string) {
+  async buscarDetalhe(requisicao: Request, ticketId: string) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
     try {
       const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
       if (!ticket) {
@@ -244,6 +251,9 @@ export class ControladorTicket {
   }
 
   async alocarEquipe(requisicao: Request, ticketId: string) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
     const idValidado = z.uuid().safeParse(ticketId);
     if (!idValidado.success) {
       return NextResponse.json(

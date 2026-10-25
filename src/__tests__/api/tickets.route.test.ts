@@ -412,6 +412,15 @@ describe("rotas de tickets", () => {
     });
   });
 
+  it("rejeita a listagem sem sessão autenticada", async () => {
+    const listarTodos = vi.spyOn(servicoTicket, "listarTodos");
+
+    const resposta = await GET(new Request("http://localhost/api/tickets"));
+
+    expect(resposta.status).toBe(401);
+    expect(listarTodos).not.toHaveBeenCalled();
+  });
+
   it("lista todos os tickets, sem filtrar por projeto nem por equipe, quando nenhum usuarioId é informado", async () => {
     const ticket = {
       id: ticketId,
@@ -435,7 +444,9 @@ describe("rotas de tickets", () => {
       >);
     const listarPorEquipe = vi.spyOn(servicoTicket, "listarPorEquipeDoUsuario");
 
-    const resposta = await GET(new Request("http://localhost/api/tickets"));
+    const resposta = await GET(
+      new Request("http://localhost/api/tickets", { headers: { authorization: `Bearer ${tokenDaSessao}` } }),
+    );
     const corpo = await resposta.json();
 
     expect(resposta.status).toBe(200);
@@ -461,6 +472,7 @@ describe("rotas de tickets", () => {
     const resposta = await GET(
       new Request(
         `http://localhost/api/tickets?usuarioId=${usuarioDaSessaoId}`,
+        { headers: { authorization: `Bearer ${tokenDaSessao}` } },
       ),
     );
 
@@ -471,7 +483,7 @@ describe("rotas de tickets", () => {
 
   it("rejeita um usuarioId inválido na listagem", async () => {
     const resposta = await GET(
-      new Request("http://localhost/api/tickets?usuarioId=not-a-uuid"),
+      new Request("http://localhost/api/tickets?usuarioId=not-a-uuid", { headers: { authorization: `Bearer ${tokenDaSessao}` } }),
     );
 
     expect(resposta.status).toBe(400);

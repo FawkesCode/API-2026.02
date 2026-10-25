@@ -16,6 +16,9 @@ export const logRespostaSchema = z.object({
   criadoEm: z.coerce.date(),
   ticketId: z.string(),
   usuarioId: z.string().nullable(),
+  equipeId: z.string().nullable(),
+  inicioEquipeId: z.string().nullable(),
+  equipe: z.object({ nome: z.string() }).nullable(),
   usuario: z
     .object({
       id: z.string(),

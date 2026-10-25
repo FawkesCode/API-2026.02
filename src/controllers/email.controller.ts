@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { exigirSessao } from "@/auth/exigir-cargo";
 import EmailManagerService from "@/services/email.service";
 import { sendMailToManager } from "@/schemas/sendMailManager.schema";
 
@@ -36,6 +37,9 @@ function validateBody<T>(schema: z.ZodType<T>, body: unknown) {
 
 export class EmailController {
   async sendAssignmentEmail(request: Request) {
+    const acesso = await exigirSessao(request);
+    if (!acesso.autorizado) return acesso.resposta;
+
     const { body, error: parseError } = await extractJson(request);
     if (parseError) return parseError;
 

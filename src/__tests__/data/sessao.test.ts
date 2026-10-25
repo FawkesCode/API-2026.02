@@ -41,11 +41,11 @@ afterEach(() => {
 });
 
 describe("usuário da interface", () => {
-  it("usa o usuário Massa do seed como fallback somente em desenvolvimento", async () => {
+  it("não seleciona usuário automaticamente sem sessão em desenvolvimento", async () => {
     vi.mocked(servicoUsuario.buscarPorEmail).mockResolvedValue(massa);
 
-    expect(await getUsuarioAtual()).toEqual(massa);
-    expect(servicoUsuario.buscarPorEmail).toHaveBeenCalledWith(massa.email);
+    expect(await getUsuarioAtual()).toBeNull();
+    expect(servicoUsuario.buscarPorEmail).not.toHaveBeenCalled();
     expect(servicoUsuario.buscarPorId).not.toHaveBeenCalled();
   });
 

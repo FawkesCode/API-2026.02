@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import EmailManagerService from "./email.service";
+import { travarStatusDoTicket } from "./ticket-trava";
 import {
   Cargo,
   Categoria,
@@ -311,6 +312,8 @@ export class ServicoTicket {
     dados: AtualizarPrioridadeComAutor,
   ) {
     return this.db.$transaction(async (tx) => {
+      // Trava a linha: o status lido abaixo não muda até o commit.
+      await travarStatusDoTicket(tx, ticketId);
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
         include: { equipesAlocadas: { select: { equipeId: true } } },
@@ -330,6 +333,12 @@ export class ServicoTicket {
         )
       ) {
         throw new ErroNaoAutorizadoParaAlterarPrioridade();
+      }
+
+      if (ticket.status === StatusTicket.ENCERRADO) {
+        throw new ErroTicketEncerrado(
+          "Este ticket está encerrado e sua prioridade não pode ser alterada.",
+        );
       }
 
       if (ticket.prioridade === dados.prioridade) {
@@ -399,13 +408,15 @@ export class ServicoTicket {
   }
 
   async alocarEquipe(ticketId: string, equipeId: string, usuarioId?: string) {
-    const ticket = await this.db.ticket.findUnique({
-      where: { id: ticketId },
-      select: { id: true, titulo: true },
-    });
-    if (!ticket) return null;
+    const alocado = await this.db.$transaction(async (tx) => {
+      const status = await travarStatusDoTicket(tx, ticketId);
+      if (!status) return false;
+      if (status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
 
-    await this.db.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUniqueOrThrow({
+        where: { id: ticketId },
+        select: { titulo: true },
+      });
       await tx.ticketEquipe.upsert({
         where: { ticketId_equipeId: { ticketId, equipeId } },
         create: { ticketId, equipeId },
@@ -424,7 +435,9 @@ export class ServicoTicket {
           },
         });
       }
+      return true;
     });
+    if (!alocado) return null;
 
     try {
       const gestorDaEquipe = await this.db.usuario.findFirst({
@@ -460,10 +473,15 @@ export class ServicoTicket {
   }
 
   async desalocarEquipe(ticketId: string, equipeId: string, usuarioId?: string) {
-    const ticket = await this.db.ticket.findUnique({ where: { id: ticketId } });
-    if (!ticket) return null;
+    const desalocado = await this.db.$transaction(async (tx) => {
+      const status = await travarStatusDoTicket(tx, ticketId);
+      if (!status) return false;
+      if (status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
 
-    await this.db.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUniqueOrThrow({
+        where: { id: ticketId },
+        select: { titulo: true },
+      });
       const { count } = await tx.ticketEquipe.deleteMany({
         where: { ticketId, equipeId },
       });
@@ -480,7 +498,9 @@ export class ServicoTicket {
           },
         });
       }
+      return true;
     });
+    if (!desalocado) return null;
 
     return this.db.ticket.findUniqueOrThrow({
       where: { id: ticketId },
@@ -490,6 +510,8 @@ export class ServicoTicket {
 
     async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string) {
     const resultado = await this.db.$transaction(async (tx) => {
+      // Trava a linha: o status lido abaixo não muda até o commit.
+      await travarStatusDoTicket(tx, ticketId);
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
         include: { equipesAlocadas: { select: { equipeId: true } } },
@@ -497,6 +519,7 @@ export class ServicoTicket {
       if (!ticket) return null;
 
       await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+      if (ticket.status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
 
       const equipe = await tx.equipe.findUnique({
         where: { id: equipeId },
@@ -531,6 +554,8 @@ export class ServicoTicket {
     usuarioId: string,
   ) {
     return this.db.$transaction(async (tx) => {
+      // Trava a linha: o status lido abaixo não muda até o commit.
+      await travarStatusDoTicket(tx, ticketId);
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
         include: { equipesAlocadas: { select: { equipeId: true } } },
@@ -538,6 +563,7 @@ export class ServicoTicket {
       if (!ticket) return null;
 
       await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+      if (ticket.status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
 
       if (!ticket.equipesAlocadas.some((e) => e.equipeId === equipeId)) {
         throw new ErroEquipeInvalida("Esta equipe não está atribuída ao ticket.");
@@ -582,6 +608,15 @@ export class ErroEquipeInvalida extends Error {
   constructor(message = "Equipe inválida.") {
     super(message);
     this.name = "ErroEquipeInvalida";
+  }
+}
+
+export class ErroTicketEncerrado extends Error {
+  constructor(
+    message = "Este ticket está encerrado e suas equipes não podem ser alteradas.",
+  ) {
+    super(message);
+    this.name = "ErroTicketEncerrado";
   }
 }
 

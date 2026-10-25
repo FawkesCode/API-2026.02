@@ -37,17 +37,22 @@ beforeEach(() => {
     id: suporteId,
     nome: "Suporte",
     email: "suporte@example.com",
-    cargo: "SUPORTE",
+    cargo: "SUPORTE_INTERNO",
     ativo: true,
     equipeId: null,
     equipe: null,
   });
+  // O cadastro roda numa transação e registra a atividade de quem criou.
+  vi.spyOn(prisma, "$transaction").mockImplementation(((
+    fn: (tx: typeof prisma) => unknown,
+  ) => fn(prisma)) as never);
+  vi.spyOn(prisma.atividadeConta, "create").mockResolvedValue({} as never);
 });
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("user registration", () => {
-  it("requires a SUPORTE session to create users", async () => {
+  it("requires a SUPORTE_INTERNO session to create users", async () => {
     const create = vi.spyOn(prisma.usuario, "create");
     const response = await POST(request(validData, false));
 

@@ -6,7 +6,7 @@ import {
   UsuarioSemAcessoAoTicketError,
   TransicaoTicketInvalidaError,
 } from "@/services/historico.service";
-import { exigirCargo } from "@/auth/exigir-cargo";
+import { exigirCargo, exigirSessao } from "@/auth/exigir-cargo";
 import { criarLogTicketSchema } from "@/schemas/historico.schema";
 
 async function extrairJson(requisicao: Request) {
@@ -49,7 +49,10 @@ function tratarErroInesperado(erro: unknown) {
 }
 
 export class ControladorHistoricoTicket {
-  async listar(_requisicao: Request, ticketId: string) {
+  async listar(requisicao: Request, ticketId: string) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
     const idValidado = z.uuid().safeParse(ticketId);
     if (!idValidado.success) {
       return NextResponse.json(

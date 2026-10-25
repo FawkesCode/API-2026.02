@@ -9,7 +9,6 @@ import { getTicketLogs } from "@/lib/data/ticket-logs";
 import { getUsuarioLogado } from "@/lib/data/sessao";
 import { toAutor } from "@/lib/mappers/historico.mapper";
 import { Cargo } from "@/lib/generated/prisma/client";
-
 type PriorityLevel = "critical" | "high" | "medium" | "low";
 
 const TicketPriorityMap: Record<string, PriorityLevel> = {
@@ -26,8 +25,15 @@ export default async function TicketsLogsView({ id }: { id: string }) {
     getTicketLogs(id),
     getUsuarioLogado(),
   ]);
-  const daEquipe = !!usuarioLogado?.equipeId && ticket.teams.some((team) => team.id === usuarioLogado.equipeId);
+  const equipeDoUsuarioId = usuarioLogado?.equipeId ?? null;
+  const daEquipe = !!equipeDoUsuarioId && ticket.teams.some((team) => team.id === equipeDoUsuarioId);
   const podeAlterarPrioridade = daEquipe && usuarioLogado?.cargo === Cargo.GESTOR;
+  // Ticket encerrado fica só para leitura: sem trocar prioridade nem equipes.
+  const podeEditarTicket = podeAlterarPrioridade && ticket.status !== "Encerrado";
+  // Sai dos logs já carregados, sem consulta extra.
+  const equipeIniciou =
+    daEquipe &&
+    logs.some((log) => log.tipo === "aviso" && log.inicioEquipeId === equipeDoUsuarioId);
 
   return (
     <>
@@ -42,7 +48,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
                 <span className="text-xs text-muted-foreground underline">
                   {ticket.status}
                 </span>
-                {podeAlterarPrioridade ? (
+                {podeEditarTicket ? (
                   <PriorityEditor ticketId={id} priority={ticket.priority} />
                 ) : (
                   <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
@@ -64,7 +70,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
               ) : (
                 <span>Times ainda não atribuídos.</span>
               )}
-              {podeAlterarPrioridade && (
+              {podeEditarTicket && (
                 <GerenciarEquipesTicket
                   ticketId={id}
                   equipesDoTicket={ticket.teams}
@@ -79,7 +85,8 @@ export default async function TicketsLogsView({ id }: { id: string }) {
 
 
       <TicketLogs ticketId={id} logsIniciais={logs} autor={usuarioLogado ? toAutor(usuarioLogado) : null}
-        status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade} />
+        status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade}
+        equipeIniciou={equipeIniciou} />
     </>
   );
 }

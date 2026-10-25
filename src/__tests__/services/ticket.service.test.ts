@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { Cargo, Prioridade } from "@/lib/generated/prisma/client";
+import { Cargo, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 import {
   ErroConflitoPrioridade,
   ErroNaoAutorizadoParaAlterarPrioridade,
+  ErroTicketEncerrado,
   ServicoTicket,
 } from "@/services/ticket.service";
 
@@ -14,6 +15,7 @@ const equipeId = "550e8400-e29b-41d4-a716-446655440003";
 
 function criarBanco(gestor: unknown) {
   const transacao = {
+    $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.EM_ANDAMENTO }]),
     ticket: {
       findUnique: vi.fn(),
       updateMany: vi.fn(),
@@ -106,6 +108,24 @@ describe("ServicoTicket.atualizarPrioridade", () => {
         usuarioId: gestorId,
       }),
     ).rejects.toBeInstanceOf(ErroConflitoPrioridade);
+    expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
+  it("não altera a prioridade de ticket encerrado", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue({
+      ...ticketDaEquipe,
+      status: StatusTicket.ENCERRADO,
+    });
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    await expect(
+      servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.CRITICA,
+        usuarioId: gestorId,
+      }),
+    ).rejects.toBeInstanceOf(ErroTicketEncerrado);
+    expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
     expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
   });
 
@@ -259,6 +279,7 @@ describe("ServicoTicket equipes", () => {
     const ticket = { id: ticketId, titulo: "Falha no equipamento" };
     const upsert = vi.fn();
     const transaction = {
+      $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.EM_ANDAMENTO }]),
       ticket: {
         findUnique: vi.fn().mockResolvedValue(ticket),
         findUniqueOrThrow: vi.fn().mockResolvedValue(ticket),
@@ -285,6 +306,8 @@ describe("ServicoTicket equipes", () => {
     const ticket = { id: ticketId, titulo: "Falha no equipamento" };
     const atividade = vi.fn().mockResolvedValue({});
     const transaction = {
+      $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.EM_ANDAMENTO }]),
+      ticket: { findUniqueOrThrow: vi.fn().mockResolvedValue(ticket) },
       ticketEquipe: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
       equipe: { findUnique: vi.fn().mockResolvedValue({ nome: "Equipe Azul" }) },
       atividadeConta: { create: atividade },
@@ -358,4 +381,47 @@ describe("ordenação das listas de tickets", () => {
       "baixa",
     ]);
   });
+});
+
+describe("equipes de ticket encerrado", () => {
+  const ticketEncerrado = {
+    id: ticketId,
+    titulo: "Falha no equipamento",
+    status: StatusTicket.ENCERRADO,
+    equipesAlocadas: [{ equipeId }, { equipeId: "outra-equipe" }],
+  };
+  const gestor = { ativo: true, cargo: Cargo.GESTOR, equipeId };
+
+  function criarServico() {
+    const transacao = {
+      $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.ENCERRADO }]),
+      ticket: { findUnique: vi.fn().mockResolvedValue(ticketEncerrado) },
+      usuario: { findUnique: vi.fn().mockResolvedValue(gestor) },
+      equipe: { findUnique: vi.fn() },
+      ticketEquipe: { deleteMany: vi.fn(), upsert: vi.fn() },
+    };
+    const banco = {
+      ticket: { findUnique: vi.fn().mockResolvedValue(ticketEncerrado) },
+      $transaction: vi.fn(async (callback: (tx: typeof transacao) => unknown) =>
+        callback(transacao),
+      ),
+    };
+    return {
+      servico: new ServicoTicket(banco as unknown as BancoTicket),
+      transacao,
+    };
+  }
+
+  it.each(["atribuirEquipe", "desatribuirEquipe", "alocarEquipe", "desalocarEquipe"] as const)(
+    "%s recusa ticket encerrado",
+    async (metodo) => {
+      const { servico, transacao } = criarServico();
+
+      await expect(
+        servico[metodo](ticketId, "outra-equipe", gestorId),
+      ).rejects.toBeInstanceOf(ErroTicketEncerrado);
+      expect(transacao.ticketEquipe.deleteMany).not.toHaveBeenCalled();
+      expect(transacao.ticketEquipe.upsert).not.toHaveBeenCalled();
+    },
+  );
 });
