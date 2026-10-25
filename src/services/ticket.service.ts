@@ -332,6 +332,12 @@ export class ServicoTicket {
         throw new ErroNaoAutorizadoParaAlterarPrioridade();
       }
 
+      if (ticket.status === StatusTicket.ENCERRADO) {
+        throw new ErroTicketEncerrado(
+          "Este ticket está encerrado e sua prioridade não pode ser alterada.",
+        );
+      }
+
       if (ticket.prioridade === dados.prioridade) {
         return tx.ticket.findUniqueOrThrow({
           where: { id: ticketId },

@@ -30,6 +30,8 @@ export default async function TicketsLogsView({ id }: { id: string }) {
   const equipeDoUsuarioId = usuarioLogado?.equipeId ?? null;
   const daEquipe = !!equipeDoUsuarioId && ticket.teams.some((team) => team.id === equipeDoUsuarioId);
   const podeAlterarPrioridade = daEquipe && usuarioLogado?.cargo === Cargo.GESTOR;
+  // Ticket encerrado fica só para leitura: sem trocar prioridade nem equipes.
+  const podeEditarTicket = podeAlterarPrioridade && ticket.status !== "Encerrado";
   const equipeIniciou =
     daEquipe && equipeDoUsuarioId
       ? await servicoHistoricoTicket.equipeJaIniciou(id, equipeDoUsuarioId)
@@ -48,7 +50,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
                 <span className="text-xs text-muted-foreground underline">
                   {ticket.status}
                 </span>
-                {podeAlterarPrioridade ? (
+                {podeEditarTicket ? (
                   <PriorityEditor ticketId={id} priority={ticket.priority} />
                 ) : (
                   <PriorityBadge priority={TicketPriorityMap[ticket.priority]}>
@@ -70,7 +72,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
               ) : (
                 <span>Times ainda não atribuídos.</span>
               )}
-              {podeAlterarPrioridade && ticket.status !== "Encerrado" && (
+              {podeEditarTicket && (
                 <GerenciarEquipesTicket
                   ticketId={id}
                   equipesDoTicket={ticket.teams}

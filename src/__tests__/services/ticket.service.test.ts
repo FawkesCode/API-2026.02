@@ -110,6 +110,24 @@ describe("ServicoTicket.atualizarPrioridade", () => {
     expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
   });
 
+  it("não altera a prioridade de ticket encerrado", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue({
+      ...ticketDaEquipe,
+      status: StatusTicket.ENCERRADO,
+    });
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    await expect(
+      servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.CRITICA,
+        usuarioId: gestorId,
+      }),
+    ).rejects.toBeInstanceOf(ErroTicketEncerrado);
+    expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
+    expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
   it("persiste a prioridade e registra o histórico para gestor da equipe", async () => {
     const { banco, transacao } = criarBanco(gestorDaEquipe);
     transacao.ticket.findUnique.mockResolvedValue(ticketDaEquipe);
