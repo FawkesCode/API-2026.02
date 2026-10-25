@@ -8,6 +8,7 @@ import {
   ErroEquipeInvalida,
   ErroNaoAutorizadoParaAlterarPrioridade,
   ErroNaoAutorizadoParaGerenciarEquipes,
+  ErroTicketEncerrado,
   ErroUltimaEquipeDoTicket,
   ProjetoNaoEncontradoError,
   servicoTicket,
@@ -58,7 +59,7 @@ function tratarErroInesperado(erro: unknown) {
   if (erro instanceof ErroEquipeInvalida) {
     return NextResponse.json({ erro: erro.message }, { status: 400 });
   }
-  if (erro instanceof ErroUltimaEquipeDoTicket) {
+  if (erro instanceof ErroUltimaEquipeDoTicket || erro instanceof ErroTicketEncerrado) {
     return NextResponse.json({ erro: erro.message }, { status: 409 });
   }
   if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {

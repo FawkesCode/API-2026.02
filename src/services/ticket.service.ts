@@ -401,9 +401,10 @@ export class ServicoTicket {
   async alocarEquipe(ticketId: string, equipeId: string, usuarioId?: string) {
     const ticket = await this.db.ticket.findUnique({
       where: { id: ticketId },
-      select: { id: true, titulo: true },
+      select: { id: true, titulo: true, status: true },
     });
     if (!ticket) return null;
+    if (ticket.status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
 
     await this.db.$transaction(async (tx) => {
       await tx.ticketEquipe.upsert({
@@ -497,6 +498,7 @@ export class ServicoTicket {
       if (!ticket) return null;
 
       await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+      if (ticket.status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
 
       const equipe = await tx.equipe.findUnique({
         where: { id: equipeId },
@@ -538,6 +540,7 @@ export class ServicoTicket {
       if (!ticket) return null;
 
       await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+      if (ticket.status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
 
       if (!ticket.equipesAlocadas.some((e) => e.equipeId === equipeId)) {
         throw new ErroEquipeInvalida("Esta equipe não está atribuída ao ticket.");
@@ -582,6 +585,15 @@ export class ErroEquipeInvalida extends Error {
   constructor(message = "Equipe inválida.") {
     super(message);
     this.name = "ErroEquipeInvalida";
+  }
+}
+
+export class ErroTicketEncerrado extends Error {
+  constructor(
+    message = "Este ticket está encerrado e suas equipes não podem ser alteradas.",
+  ) {
+    super(message);
+    this.name = "ErroTicketEncerrado";
   }
 }
 

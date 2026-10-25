@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { Cargo, Prioridade } from "@/lib/generated/prisma/client";
+import { Cargo, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 import {
   ErroConflitoPrioridade,
   ErroNaoAutorizadoParaAlterarPrioridade,
+  ErroTicketEncerrado,
   ServicoTicket,
 } from "@/services/ticket.service";
 
@@ -358,4 +359,46 @@ describe("ordenação das listas de tickets", () => {
       "baixa",
     ]);
   });
+});
+
+describe("equipes de ticket encerrado", () => {
+  const ticketEncerrado = {
+    id: ticketId,
+    titulo: "Falha no equipamento",
+    status: StatusTicket.ENCERRADO,
+    equipesAlocadas: [{ equipeId }, { equipeId: "outra-equipe" }],
+  };
+  const gestor = { ativo: true, cargo: Cargo.GESTOR, equipeId };
+
+  function criarServico() {
+    const transacao = {
+      ticket: { findUnique: vi.fn().mockResolvedValue(ticketEncerrado) },
+      usuario: { findUnique: vi.fn().mockResolvedValue(gestor) },
+      equipe: { findUnique: vi.fn() },
+      ticketEquipe: { deleteMany: vi.fn(), upsert: vi.fn() },
+    };
+    const banco = {
+      ticket: { findUnique: vi.fn().mockResolvedValue(ticketEncerrado) },
+      $transaction: vi.fn(async (callback: (tx: typeof transacao) => unknown) =>
+        callback(transacao),
+      ),
+    };
+    return {
+      servico: new ServicoTicket(banco as unknown as BancoTicket),
+      transacao,
+    };
+  }
+
+  it.each(["atribuirEquipe", "desatribuirEquipe", "alocarEquipe"] as const)(
+    "%s recusa ticket encerrado",
+    async (metodo) => {
+      const { servico, transacao } = criarServico();
+
+      await expect(
+        servico[metodo](ticketId, "outra-equipe", gestorId),
+      ).rejects.toBeInstanceOf(ErroTicketEncerrado);
+      expect(transacao.ticketEquipe.deleteMany).not.toHaveBeenCalled();
+      expect(transacao.ticketEquipe.upsert).not.toHaveBeenCalled();
+    },
+  );
 });
