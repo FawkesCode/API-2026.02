@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import EmailManagerService from "./email.service";
+import { travarStatusDoTicket } from "./ticket-trava";
 import {
   Cargo,
   Categoria,
@@ -311,6 +312,8 @@ export class ServicoTicket {
     dados: AtualizarPrioridadeComAutor,
   ) {
     return this.db.$transaction(async (tx) => {
+      // Trava a linha: o status lido abaixo não muda até o commit.
+      await travarStatusDoTicket(tx, ticketId);
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
         include: { equipesAlocadas: { select: { equipeId: true } } },
@@ -405,14 +408,15 @@ export class ServicoTicket {
   }
 
   async alocarEquipe(ticketId: string, equipeId: string, usuarioId?: string) {
-    const ticket = await this.db.ticket.findUnique({
-      where: { id: ticketId },
-      select: { id: true, titulo: true, status: true },
-    });
-    if (!ticket) return null;
-    if (ticket.status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
+    const alocado = await this.db.$transaction(async (tx) => {
+      const status = await travarStatusDoTicket(tx, ticketId);
+      if (!status) return false;
+      if (status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
 
-    await this.db.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUniqueOrThrow({
+        where: { id: ticketId },
+        select: { titulo: true },
+      });
       await tx.ticketEquipe.upsert({
         where: { ticketId_equipeId: { ticketId, equipeId } },
         create: { ticketId, equipeId },
@@ -431,7 +435,9 @@ export class ServicoTicket {
           },
         });
       }
+      return true;
     });
+    if (!alocado) return null;
 
     try {
       const gestorDaEquipe = await this.db.usuario.findFirst({
@@ -467,10 +473,15 @@ export class ServicoTicket {
   }
 
   async desalocarEquipe(ticketId: string, equipeId: string, usuarioId?: string) {
-    const ticket = await this.db.ticket.findUnique({ where: { id: ticketId } });
-    if (!ticket) return null;
+    const desalocado = await this.db.$transaction(async (tx) => {
+      const status = await travarStatusDoTicket(tx, ticketId);
+      if (!status) return false;
+      if (status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
 
-    await this.db.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUniqueOrThrow({
+        where: { id: ticketId },
+        select: { titulo: true },
+      });
       const { count } = await tx.ticketEquipe.deleteMany({
         where: { ticketId, equipeId },
       });
@@ -487,7 +498,9 @@ export class ServicoTicket {
           },
         });
       }
+      return true;
     });
+    if (!desalocado) return null;
 
     return this.db.ticket.findUniqueOrThrow({
       where: { id: ticketId },
@@ -497,6 +510,8 @@ export class ServicoTicket {
 
     async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string) {
     const resultado = await this.db.$transaction(async (tx) => {
+      // Trava a linha: o status lido abaixo não muda até o commit.
+      await travarStatusDoTicket(tx, ticketId);
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
         include: { equipesAlocadas: { select: { equipeId: true } } },
@@ -539,6 +554,8 @@ export class ServicoTicket {
     usuarioId: string,
   ) {
     return this.db.$transaction(async (tx) => {
+      // Trava a linha: o status lido abaixo não muda até o commit.
+      await travarStatusDoTicket(tx, ticketId);
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
         include: { equipesAlocadas: { select: { equipeId: true } } },

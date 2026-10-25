@@ -15,6 +15,7 @@ const equipeId = "550e8400-e29b-41d4-a716-446655440003";
 
 function criarBanco(gestor: unknown) {
   const transacao = {
+    $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.EM_ANDAMENTO }]),
     ticket: {
       findUnique: vi.fn(),
       updateMany: vi.fn(),
@@ -278,6 +279,7 @@ describe("ServicoTicket equipes", () => {
     const ticket = { id: ticketId, titulo: "Falha no equipamento" };
     const upsert = vi.fn();
     const transaction = {
+      $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.EM_ANDAMENTO }]),
       ticket: {
         findUnique: vi.fn().mockResolvedValue(ticket),
         findUniqueOrThrow: vi.fn().mockResolvedValue(ticket),
@@ -304,6 +306,8 @@ describe("ServicoTicket equipes", () => {
     const ticket = { id: ticketId, titulo: "Falha no equipamento" };
     const atividade = vi.fn().mockResolvedValue({});
     const transaction = {
+      $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.EM_ANDAMENTO }]),
+      ticket: { findUniqueOrThrow: vi.fn().mockResolvedValue(ticket) },
       ticketEquipe: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
       equipe: { findUnique: vi.fn().mockResolvedValue({ nome: "Equipe Azul" }) },
       atividadeConta: { create: atividade },
@@ -390,6 +394,7 @@ describe("equipes de ticket encerrado", () => {
 
   function criarServico() {
     const transacao = {
+      $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.ENCERRADO }]),
       ticket: { findUnique: vi.fn().mockResolvedValue(ticketEncerrado) },
       usuario: { findUnique: vi.fn().mockResolvedValue(gestor) },
       equipe: { findUnique: vi.fn() },
@@ -407,7 +412,7 @@ describe("equipes de ticket encerrado", () => {
     };
   }
 
-  it.each(["atribuirEquipe", "desatribuirEquipe", "alocarEquipe"] as const)(
+  it.each(["atribuirEquipe", "desatribuirEquipe", "alocarEquipe", "desalocarEquipe"] as const)(
     "%s recusa ticket encerrado",
     async (metodo) => {
       const { servico, transacao } = criarServico();

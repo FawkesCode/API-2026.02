@@ -22,6 +22,7 @@ function preparar({
   jaIniciou = true,
 } = {}) {
   const tx = {
+    $queryRaw: vi.fn().mockResolvedValue([{ status }]),
     ticket: {
       findUnique: vi
         .fn()
@@ -265,5 +266,34 @@ describe("ticket encerrado", () => {
       servico.criar("ticket", { ...dados, evento: "Visita extra" }),
     ).rejects.toBeInstanceOf(TransicaoTicketInvalidaError);
     expect(tx.historicoTicket.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("usuário sem equipe", () => {
+  it.each(["ATIVIDADE_INICIADA", "ENCERRAMENTO_SOLICITADO"])(
+    "gestor sem equipe não registra %s",
+    async (evento) => {
+      const { servico, tx } = preparar({
+        status: StatusTicket.EM_ANDAMENTO,
+        equipeId: null as unknown as string,
+      });
+      await expect(servico.criar("ticket", { ...dados, evento })).rejects.toBeInstanceOf(
+        UsuarioSemAcessoAoTicketError,
+      );
+      // Barrado antes da consulta por inicioEquipeId, que com null casaria com qualquer log.
+      expect(tx.historicoTicket.findFirst).not.toHaveBeenCalled();
+      expect(tx.historicoTicket.create).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("trava do ticket", () => {
+  it("trava a linha do ticket antes de ler o status", async () => {
+    const { servico, tx } = preparar({ cargo: Cargo.TECNICO, status: StatusTicket.EM_ANDAMENTO });
+    await servico.criar("ticket", { ...dados, evento: "Visita técnica" });
+    expect(tx.$queryRaw).toHaveBeenCalledOnce();
+    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.ticket.findUnique.mock.invocationCallOrder[0],
+    );
   });
 });

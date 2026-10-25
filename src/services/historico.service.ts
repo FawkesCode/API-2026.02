@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Cargo, Prisma, StatusTicket, type PrismaClient } from "@/lib/generated/prisma/client";
 import type { CriarLogTicketSchema } from "@/schemas/historico.schema";
+import { travarStatusDoTicket } from "./ticket-trava";
 
 const incluirUsuario = {
   usuario: {
@@ -55,6 +56,8 @@ export class ServicoHistoricoTicket {
 
   async criar(ticketId: string, dados: CriarLogTicketSchema) {
     return this.db.$transaction(async (tx) => {
+      // Trava a linha: um encerramento simultâneo espera este log terminar.
+      await travarStatusDoTicket(tx, ticketId);
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
         include: { equipesAlocadas: { select: { equipeId: true } } },
