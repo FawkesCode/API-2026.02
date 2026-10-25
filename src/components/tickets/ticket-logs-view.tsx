@@ -9,6 +9,7 @@ import { getTicketLogs } from "@/lib/data/ticket-logs";
 import { getUsuarioLogado } from "@/lib/data/sessao";
 import { toAutor } from "@/lib/mappers/historico.mapper";
 import { Cargo } from "@/lib/generated/prisma/client";
+import { servicoHistoricoTicket } from "@/services/historico.service";
 
 type PriorityLevel = "critical" | "high" | "medium" | "low";
 
@@ -26,8 +27,13 @@ export default async function TicketsLogsView({ id }: { id: string }) {
     getTicketLogs(id),
     getUsuarioLogado(),
   ]);
-  const daEquipe = !!usuarioLogado?.equipeId && ticket.teams.some((team) => team.id === usuarioLogado.equipeId);
+  const equipeDoUsuarioId = usuarioLogado?.equipeId ?? null;
+  const daEquipe = !!equipeDoUsuarioId && ticket.teams.some((team) => team.id === equipeDoUsuarioId);
   const podeAlterarPrioridade = daEquipe && usuarioLogado?.cargo === Cargo.GESTOR;
+  const equipeIniciou =
+    daEquipe && equipeDoUsuarioId
+      ? await servicoHistoricoTicket.equipeJaIniciou(id, equipeDoUsuarioId)
+      : false;
 
   return (
     <>
@@ -79,7 +85,8 @@ export default async function TicketsLogsView({ id }: { id: string }) {
 
 
       <TicketLogs ticketId={id} logsIniciais={logs} autor={usuarioLogado ? toAutor(usuarioLogado) : null}
-        status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade} />
+        status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade}
+        equipeIniciou={equipeIniciou} />
     </>
   );
 }

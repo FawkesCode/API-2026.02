@@ -12,6 +12,7 @@ function preparar({
   ativo = true,
   status = StatusTicket.SOLICITACAO_ENCERRAMENTO as StatusTicket,
   count = 1,
+  jaIniciou = true,
 } = {}) {
   const tx = {
     ticket: {
@@ -26,7 +27,10 @@ function preparar({
     usuario: {
       findUnique: vi.fn().mockResolvedValue({ cargo, equipeId, ativo }),
     },
-    historicoTicket: { create: vi.fn().mockResolvedValue({ id: "log" }) },
+    historicoTicket: {
+      create: vi.fn().mockResolvedValue({ id: "log" }),
+      findFirst: vi.fn().mockResolvedValue(jaIniciou ? { id: "inicio" } : null),
+    },
   };
   const db = {
     $transaction: vi.fn(async (callback: (tx: unknown) => unknown) =>
@@ -117,5 +121,83 @@ describe("decisões de encerramento", () => {
     await expect(
       servico.criar("ticket", { ...dados, evento: "PRIORIDADE_ALTERADA" }),
     ).rejects.toBeInstanceOf(UsuarioSemAcessoAoTicketError);
+  });
+});
+
+describe("início dos trabalhos por equipe", () => {
+  const inicio = { ...dados, evento: "ATIVIDADE_INICIADA" };
+
+  it("registra o início sem mudar o status quando o ticket já está em andamento", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+      jaIniciou: false,
+    });
+    await servico.criar("ticket", inicio);
+    expect(tx.historicoTicket.findFirst).toHaveBeenCalledWith({
+      where: {
+        ticketId: "ticket",
+        evento: "ATIVIDADE_INICIADA",
+        usuario: { equipeId: "equipe" },
+      },
+      select: { id: true },
+    });
+    expect(tx.ticket.updateMany).not.toHaveBeenCalled();
+    expect(tx.historicoTicket.create).toHaveBeenCalledOnce();
+  });
+
+  it.each([StatusTicket.NAO_INICIADO, StatusTicket.EM_REVISAO])(
+    "leva o ticket de %s para em andamento",
+    async (status) => {
+      const { servico, tx } = preparar({
+        cargo: Cargo.TECNICO,
+        status,
+        jaIniciou: false,
+      });
+      await servico.criar("ticket", inicio);
+      expect(tx.ticket.updateMany).toHaveBeenCalledWith({
+        where: { id: "ticket", status },
+        data: { status: StatusTicket.EM_ANDAMENTO, encerradoEm: null },
+      });
+    },
+  );
+
+  it("não deixa a mesma equipe iniciar duas vezes", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+      jaIniciou: true,
+    });
+    await expect(servico.criar("ticket", inicio)).rejects.toBeInstanceOf(
+      TransicaoTicketInvalidaError,
+    );
+    expect(tx.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
+  it.each([StatusTicket.SOLICITACAO_ENCERRAMENTO, StatusTicket.ENCERRADO])(
+    "não aceita início com o ticket em %s",
+    async (status) => {
+      const { servico, tx } = preparar({
+        cargo: Cargo.TECNICO,
+        status,
+        jaIniciou: false,
+      });
+      await expect(servico.criar("ticket", inicio)).rejects.toBeInstanceOf(
+        TransicaoTicketInvalidaError,
+      );
+      expect(tx.historicoTicket.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it("exige que a equipe tenha iniciado antes de solicitar encerramento", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+      jaIniciou: false,
+    });
+    await expect(
+      servico.criar("ticket", { ...dados, evento: "ENCERRAMENTO_SOLICITADO" }),
+    ).rejects.toBeInstanceOf(TransicaoTicketInvalidaError);
+    expect(tx.ticket.updateMany).not.toHaveBeenCalled();
   });
 });

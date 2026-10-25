@@ -75,7 +75,7 @@ function LogState({
       <div className="flex flex-col gap-0.5">
         <p className={cn(logStateTitleVariants({ status }))}>{titulo}</p>
         {descricao ? (
-          <p className="text-m text-muted-foreground">{descricao}</p>
+          <p className="text-sm text-muted-foreground">{descricao}</p>
         ) : null}
         {criadoEm ? (
           <time

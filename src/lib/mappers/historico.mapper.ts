@@ -9,12 +9,19 @@ export interface Autor {
   setor: string;
 }
 
+/** Pedaço do título de um aviso; `destaque` marca nomes (equipe, gestor). */
+export interface TrechoTitulo {
+  texto: string;
+  destaque?: boolean;
+}
+
 export type LogItem =
   | {
     id: string;
     tipo: "aviso";
     status: LogStatus;
     titulo: string;
+    tituloTrechos: TrechoTitulo[];
     descricao: string;
     criadoEm: Date;
   }
@@ -50,34 +57,49 @@ const CargoLabel: Record<Cargo, string> = {
   COMERCIAL: "Comercial",
 };
 
-function nomeDaEquipe(equipe: string) {
-  return /^equipe\b/i.test(equipe) ? equipe : `Equipe ${equipe}`;
+/** "Equipe Massa" e "Massa" viram ["Equipe ", *Massa*], como no design. */
+function trechosDaEquipe(equipe: string): TrechoTitulo[] {
+  const nome = equipe.replace(/^equipe\s+/i, "");
+  return [{ texto: "Equipe " }, { texto: nome, destaque: true }];
+}
+
+interface AutorDoAviso {
+  equipe: string;
+  nome: string;
 }
 
 const AvisoPorEvento: Record<
   EventoAutomatico,
-  { status: LogStatus; titulo: (equipe: string) => string }
+  { status: LogStatus; titulo: (autor: AutorDoAviso) => TrechoTitulo[] }
 > = {
   [EventoLog.AtividadeIniciada]: {
     status: "iniciado",
-    titulo: (equipe) => `${nomeDaEquipe(equipe)} começou a trabalhar no ticket`,
+    titulo: ({ equipe }) => [
+      ...trechosDaEquipe(equipe),
+      { texto: " começou a trabalhar no ticket" },
+    ],
   },
   [EventoLog.EncerramentoSolicitado]: {
     status: "solicitado",
-    titulo: (equipe) =>
-      `${nomeDaEquipe(equipe)} solicitou encerramento do ticket`,
+    titulo: ({ equipe }) => [
+      ...trechosDaEquipe(equipe),
+      { texto: " solicitou encerramento do ticket" },
+    ],
   },
   [EventoLog.EncerramentoAprovado]: {
     status: "aprovado",
-    titulo: () => "Solicitação de encerramento aprovada",
+    titulo: () => [{ texto: "Ticket encerrado, demandas foram concluídas" }],
   },
   [EventoLog.EncerramentoNegado]: {
     status: "recusado",
-    titulo: () => "Solicitação de encerramento negada",
+    titulo: ({ nome }) => [
+      { texto: nome, destaque: true },
+      { texto: " recusou solicitação de encerramento" },
+    ],
   },
   [EventoLog.PrioridadeAlterada]: {
     status: "iniciado",
-    titulo: () => "Prioridade do ticket alterada",
+    titulo: () => [{ texto: "Prioridade do ticket alterada" }],
   },
 };
 
@@ -105,12 +127,17 @@ export function toLogItem(log: LogResposta): LogItem {
 
   if (ehEventoAutomatico(log.evento)) {
     const aviso = AvisoPorEvento[log.evento];
+    const tituloTrechos = aviso.titulo({
+      equipe: log.usuario?.equipe?.nome ?? "responsável",
+      nome: log.usuario?.nome ?? "Usuário removido",
+    });
 
     return {
       id: log.id,
       tipo: "aviso",
       status: aviso.status,
-      titulo: aviso.titulo(log.usuario?.equipe?.nome ?? "responsável"),
+      titulo: tituloTrechos.map((trecho) => trecho.texto).join(""),
+      tituloTrechos,
       descricao: log.descricao,
       criadoEm,
     };

@@ -77,6 +77,8 @@ interface TicketLogsProps {
   status: string;
   podeRegistrar: boolean;
   podeDecidir: boolean;
+  /** Se a equipe do usuário já enviou "começou a trabalhar" neste ticket. */
+  equipeIniciou: boolean;
   className?: string;
 }
 
@@ -88,12 +90,23 @@ function TicketLogs({
   status,
   podeRegistrar,
   podeDecidir,
+  equipeIniciou,
 }: TicketLogsProps) {
   const router = useRouter();
 
   const [logs, setLogs] = useState(logsIniciais);
   const [enviandoAviso, setEnviandoAviso] = useState(false);
   const [erroAviso, setErroAviso] = useState<string | null>(null);
+  const [recusando, setRecusando] = useState(false);
+  const [justificativa, setJustificativa] = useState("");
+
+  const podeIniciar =
+    !equipeIniciou &&
+    ["Não iniciado", "Em andamento", "Em revisão"].includes(status);
+  const podeSolicitarEncerramento =
+    equipeIniciou && ["Em andamento", "Em revisão"].includes(status);
+  const podeDecidirAgora =
+    podeDecidir && status === "Solicitação de encerramento";
 
   const listaRef = useRef<HTMLElement>(null);
   const jaRenderizou = useRef(false);
@@ -153,6 +166,8 @@ function TicketLogs({
 
     try {
       await registrarLog(evento, descricao);
+      setRecusando(false);
+      setJustificativa("");
     } catch (erro) {
       setErroAviso(
         erro instanceof Error
@@ -181,7 +196,7 @@ function TicketLogs({
         onScroll={aoRolar}
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-none border-x border-gray-200 bg-slate-100 p-6"
       >
-        <h3 className="sticky top-0 z-10 -mx-6 -mt-6 bg-slate-100 px-6 py-3 font-bold text-card-foreground">
+        <h3 className="font-bold text-card-foreground">
           LOGS DE ATIVIDADE
         </h3>
 
@@ -196,7 +211,13 @@ function TicketLogs({
             <LogState
               key={log.id}
               status={log.status}
-              titulo={log.titulo}
+              titulo={log.tituloTrechos.map((trecho, indice) =>
+                trecho.destaque ? (
+                  <em key={indice}>{trecho.texto}</em>
+                ) : (
+                  trecho.texto
+                ),
+              )}
               descricao={log.descricao}
               criadoEm={log.criadoEm}
             />
@@ -218,7 +239,7 @@ function TicketLogs({
       {podeRegistrar && autor && (
         <section className="shrink-0 rounded-b-md border border-gray-200 bg-white p-6">
           <div className="flex flex-wrap gap-2 pb-4">
-            {["Não iniciado", "Em revisão"].includes(status) && (
+            {podeIniciar && (
               <LogSuggestion
                 disabled={enviandoAviso}
                 onClick={() =>
@@ -228,11 +249,11 @@ function TicketLogs({
                   )
                 }
               >
-                Enviar &quot;Equipe Começou a trabalhar&quot;
+                Enviar &quot;Equipe começou a trabalhar no ticket&quot;
               </LogSuggestion>
             )}
 
-            {["Em andamento", "Em revisão"].includes(status) && (
+            {podeSolicitarEncerramento && (
               <LogSuggestion
                 disabled={enviandoAviso}
                 onClick={() =>
@@ -242,11 +263,11 @@ function TicketLogs({
                   )
                 }
               >
-                Enviar &quot;Solicito Encerramento do Ticket&quot;
+                Enviar &quot;Solicito encerramento do ticket&quot;
               </LogSuggestion>
             )}
 
-            {podeDecidir && status === "Solicitação de encerramento" && (
+            {podeDecidirAgora && (
               <>
                 <LogSuggestion
                   tone="approve"
@@ -254,7 +275,7 @@ function TicketLogs({
                   onClick={() =>
                     enviarAviso(
                       EventoLog.EncerramentoAprovado,
-                      `${autor.nome} aprovou o encerramento`,
+                      `${autor.nome} aprovou a solicitação de encerramento`,
                     )
                   }
                 >
@@ -264,18 +285,56 @@ function TicketLogs({
                 <LogSuggestion
                   tone="deny"
                   disabled={enviandoAviso}
-                  onClick={() =>
-                    enviarAviso(
-                      EventoLog.EncerramentoNegado,
-                      `${autor.nome} negou o encerramento`,
-                    )
-                  }
+                  aria-expanded={recusando}
+                  onClick={() => setRecusando((aberto) => !aberto)}
                 >
-                  Negar encerramento
+                  Recusar encerramento
                 </LogSuggestion>
               </>
             )}
           </div>
+
+          {podeDecidirAgora && recusando && (
+            <div className="flex flex-col gap-2 pb-4">
+              <label
+                htmlFor="justificativa-recusa"
+                className="text-sm font-medium text-foreground"
+              >
+                Justificativa da recusa
+              </label>
+              <textarea
+                id="justificativa-recusa"
+                value={justificativa}
+                onChange={(evento) => setJustificativa(evento.target.value)}
+                rows={3}
+                placeholder="Explique o que ainda precisa ser feito..."
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus-visible:border-ring"
+              />
+              <div className="flex justify-end gap-2">
+                <LogSuggestion
+                  disabled={enviandoAviso}
+                  onClick={() => {
+                    setRecusando(false);
+                    setJustificativa("");
+                  }}
+                >
+                  Cancelar
+                </LogSuggestion>
+                <LogSuggestion
+                  tone="deny"
+                  disabled={enviandoAviso || !justificativa.trim()}
+                  onClick={() =>
+                    enviarAviso(
+                      EventoLog.EncerramentoNegado,
+                      justificativa.trim(),
+                    )
+                  }
+                >
+                  Confirmar recusa
+                </LogSuggestion>
+              </div>
+            </div>
+          )}
 
           {erroAviso && (
             <p

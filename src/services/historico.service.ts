@@ -25,15 +25,32 @@ export class UsuarioSemAcessoAoTicketError extends Error {
 
 export class TransicaoTicketInvalidaError extends Error {}
 
+// Tickets novos já nascem EM_ANDAMENTO, então o início de cada equipe também
+// é aceito nesse status (sem mudar o status).
 const TRANSICOES: Record<string, { origens: StatusTicket[]; destino: StatusTicket }> = {
-  ATIVIDADE_INICIADA: { origens: [StatusTicket.NAO_INICIADO, StatusTicket.EM_REVISAO], destino: StatusTicket.EM_ANDAMENTO },
+  ATIVIDADE_INICIADA: {
+    origens: [StatusTicket.NAO_INICIADO, StatusTicket.EM_ANDAMENTO, StatusTicket.EM_REVISAO],
+    destino: StatusTicket.EM_ANDAMENTO,
+  },
   ENCERRAMENTO_SOLICITADO: { origens: [StatusTicket.EM_ANDAMENTO, StatusTicket.EM_REVISAO], destino: StatusTicket.SOLICITACAO_ENCERRAMENTO },
   ENCERRAMENTO_APROVADO: { origens: [StatusTicket.SOLICITACAO_ENCERRAMENTO], destino: StatusTicket.ENCERRADO },
   ENCERRAMENTO_NEGADO: { origens: [StatusTicket.SOLICITACAO_ENCERRAMENTO], destino: StatusTicket.EM_REVISAO },
 };
 
+type ClienteDb = Pick<PrismaClient, "historicoTicket">;
+
 export class ServicoHistoricoTicket {
   constructor(private readonly db: PrismaClient = prisma) {}
+
+  /** Se algum membro da equipe já registrou o início dos trabalhos no ticket. */
+  async equipeJaIniciou(ticketId: string, equipeId: string, db: ClienteDb = this.db) {
+    const inicio = await db.historicoTicket.findFirst({
+      where: { ticketId, evento: "ATIVIDADE_INICIADA", usuario: { equipeId } },
+      select: { id: true },
+    });
+    return inicio !== null;
+  }
+
   async listarPorTicket(ticketId: string) {
     const ticket = await this.db.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return null;
@@ -66,11 +83,20 @@ export class ServicoHistoricoTicket {
       if ((decisao && usuario.cargo !== Cargo.GESTOR) || dados.evento === "PRIORIDADE_ALTERADA") {
         throw new UsuarioSemAcessoAoTicketError();
       }
-      const transicao = Object.hasOwn(TRANSICOES, dados.evento) ? TRANSICOES[dados.evento] : undefined;
-      if (transicao) {
-        if (!transicao.origens.includes(ticket.status)) {
-          throw new TransicaoTicketInvalidaError("Esta ação não é permitida no status atual do ticket.");
+      if (["ATIVIDADE_INICIADA", "ENCERRAMENTO_SOLICITADO"].includes(dados.evento)) {
+        const jaIniciou = await this.equipeJaIniciou(ticketId, usuario.equipeId, tx);
+        if (dados.evento === "ATIVIDADE_INICIADA" && jaIniciou) {
+          throw new TransicaoTicketInvalidaError("Sua equipe já iniciou os trabalhos neste ticket.");
         }
+        if (dados.evento === "ENCERRAMENTO_SOLICITADO" && !jaIniciou) {
+          throw new TransicaoTicketInvalidaError("Sua equipe precisa iniciar os trabalhos antes de solicitar o encerramento.");
+        }
+      }
+      const transicao = Object.hasOwn(TRANSICOES, dados.evento) ? TRANSICOES[dados.evento] : undefined;
+      if (transicao && !transicao.origens.includes(ticket.status)) {
+        throw new TransicaoTicketInvalidaError("Esta ação não é permitida no status atual do ticket.");
+      }
+      if (transicao && transicao.destino !== ticket.status) {
         const { count } = await tx.ticket.updateMany({
           where: { id: ticketId, status: ticket.status },
           data: { status: transicao.destino, encerradoEm: transicao.destino === StatusTicket.ENCERRADO ? new Date() : null },
