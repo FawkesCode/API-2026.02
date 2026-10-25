@@ -1,6 +1,6 @@
 import { TicketView } from "@/types/ticket";
 
-import TicketCard from "../ticket-card";
+import TicketCard from "./ticket-card";
 
 function MyTeamTickets({ tickets }: { tickets: TicketView[] }) {
   return (

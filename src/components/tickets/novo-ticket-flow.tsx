@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ProjectSearchSelect } from "@/components/tickets/project-search-select";
 import { AbrirTicketDialog } from "@/components/tickets/abrir-ticket-dialog";
-import type { ProjetoResumo } from "@/hooks/use-projetos-disponiveis";
+import type { ProjetoResumo } from "@/hooks/use-available-projects";
 
 type Etapa = "buscar-projeto" | "formulario";
 

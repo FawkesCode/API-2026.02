@@ -70,7 +70,7 @@ function LogEditor({ onEnviar, className }: LogEditorProps) {
     shouldRerenderOnTransaction: true,
     editorProps: {
       attributes: {
-        class: "min-h-32 w-full px-3 py-2 outline-none",
+        class: "min-h-24 w-full px-3 py-2 outline-none",
       },
     },
     onUpdate: () =>
@@ -125,7 +125,7 @@ function LogEditor({ onEnviar, className }: LogEditorProps) {
             aria-invalid={!!erros.titulo}
             aria-describedby={erros.titulo ? "log-titulo-error" : undefined}
             aria-required
-            className="w-auto border-0 border-b rounded-b-none text-xs!  border-b-muted shadow-none"
+            className="flex-1 border-0 border-b rounded-b-none text-xs! border-b-muted shadow-none"
             onChange={(event) => {
               setTitulo(event.target.value);
               setErros((anteriores) =>
@@ -156,7 +156,8 @@ function LogEditor({ onEnviar, className }: LogEditorProps) {
           )}
         >
           {editor ? <Toolbar editor={editor} /> : null}
-          <EditorContent editor={editor} className="xl:min-h-16 xl:max-h-20" />
+          {/* Cresce com o texto até um limite e depois rola, sem cortar nada. */}
+          <EditorContent editor={editor} className="max-h-48 overflow-y-auto" />
         </div>
         {erros.conteudo && (
           <p role="alert" className="text-xs font-medium text-destructive">

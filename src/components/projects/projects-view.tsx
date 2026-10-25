@@ -4,7 +4,6 @@ import { ProjectFormDialog } from "./project-form-dialog";
 import ProjectCard from "./project-card";
 import { useRouter } from "next/navigation";
 import { SelectInterface } from "@/lib/data/dropdown";
-import { use } from "react";
 import PageHeader from "../page-header";
 
 export interface ProjectInfo {
@@ -21,9 +20,15 @@ interface ProjectsClientProps {
   projects: ProjectInfo[];
   clients: SelectInterface[];
   supervisors: SelectInterface[];
+  podeCriar: boolean;
 }
 
-function ProjectsView({ projects, clients, supervisors }: ProjectsClientProps) {
+function ProjectsView({
+  projects,
+  clients,
+  supervisors,
+  podeCriar,
+}: ProjectsClientProps) {
   const router = useRouter();
 
   function handleSuccess() {
@@ -33,7 +38,7 @@ function ProjectsView({ projects, clients, supervisors }: ProjectsClientProps) {
   return (
     <>
       <PageHeader
-        other={
+        other={podeCriar ? (
           <div className="justify-self-end">
             <ProjectFormDialog
               onSuccess={handleSuccess}
@@ -41,7 +46,7 @@ function ProjectsView({ projects, clients, supervisors }: ProjectsClientProps) {
               supervisorsData={supervisors}
             />
           </div>
-        }
+        ) : undefined}
       >
         Projetos
       </PageHeader>

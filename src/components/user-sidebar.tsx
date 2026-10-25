@@ -1,10 +1,11 @@
-import { UsuarioAtual } from "@/hooks/use-current-user";
+import type { UsuarioAtual } from "@/types/usuario";
 import { SidebarMenu, SidebarMenuItem } from "./ui/sidebar";
 
 export const AccountTypeLabel: Record<string, string> = {
   TECNICO: "Técnico",
   GESTOR: "Gestor",
-  SUPORTE: "Suporte Interno",
+  SUPORTE: "Suporte Externo",
+  SUPORTE_INTERNO: "Suporte Interno",
   COMERCIAL: "Analista Comercial",
 };
 
@@ -24,6 +25,9 @@ function UserSidebar({ user }: { user: UsuarioAtual }) {
             <span className="truncate text-sm">{user.nome}</span>
             <span className="truncate text-xs text-blue-200 font-extralight">
               {user.email}
+            </span>
+            <span className="truncate text-xs italic text-blue-200 font-extralight">
+              {user.equipeNome ? `Equipe: ${user.equipeNome}` : "Sem equipe"}
             </span>
           </div>
         </div>

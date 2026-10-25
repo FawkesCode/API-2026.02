@@ -1,5 +1,5 @@
-import { controladorEquipe } from "@/lib/controllers/equipe.controller";
+import { controladorEquipe } from "@/controllers/equipe.controller";
 
-export async function GET() {
-  return controladorEquipe.listar();
+export async function GET(request: Request) {
+  return controladorEquipe.listar(request);
 }

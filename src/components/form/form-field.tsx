@@ -1,10 +1,16 @@
 "use client";
 
-import * as React from "react";
+import { ReactNode, Ref, useId, useState, type ComponentProps } from "react";
+import { Eye, EyeOff, TriangleAlert } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FormLabel } from "@/components/form/form-label";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
   Select,
   SelectContent,
@@ -14,100 +20,246 @@ import {
   SelectValue,
 } from "../ui/select";
 import { SelectInterface } from "@/lib/data/dropdown";
+import { Field, FieldError, FieldLabel } from "../ui/field";
+import { cn } from "cn";
 
-function FieldError({ id, message }: { id: string; message?: string }) {
-  if (!message) return null;
-  return (
-    <p id={id} role="alert" className="text-xs font-medium text-destructive">
-      {message}
-    </p>
-  );
-}
-export interface FormInputProps extends React.ComponentProps<typeof Input> {
-  label: string;
-  error?: string;
-}
-
-export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, required, error, id, ...props }, ref) => {
-    const generatedId = React.useId();
-    const inputId = id ?? generatedId;
-    const errorId = `${inputId}-error`;
-
-    return (
-      <div className="flex flex-col gap-1.5 w-full">
-        <FormLabel htmlFor={inputId} required={required}>
-          {label}
-        </FormLabel>
-        <Input
-          id={inputId}
-          ref={ref}
-          className="w-full"
-          aria-invalid={!!error}
-          aria-describedby={error ? errorId : undefined}
-          aria-required={required || undefined}
-          required={required}
-          {...props}
-        />
-        <FieldError id={errorId} message={error} />
-      </div>
-    );
+const formVariants = {
+  default: {
+    label: "",
+    input: "rounded-xl hover:border-accent",
+    group: "rounded-xl hover:border-accent",
+    groupInput: "",
+    toggle: "text-muted-foreground hover:bg-transparent hover:text-foreground",
   },
-);
-FormInput.displayName = "FormInput";
+  login: {
+    label: "text-xs sm:text-regular",
+    input:
+      "border-0 border-b-2 border-[#236588] py-6 text-xs sm:text-regular placeholder:text-[#9BAFC0]",
+    group: "rounded-xl border-0 border-b-2 border-[#236588] py-6",
+    groupInput: "text-xs sm:text-regular placeholder:text-[#9BAFC0]",
+    toggle: "text-[#9BAFC0] hover:bg-transparent hover:text-primary-foreground",
+  },
+} as const;
 
-export interface FormSelectProps {
+export type FormVariant = keyof typeof formVariants;
+
+const inputStyle = "rounded-xl hover:border-accent";
+
+interface AccessibilityProps {
+  id: string;
+  "aria-invalid": boolean;
+  "aria-describedby"?: string;
+  "aria-required"?: true;
+}
+
+interface FormFieldProps {
   label: string;
-  options?: SelectInterface[];
-  value?: SelectInterface | null;
-  onChange?: (value: SelectInterface | null) => void;
-  placeholder?: string;
   required?: boolean;
   error?: string;
   id?: string;
-  disabled?: boolean;
+  className?: string;
+  children: (a: AccessibilityProps) => ReactNode;
+  variant?: FormVariant;
 }
 
-export const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
-  (
-    {
-      label,
-      options,
-      value,
-      onChange,
-      placeholder = "Selecione uma opção",
-      required,
-      error,
-      id,
-      disabled,
-    },
-    ref,
-  ) => {
-    const generatedId = React.useId();
-    const inputId = id ?? generatedId;
-    const errorId = `${inputId}-error`;
+function FormField({
+  variant = "default",
+  label,
+  required,
+  error,
+  id,
+  children,
+}: FormFieldProps) {
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
+  const errorId = `${fieldId}-error`;
 
-    return (
-      <div className="flex flex-col gap-1.5 w-full">
-        <FormLabel htmlFor={inputId} required={required}>
-          {label}
-        </FormLabel>
+  return (
+    <Field className={formVariants[variant].label} data-invalid={!!error}>
+      <FieldLabel htmlFor={fieldId}>
+        {label}
+        {required && (
+          <span aria-hidden className="ml-0.5 text-red-600">
+            *
+          </span>
+        )}
+      </FieldLabel>
+      {children({
+        id: fieldId,
+        "aria-invalid": !!error,
+        "aria-describedby": error ? errorId : undefined,
+        "aria-required": required || undefined,
+      })}
+
+      {error && (
+        <FieldError id={errorId} className="flex items-center gap-1 text-xs">
+          <TriangleAlert size={15} /> {error}
+        </FieldError>
+      )}
+    </Field>
+  );
+}
+
+type BaseProps = { label: string; error?: string };
+export type FormInputProps = BaseProps &
+  ComponentProps<typeof Input> & { variant?: FormVariant };
+
+export function FormInput({
+  label,
+  error,
+  required,
+  id,
+  className,
+  variant = "default",
+  ...props
+}: FormInputProps) {
+  return (
+    <FormField
+      label={label}
+      error={error}
+      required={required}
+      id={id}
+      variant={variant}
+    >
+      {(inputProps) => (
+        <Input
+          {...inputProps}
+          className={cn(formVariants[variant].input, className)}
+          {...props}
+        />
+      )}
+    </FormField>
+  );
+}
+
+export type FormPasswordProps = BaseProps &
+  Omit<ComponentProps<typeof InputGroupInput>, "type"> & {
+    variant?: FormVariant;
+  };
+
+export function FormPassword({
+  label,
+  error,
+  required,
+  id,
+  className,
+  variant = "default",
+  ...props
+}: FormPasswordProps) {
+  const [visible, setVisible] = useState(false);
+  const toggleText = visible ? "Ocultar senha" : "Mostrar senha";
+  const styles = formVariants[variant];
+
+  return (
+    <FormField
+      label={label}
+      error={error}
+      required={required}
+      variant={variant}
+      id={id}
+    >
+      {(inputProps) => (
+        <InputGroup className={cn(styles.group, className)}>
+          <InputGroupInput
+            {...inputProps}
+            type={visible ? "text" : "password"}
+            className={styles.groupInput}
+            {...props}
+          />
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton
+              type="button"
+              size="icon-xs"
+              aria-label={toggleText}
+              title={toggleText}
+              aria-pressed={visible}
+              className={cn("cursor-pointer", styles.toggle)}
+              onClick={() => setVisible((v) => !v)}
+            >
+              {visible ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
+      )}
+    </FormField>
+  );
+}
+
+export type FormTextareaProps = BaseProps & ComponentProps<typeof Textarea>;
+
+export function FormTextarea({
+  label,
+  error,
+  required,
+  id,
+  rows = 4,
+  className,
+  ...props
+}: FormTextareaProps) {
+  return (
+    <FormField label={label} error={error} required={required} id={id}>
+      {(inputProps) => (
+        <Textarea
+          {...inputProps}
+          rows={rows}
+          className={cn(
+            inputStyle,
+            className,
+            "bg-white shadow-2xs focus:border-accent!",
+          )}
+          {...props}
+        />
+      )}
+    </FormField>
+  );
+}
+
+export interface FormSelectProps extends BaseProps {
+  options?: SelectInterface[];
+  value?: SelectInterface | null;
+  onChange?: (value: SelectInterface | null) => void;
+  onBlur?: () => void;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  id?: string;
+  className?: string;
+  ref?: Ref<HTMLButtonElement>;
+}
+
+export function FormSelect({
+  label,
+  error,
+  required,
+  id,
+  options,
+  value,
+  onChange,
+  onBlur,
+  placeholder = "Selecione uma opção",
+  disabled,
+  className,
+  ref,
+}: FormSelectProps) {
+  return (
+    <FormField label={label} error={error} required={required} id={id}>
+      {(inputProps) => (
         <Select
           value={value?.value ?? ""}
-          onValueChange={(val) => {
-            const selectedItem =
-              options?.find((item) => item.value === val) ?? null;
-            onChange?.(selectedItem);
-          }}
+          onValueChange={(val) =>
+            onChange?.(options?.find((o) => o.value === val) ?? null)
+          }
           disabled={disabled}
         >
           <SelectTrigger
-            className="rounded-xl w-full"
-            id={inputId}
-            aria-invalid={!!error}
-            aria-describedby={error ? errorId : undefined}
-            aria-required={required || undefined}
+            {...inputProps}
             ref={ref}
+            onBlur={onBlur}
+            className={cn(inputStyle, "w-full", className)}
           >
             <SelectValue placeholder={placeholder}>{value?.label}</SelectValue>
           </SelectTrigger>
@@ -121,45 +273,7 @@ export const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
             </SelectGroup>
           </SelectContent>
         </Select>
-        <FieldError id={errorId} message={error} />
-      </div>
-    );
-  },
-);
-FormSelect.displayName = "FormSelect";
-
-export interface FormTextareaProps extends React.ComponentProps<
-  typeof Textarea
-> {
-  label: string;
-  required?: boolean;
-  error?: string;
-}
-
-export const FormTextarea = React.forwardRef<
-  HTMLTextAreaElement,
-  FormTextareaProps
->(({ label, required, error, id, rows = 4, ...props }, ref) => {
-  const generatedId = React.useId();
-  const textareaId = id ?? generatedId;
-  const errorId = `${textareaId}-error`;
-  return (
-    <div className="flex flex-col gap-1.5">
-      <FormLabel htmlFor={textareaId} required={required}>
-        {label}
-      </FormLabel>
-      <Textarea
-        id={textareaId}
-        ref={ref}
-        rows={rows}
-        className="bg-white shadow-2xs focus:border-accent!"
-        aria-invalid={!!error}
-        aria-describedby={error ? errorId : undefined}
-        aria-required={required || undefined}
-        {...props}
-      />
-      <FieldError id={errorId} message={error} />
-    </div>
+      )}
+    </FormField>
   );
-});
-FormTextarea.displayName = "FormTextarea";
+}

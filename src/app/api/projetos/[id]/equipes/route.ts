@@ -1,4 +1,4 @@
-import { controladorTicket } from "@/lib/controllers/ticket.controller";
+import { controladorTicket } from "@/controllers/ticket.controller";
 
 type ContextoRota = { params: Promise<{ id: string }> };
 

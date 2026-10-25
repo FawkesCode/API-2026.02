@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { Cargo, Prioridade } from "@/lib/generated/prisma/client";
+import { Cargo, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 import {
+  ErroConflitoPrioridade,
   ErroNaoAutorizadoParaAlterarPrioridade,
+  ErroTicketEncerrado,
   ServicoTicket,
-} from "@/lib/services/ticket.service";
+} from "@/services/ticket.service";
 
 type BancoTicket = ConstructorParameters<typeof ServicoTicket>[0];
 
@@ -13,6 +15,7 @@ const equipeId = "550e8400-e29b-41d4-a716-446655440003";
 
 function criarBanco(gestor: unknown) {
   const transacao = {
+    $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.EM_ANDAMENTO }]),
     ticket: {
       findUnique: vi.fn(),
       updateMany: vi.fn(),
@@ -23,8 +26,8 @@ function criarBanco(gestor: unknown) {
   };
   const banco = {
     ticket: { create: vi.fn() },
-    $transaction: vi.fn(
-      async (callback: (tx: typeof transacao) => unknown) => callback(transacao),
+    $transaction: vi.fn(async (callback: (tx: typeof transacao) => unknown) =>
+      callback(transacao),
     ),
   };
 
@@ -34,7 +37,7 @@ function criarBanco(gestor: unknown) {
 const ticketDaEquipe = {
   id: ticketId,
   prioridade: Prioridade.MEDIA,
-  projeto: { equipeId },
+  equipesAlocadas: [{ equipeId }],
 };
 
 const gestorDaEquipe = {
@@ -45,6 +48,87 @@ const gestorDaEquipe = {
 };
 
 describe("ServicoTicket.atualizarPrioridade", () => {
+  it("não altera prioridade nem histórico para gestor inativo", async () => {
+    const { banco, transacao } = criarBanco({
+      ...gestorDaEquipe,
+      ativo: false,
+    });
+    transacao.ticket.findUnique.mockResolvedValue(ticketDaEquipe);
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    await expect(
+      servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.CRITICA,
+        usuarioId: gestorId,
+      }),
+    ).rejects.toBeInstanceOf(ErroNaoAutorizadoParaAlterarPrioridade);
+    expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
+    expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
+  it("retorna null quando o ticket não existe", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue(null);
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    expect(
+      await servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.CRITICA,
+        usuarioId: gestorId,
+      }),
+    ).toBeNull();
+    expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
+    expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
+  it("repetir a prioridade atual não gera nova atualização nem histórico", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue(ticketDaEquipe);
+    transacao.ticket.findUniqueOrThrow.mockResolvedValue(ticketDaEquipe);
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    await servico.atualizarPrioridade(ticketId, {
+      prioridade: Prioridade.MEDIA,
+      usuarioId: gestorId,
+    });
+
+    expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
+    expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
+  it("avisa sobre alteração concorrente sem registrar histórico de uma mudança perdida", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue(ticketDaEquipe);
+    transacao.ticket.updateMany.mockResolvedValue({ count: 0 });
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    await expect(
+      servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.CRITICA,
+        usuarioId: gestorId,
+      }),
+    ).rejects.toBeInstanceOf(ErroConflitoPrioridade);
+    expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
+  it("não altera a prioridade de ticket encerrado", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue({
+      ...ticketDaEquipe,
+      status: StatusTicket.ENCERRADO,
+    });
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    await expect(
+      servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.CRITICA,
+        usuarioId: gestorId,
+      }),
+    ).rejects.toBeInstanceOf(ErroTicketEncerrado);
+    expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
+    expect(transacao.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
   it("persiste a prioridade e registra o histórico para gestor da equipe", async () => {
     const { banco, transacao } = criarBanco(gestorDaEquipe);
     transacao.ticket.findUnique.mockResolvedValue(ticketDaEquipe);
@@ -72,6 +156,39 @@ describe("ServicoTicket.atualizarPrioridade", () => {
         evento: "PRIORIDADE_ALTERADA",
       }),
     });
+  });
+
+  it("permite gestor alocado mesmo quando o projeto pertence a outra equipe", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue({
+      ...ticketDaEquipe,
+      projeto: { equipeId: "outra-equipe" },
+    });
+    transacao.ticket.updateMany.mockResolvedValue({ count: 1 });
+    transacao.ticket.findUniqueOrThrow.mockResolvedValue(ticketDaEquipe);
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+    await servico.atualizarPrioridade(ticketId, {
+      prioridade: Prioridade.ALTA,
+      usuarioId: gestorId,
+    });
+    expect(transacao.ticket.updateMany).toHaveBeenCalledOnce();
+  });
+
+  it("bloqueia gestor do projeto quando sua equipe não está alocada", async () => {
+    const { banco, transacao } = criarBanco(gestorDaEquipe);
+    transacao.ticket.findUnique.mockResolvedValue({
+      ...ticketDaEquipe,
+      equipesAlocadas: [],
+      projeto: { equipeId },
+    });
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+    await expect(
+      servico.atualizarPrioridade(ticketId, {
+        prioridade: Prioridade.ALTA,
+        usuarioId: gestorId,
+      }),
+    ).rejects.toBeInstanceOf(ErroNaoAutorizadoParaAlterarPrioridade);
+    expect(transacao.ticket.updateMany).not.toHaveBeenCalled();
   });
 
   it("não altera a prioridade quando o gestor é de outra equipe", async () => {
@@ -115,11 +232,19 @@ describe("ServicoTicket.atualizarPrioridade", () => {
 
 describe("ServicoTicket equipes", () => {
   it("persiste as equipes selecionadas ao criar ticket, sem duplicar IDs repetidos", async () => {
-    const ticket = { id: ticketId };
+    const ticket = { id: ticketId, titulo: "Falha no equipamento" };
     const criar = vi.fn().mockResolvedValue(ticket);
-    const servico = new ServicoTicket({
-      ticket: { create: criar },
-    } as unknown as BancoTicket);
+    const atividade = vi.fn().mockResolvedValue({});
+    const tx = {
+      ticket: { create: criar, findUniqueOrThrow: vi.fn().mockResolvedValue(ticket) },
+      projeto: { findUnique: vi.fn().mockResolvedValue({ nome: "Projeto A" }) },
+      atividadeConta: { create: atividade },
+    };
+    const banco = {
+      ...tx,
+      $transaction: vi.fn((operacao: (tx: typeof tx) => unknown) => operacao(tx)),
+    };
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
 
     await servico.criar({
       titulo: "Falha no equipamento",
@@ -141,18 +266,32 @@ describe("ServicoTicket equipes", () => {
         }),
       }),
     );
+    expect(atividade).toHaveBeenCalledWith({
+      data: {
+        usuarioId: gestorId,
+        tipo: "TICKET | ABERTURA",
+        descricao: "Abriu o ticket Falha no equipamento vinculado ao projeto Projeto A.",
+      },
+    });
   });
 
   it("atribui equipe de forma idempotente", async () => {
-    const ticket = { id: ticketId };
+    const ticket = { id: ticketId, titulo: "Falha no equipamento" };
     const upsert = vi.fn();
-    const servico = new ServicoTicket({
+    const transaction = {
+      $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.EM_ANDAMENTO }]),
       ticket: {
         findUnique: vi.fn().mockResolvedValue(ticket),
         findUniqueOrThrow: vi.fn().mockResolvedValue(ticket),
       },
       ticketEquipe: { upsert },
-    } as unknown as BancoTicket);
+    };
+    const banco = {
+      ...transaction,
+      $transaction: vi.fn((operacao: (tx: typeof transaction) => unknown) => operacao(transaction)),
+      usuario: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
 
     await servico.alocarEquipe(ticketId, equipeId);
 
@@ -160,6 +299,36 @@ describe("ServicoTicket equipes", () => {
       where: { ticketId_equipeId: { ticketId, equipeId } },
       create: { ticketId, equipeId },
       update: {},
+    });
+  });
+
+  it("registra no perfil do gestor quando ele desatribui a equipe", async () => {
+    const ticket = { id: ticketId, titulo: "Falha no equipamento" };
+    const atividade = vi.fn().mockResolvedValue({});
+    const transaction = {
+      $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.EM_ANDAMENTO }]),
+      ticket: { findUniqueOrThrow: vi.fn().mockResolvedValue(ticket) },
+      ticketEquipe: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      equipe: { findUnique: vi.fn().mockResolvedValue({ nome: "Equipe Azul" }) },
+      atividadeConta: { create: atividade },
+    };
+    const banco = {
+      ticket: {
+        findUnique: vi.fn().mockResolvedValue(ticket),
+        findUniqueOrThrow: vi.fn().mockResolvedValue(ticket),
+      },
+      $transaction: vi.fn((operacao: (tx: typeof transaction) => unknown) => operacao(transaction)),
+    };
+    const servico = new ServicoTicket(banco as unknown as BancoTicket);
+
+    await servico.desalocarEquipe(ticketId, equipeId, gestorId);
+
+    expect(atividade).toHaveBeenCalledWith({
+      data: {
+        usuarioId: gestorId,
+        tipo: "TICKET",
+        descricao: "Desatribuiu equipe Equipe Azul do ticket Falha no equipamento.",
+      },
     });
   });
 });
@@ -170,7 +339,11 @@ describe("ordenação das listas de tickets", () => {
   const tickets = [
     { id: "media", prioridade: Prioridade.MEDIA, criadoEm: dataNova },
     { id: "baixa", prioridade: Prioridade.BAIXA, criadoEm: dataNova },
-    { id: "critica-antiga", prioridade: Prioridade.CRITICA, criadoEm: dataAntiga },
+    {
+      id: "critica-antiga",
+      prioridade: Prioridade.CRITICA,
+      criadoEm: dataAntiga,
+    },
     { id: "critica-nova", prioridade: Prioridade.CRITICA, criadoEm: dataNova },
     { id: "alta", prioridade: Prioridade.ALTA, criadoEm: dataNova },
   ];
@@ -208,4 +381,47 @@ describe("ordenação das listas de tickets", () => {
       "baixa",
     ]);
   });
+});
+
+describe("equipes de ticket encerrado", () => {
+  const ticketEncerrado = {
+    id: ticketId,
+    titulo: "Falha no equipamento",
+    status: StatusTicket.ENCERRADO,
+    equipesAlocadas: [{ equipeId }, { equipeId: "outra-equipe" }],
+  };
+  const gestor = { ativo: true, cargo: Cargo.GESTOR, equipeId };
+
+  function criarServico() {
+    const transacao = {
+      $queryRaw: vi.fn().mockResolvedValue([{ status: StatusTicket.ENCERRADO }]),
+      ticket: { findUnique: vi.fn().mockResolvedValue(ticketEncerrado) },
+      usuario: { findUnique: vi.fn().mockResolvedValue(gestor) },
+      equipe: { findUnique: vi.fn() },
+      ticketEquipe: { deleteMany: vi.fn(), upsert: vi.fn() },
+    };
+    const banco = {
+      ticket: { findUnique: vi.fn().mockResolvedValue(ticketEncerrado) },
+      $transaction: vi.fn(async (callback: (tx: typeof transacao) => unknown) =>
+        callback(transacao),
+      ),
+    };
+    return {
+      servico: new ServicoTicket(banco as unknown as BancoTicket),
+      transacao,
+    };
+  }
+
+  it.each(["atribuirEquipe", "desatribuirEquipe", "alocarEquipe", "desalocarEquipe"] as const)(
+    "%s recusa ticket encerrado",
+    async (metodo) => {
+      const { servico, transacao } = criarServico();
+
+      await expect(
+        servico[metodo](ticketId, "outra-equipe", gestorId),
+      ).rejects.toBeInstanceOf(ErroTicketEncerrado);
+      expect(transacao.ticketEquipe.deleteMany).not.toHaveBeenCalled();
+      expect(transacao.ticketEquipe.upsert).not.toHaveBeenCalled();
+    },
+  );
 });

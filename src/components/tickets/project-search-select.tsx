@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import {
   useProjetosDisponiveis,
   type ProjetoResumo,
-} from "@/hooks/use-projetos-disponiveis";
+} from "@/hooks/use-available-projects";
 
 interface ProjectSearchSelectProps {
   onSelect: (projeto: ProjetoResumo) => void;
@@ -13,7 +13,7 @@ interface ProjectSearchSelectProps {
 
 /**
  * "form de busca" descrito: mostra os projetos cabíveis ao usuário (já
- * filtrados por equipe em useProjetosDisponiveis) com uma barra de
+ * filtrados conforme cargo/equipe em useProjetosDisponiveis) com uma barra de
  * pesquisa por nome/cliente em cima.
  */
 export function ProjectSearchSelect({ onSelect }: ProjectSearchSelectProps) {

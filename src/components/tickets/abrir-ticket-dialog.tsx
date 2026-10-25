@@ -36,12 +36,13 @@ import { FormInput, FormTextarea } from "@/components/form/form-field";
 import { FormLabel } from "@/components/form/form-label";
 import { PrioritySelectField } from "@/components/tickets/priority-select-field";
 import { EquipesMultiSelect } from "@/components/tickets/equipes-multi-select";
-import { useProjetosDisponiveis } from "@/hooks/use-projetos-disponiveis";
+import { useProjetosDisponiveis } from "@/hooks/use-available-projects";
 import { useEquipes } from "@/hooks/use-equipes";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { SLA_OPTIONS, calcularSlaEm } from "@/lib/sla-options";
 import { ticketFormSchema } from "@/schemas/ticket-form.schema";
-import { Categoria, Prioridade } from "@/lib/ticket-enums";
+import { Categoria, Prioridade } from "@/types/ticket-enums";
+import { useState } from "react";
 
 const CATEGORIA_LABELS: Record<Categoria, string> = {
   [Categoria.INSTALACAO]: "Instalação",
@@ -82,7 +83,7 @@ export function AbrirTicketDialog({
   const usuario = useCurrentUser();
   const { projetos } = useProjetosDisponiveis();
 
-  const [campos, setCampos] = React.useState<CamposFormulario>({
+  const [campos, setCampos] = useState<CamposFormulario>({
     ...CAMPOS_VAZIOS,
     projetoId: projetoInicialId ?? "",
   });
@@ -141,6 +142,10 @@ export function AbrirTicketDialog({
 
   async function aoSubmeter(evento: React.FormEvent) {
     evento.preventDefault();
+    if (!usuario) {
+      setErroSubmissao("Selecione um usuário para abrir o ticket.");
+      return;
+    }
     setErroSubmissao(null);
 
     // Validação de campo obrigatório / formato — critério de aceite:
@@ -211,8 +216,8 @@ export function AbrirTicketDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[60vh]! min-h-min  max-w-xl  flex flex-col gap-5">
-        <DialogHeader className="h-fit">
+      <DialogContent className="max-h-[90vh] max-w-xl flex flex-col gap-5">
+        <DialogHeader className="h-fit shrink-0">
           <DialogTitle>Abrir Ticket</DialogTitle>
           <DialogDivider />
           <DialogDescription>
@@ -220,8 +225,13 @@ export function AbrirTicketDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={aoSubmeter} className="max-h-min" noValidate>
-          <DialogBody className=" min-h-[30vh] max-h-[60vh] pr-2 pl-2 overflow-y-auto scrollbar-none">
+        {/* Só o corpo rola: cabeçalho e botão ficam sempre dentro do card. */}
+        <form
+          onSubmit={aoSubmeter}
+          className="flex min-h-0 flex-1 flex-col"
+          noValidate
+        >
+          <DialogBody className="min-h-0 flex-1 overflow-y-auto pr-2 pl-2 scrollbar-none">
             <div className="flex flex-col gap-1.5">
               <FormLabel required>Vincular Projeto</FormLabel>
               <Select

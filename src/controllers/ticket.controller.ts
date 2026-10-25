@@ -1,0 +1,338 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { Cargo, Prisma } from "@/lib/generated/prisma/client";
+import { exigirCargo, exigirSessao } from "@/auth/exigir-cargo";
+import { obterSessaoDaRequisicao } from "@/auth/sessao";
+import {
+  ErroConflitoPrioridade,
+  ErroEquipeInvalida,
+  ErroNaoAutorizadoParaAlterarPrioridade,
+  ErroNaoAutorizadoParaGerenciarEquipes,
+  ErroTicketEncerrado,
+  ErroUltimaEquipeDoTicket,
+  ProjetoNaoEncontradoError,
+  servicoTicket,
+} from "@/services/ticket.service";
+import { servicoProjeto } from "@/services/projeto.service";
+import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
+import {
+  atualizarPrioridadeTicketSchema,
+  criarTicketSchema,
+  alocarEquipeTicketSchema,
+} from "@/schemas/ticket.schema";
+
+async function extrairJson(requisicao: Request) {
+  try {
+    return { corpo: (await requisicao.json()) as unknown, erro: null };
+  } catch {
+    return {
+      corpo: null,
+      erro: NextResponse.json(
+        { erro: "Corpo da requisição precisa ser um JSON válido." },
+        { status: 400 },
+      ),
+    };
+  }
+}
+
+function validarCorpo<T>(schema: z.ZodType<T>, corpo: unknown) {
+  const resultado = schema.safeParse(corpo);
+  if (!resultado.success) {
+    return {
+      dados: null,
+      erro: NextResponse.json(
+        {
+          erro: "Dados inválidos.",
+          detalhes: z.flattenError(resultado.error).fieldErrors,
+        },
+        { status: 400 },
+      ),
+    };
+  }
+  return { dados: resultado.data, erro: null };
+}
+
+function tratarErroInesperado(erro: unknown) {
+  if (erro instanceof ErroNaoAutorizadoParaGerenciarEquipes) {
+    return NextResponse.json({ erro: erro.message }, { status: 403 });
+  }
+  if (erro instanceof ErroEquipeInvalida) {
+    return NextResponse.json({ erro: erro.message }, { status: 400 });
+  }
+  if (erro instanceof ErroUltimaEquipeDoTicket || erro instanceof ErroTicketEncerrado) {
+    return NextResponse.json({ erro: erro.message }, { status: 409 });
+  }
+  if (erro instanceof ErroNaoAutorizadoParaAlterarPrioridade) {
+    return NextResponse.json({ erro: erro.message }, { status: 403 });
+  }
+
+  if (erro instanceof ErroConflitoPrioridade) {
+    return NextResponse.json({ erro: erro.message }, { status: 409 });
+  }
+
+  if (erro instanceof ProjetoNaoEncontradoError) {
+    return NextResponse.json({ erro: erro.message }, { status: 400 });
+  }
+
+  if (erro instanceof Prisma.PrismaClientKnownRequestError) {
+    if (erro.code === "P2003") {
+      return NextResponse.json(
+        {
+          erro: "Referência inválida: projetoId, abertoPorId, responsavelId ou equipeId não existem.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (erro.code === "P2025") {
+      return NextResponse.json(
+        { erro: "Ticket não encontrado." },
+        { status: 404 },
+      );
+    }
+
+    if (erro.code === "P2002") {
+      return NextResponse.json(
+        { erro: "Já existe um registro com esses dados." },
+        { status: 409 },
+      );
+    }
+  }
+
+  console.error(erro);
+  return NextResponse.json(
+    { erro: "Erro interno ao processar o ticket." },
+    { status: 500 },
+  );
+}
+
+export class ControladorTicket {
+  async criar(requisicao: Request) {
+    const acesso = await exigirCargo(
+      requisicao,
+      Cargo.TECNICO,
+      Cargo.SUPORTE,
+      Cargo.SUPORTE_INTERNO,
+      Cargo.GESTOR,
+    );
+    if (!acesso.autorizado) return acesso.resposta;
+
+    const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
+    if (erroDeParse) return erroDeParse;
+
+    const { dados, erro: erroDeValidacao } = validarCorpo(
+      criarTicketSchema,
+      corpo,
+    );
+    if (erroDeValidacao) return erroDeValidacao;
+
+    try {
+      const projeto = await servicoProjeto.buscarDetalhePorId(dados.projetoId);
+      if (!projeto?.ativo) {
+        return NextResponse.json(
+          { erro: "Projeto não encontrado ou inativo." },
+          { status: 400 },
+        );
+      }
+
+      if (
+        acesso.usuario.cargo !== Cargo.SUPORTE &&
+        acesso.usuario.cargo !== Cargo.SUPORTE_INTERNO &&
+        (!acesso.usuario.equipeId ||
+          projeto.equipeId !== acesso.usuario.equipeId)
+      ) {
+        return NextResponse.json(
+          { erro: "Você só pode abrir tickets em projetos da sua equipe." },
+          { status: 403 },
+        );
+      }
+
+      const ticket = await servicoTicket.criar({
+        ...dados,
+        abertoPorId: acesso.usuario.id,
+      });
+      return NextResponse.json(toTicketDTO(ticket), { status: 201 });
+    } catch (erro) {
+      return tratarErroInesperado(erro);
+    }
+  }
+
+  async listar(requisicao: Request) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    const usuarioId = new URL(requisicao.url).searchParams.get("usuarioId");
+
+    if (usuarioId !== null) {
+      const idValidado = z.uuid().safeParse(usuarioId);
+      if (!idValidado.success) {
+        return NextResponse.json(
+          { erro: "usuarioId deve ser um UUID válido." },
+          { status: 400 },
+        );
+      }
+
+      try {
+        const tickets = await servicoTicket.listarPorEquipeDoUsuario(
+          idValidado.data,
+        );
+        return NextResponse.json(tickets, { status: 200 });
+      } catch (erro) {
+        return tratarErroInesperado(erro);
+      }
+    }
+
+    try {
+      const tickets = await servicoTicket.listarTodos();
+      return NextResponse.json(tickets.map(toTicketDTO), { status: 200 });
+    } catch (erro) {
+      return tratarErroInesperado(erro);
+    }
+  }
+
+  async atualizarPrioridade(requisicao: Request, ticketId: string) {
+    const idValidado = z.uuid().safeParse(ticketId);
+    if (!idValidado.success) {
+      return NextResponse.json(
+        { erro: "ID do ticket inválido." },
+        { status: 400 },
+      );
+    }
+
+    const acesso = await exigirCargo(requisicao, Cargo.GESTOR);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
+    if (erroDeParse) return erroDeParse;
+
+    const { dados, erro: erroDeValidacao } = validarCorpo(
+      atualizarPrioridadeTicketSchema,
+      corpo,
+    );
+    if (erroDeValidacao) return erroDeValidacao;
+
+    try {
+      const ticket = await servicoTicket.atualizarPrioridade(idValidado.data, {
+        ...dados,
+        usuarioId: acesso.usuario.id,
+      });
+      if (!ticket) {
+        return NextResponse.json(
+          { erro: "Ticket não encontrado." },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json(toTicketDTO(ticket), { status: 200 });
+    } catch (erro) {
+      return tratarErroInesperado(erro);
+    }
+  }
+
+  async buscarDetalhe(requisicao: Request, ticketId: string) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    try {
+      const ticket = await servicoTicket.buscarDetalhePorId(ticketId);
+      if (!ticket) {
+        return NextResponse.json(
+          { erro: "Ticket não encontrado." },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json(toTicketDTO(ticket), { status: 200 });
+    } catch (erro) {
+      console.error(erro);
+      return NextResponse.json(
+        { erro: "Erro interno ao buscar o ticket." },
+        { status: 500 },
+      );
+    }
+  }
+
+  async alocarEquipe(requisicao: Request, ticketId: string) {
+    const acesso = await exigirSessao(requisicao);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    const idValidado = z.uuid().safeParse(ticketId);
+    if (!idValidado.success) {
+      return NextResponse.json(
+        { erro: "ID do ticket inválido." },
+        { status: 400 },
+      );
+    }
+
+    const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
+    if (erroDeParse) return erroDeParse;
+
+    const { dados, erro: erroDeValidacao } = validarCorpo(
+      alocarEquipeTicketSchema,
+      corpo,
+    );
+    if (erroDeValidacao) return erroDeValidacao;
+
+    try {
+      const ticket = await servicoTicket.alocarEquipe(
+        idValidado.data,
+        dados.equipeId,
+      );
+      if (!ticket) {
+        return NextResponse.json(
+          { erro: "Ticket não encontrado." },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json(toTicketDTO(ticket), { status: 200 });
+    } catch (erro) {
+      return tratarErroInesperado(erro);
+    }
+  }
+  private async gerenciarEquipe(
+    requisicao: Request,
+    ticketId: string,
+    acao: "atribuir" | "desatribuir",
+  ) {
+    const idValidado = z.uuid().safeParse(ticketId);
+    if (!idValidado.success) {
+      return NextResponse.json({ erro: "ID do ticket inválido." }, { status: 400 });
+    }
+
+    const sessao = obterSessaoDaRequisicao(requisicao);
+    if (!sessao) {
+      return NextResponse.json({ erro: "Não autenticado." }, { status: 401 });
+    }
+
+    const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
+    if (erroDeParse) return erroDeParse;
+
+    const { dados, erro: erroDeValidacao } = validarCorpo(
+      alocarEquipeTicketSchema,
+      corpo,
+    );
+    if (erroDeValidacao) return erroDeValidacao;
+
+    try {
+      const ticket =
+        acao === "atribuir"
+          ? await servicoTicket.atribuirEquipe(idValidado.data, dados.equipeId, sessao.usuarioId)
+          : await servicoTicket.desatribuirEquipe(idValidado.data, dados.equipeId, sessao.usuarioId);
+
+      if (!ticket) {
+        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+      }
+      return NextResponse.json(toTicketDTO(ticket), { status: 200 });
+    } catch (erro) {
+      return tratarErroInesperado(erro);
+    }
+  }
+
+  atribuirEquipe(requisicao: Request, ticketId: string) {
+    return this.gerenciarEquipe(requisicao, ticketId, "atribuir");
+  }
+
+  desatribuirEquipe(requisicao: Request, ticketId: string) {
+    return this.gerenciarEquipe(requisicao, ticketId, "desatribuir");
+  }
+}
+
+export const controladorTicket = new ControladorTicket();
