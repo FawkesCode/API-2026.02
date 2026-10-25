@@ -74,6 +74,8 @@ model Equipe {
   usuarios Usuario[]
   projetos Projeto[]
   ticketsAlocados TicketEquipe[]
+  historicos      HistoricoTicket[] @relation("HistoricoEquipe")
+  iniciosTicket   HistoricoTicket[] @relation("HistoricoInicioEquipe")
 
   @@map("equipes")
 }
@@ -195,8 +197,21 @@ model HistoricoTicket {
   usuarioId String?  @map("usuario_id") @db.Char(36)
   usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
 
+  // Equipe do autor no momento do registro: o usuário pode trocar de equipe depois.
+  equipeId String? @map("equipe_id") @db.Char(36)
+  equipe   Equipe? @relation("HistoricoEquipe", fields: [equipeId], references: [id], onDelete: SetNull)
+
+  // Preenchido só em ATIVIDADE_INICIADA. O índice único garante um início por
+  // equipe mesmo com requisições simultâneas; nos outros eventos fica NULL, que
+  // o índice único do MySQL aceita repetido.
+  inicioEquipeId String? @map("inicio_equipe_id") @db.Char(36)
+  inicioEquipe   Equipe? @relation("HistoricoInicioEquipe", fields: [inicioEquipeId], references: [id], onDelete: SetNull)
+
+  @@unique([ticketId, inicioEquipeId], map: "uq_historico_inicio_equipe")
   @@index([ticketId, criadoEm], map: "ix_historico_ticket_data")
   @@index([usuarioId], map: "ix_historico_usuario")
+  @@index([equipeId], map: "ix_historico_equipe")
+  @@index([inicioEquipeId], map: "ix_historico_inicio_equipe")
   @@map("historico_ticket")
 }
 

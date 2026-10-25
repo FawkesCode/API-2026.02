@@ -9,8 +9,6 @@ import { getTicketLogs } from "@/lib/data/ticket-logs";
 import { getUsuarioLogado } from "@/lib/data/sessao";
 import { toAutor } from "@/lib/mappers/historico.mapper";
 import { Cargo } from "@/lib/generated/prisma/client";
-import { servicoHistoricoTicket } from "@/services/historico.service";
-
 type PriorityLevel = "critical" | "high" | "medium" | "low";
 
 const TicketPriorityMap: Record<string, PriorityLevel> = {
@@ -32,10 +30,10 @@ export default async function TicketsLogsView({ id }: { id: string }) {
   const podeAlterarPrioridade = daEquipe && usuarioLogado?.cargo === Cargo.GESTOR;
   // Ticket encerrado fica só para leitura: sem trocar prioridade nem equipes.
   const podeEditarTicket = podeAlterarPrioridade && ticket.status !== "Encerrado";
+  // Sai dos logs já carregados, sem consulta extra.
   const equipeIniciou =
-    daEquipe && equipeDoUsuarioId
-      ? await servicoHistoricoTicket.equipeJaIniciou(id, equipeDoUsuarioId)
-      : false;
+    daEquipe &&
+    logs.some((log) => log.tipo === "aviso" && log.inicioEquipeId === equipeDoUsuarioId);
 
   return (
     <>

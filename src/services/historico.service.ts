@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Cargo, StatusTicket, type Prisma, type PrismaClient } from "@/lib/generated/prisma/client";
+import { Cargo, Prisma, StatusTicket, type PrismaClient } from "@/lib/generated/prisma/client";
 import type { CriarLogTicketSchema } from "@/schemas/historico.schema";
 
 const incluirUsuario = {
@@ -11,6 +11,7 @@ const incluirUsuario = {
       equipe: { select: { nome: true } },
     },
   },
+  equipe: { select: { nome: true } },
 } satisfies Prisma.HistoricoTicketInclude;
 
 export type LogTicketComUsuario = Prisma.HistoricoTicketGetPayload<{
@@ -37,19 +38,8 @@ const TRANSICOES: Record<string, { origens: StatusTicket[]; destino: StatusTicke
   ENCERRAMENTO_NEGADO: { origens: [StatusTicket.SOLICITACAO_ENCERRAMENTO], destino: StatusTicket.EM_REVISAO },
 };
 
-type ClienteDb = Pick<PrismaClient, "historicoTicket">;
-
 export class ServicoHistoricoTicket {
   constructor(private readonly db: PrismaClient = prisma) {}
-
-  /** Se algum membro da equipe já registrou o início dos trabalhos no ticket. */
-  async equipeJaIniciou(ticketId: string, equipeId: string, db: ClienteDb = this.db) {
-    const inicio = await db.historicoTicket.findFirst({
-      where: { ticketId, evento: "ATIVIDADE_INICIADA", usuario: { equipeId } },
-      select: { id: true },
-    });
-    return inicio !== null;
-  }
 
   async listarPorTicket(ticketId: string) {
     const ticket = await this.db.ticket.findUnique({ where: { id: ticketId } });
@@ -86,12 +76,13 @@ export class ServicoHistoricoTicket {
       if ((decisao && usuario.cargo !== Cargo.GESTOR) || dados.evento === "PRIORIDADE_ALTERADA") {
         throw new UsuarioSemAcessoAoTicketError();
       }
-      if (["ATIVIDADE_INICIADA", "ENCERRAMENTO_SOLICITADO"].includes(dados.evento)) {
-        const jaIniciou = await this.equipeJaIniciou(ticketId, usuario.equipeId, tx);
-        if (dados.evento === "ATIVIDADE_INICIADA" && jaIniciou) {
-          throw new TransicaoTicketInvalidaError("Sua equipe já iniciou os trabalhos neste ticket.");
-        }
-        if (dados.evento === "ENCERRAMENTO_SOLICITADO" && !jaIniciou) {
+      // O início não pode ser desfeito, então checar antes de solicitar não tem corrida.
+      if (dados.evento === "ENCERRAMENTO_SOLICITADO") {
+        const inicio = await tx.historicoTicket.findFirst({
+          where: { ticketId, inicioEquipeId: usuario.equipeId },
+          select: { id: true },
+        });
+        if (!inicio) {
           throw new TransicaoTicketInvalidaError("Sua equipe precisa iniciar os trabalhos antes de solicitar o encerramento.");
         }
       }
@@ -108,10 +99,27 @@ export class ServicoHistoricoTicket {
           throw new TransicaoTicketInvalidaError("O status foi alterado por outro usuário. Atualize a página.");
         }
       }
-      return tx.historicoTicket.create({
-        data: { ticketId, evento: dados.evento, descricao: dados.descricao, usuarioId: dados.usuarioId },
-        include: incluirUsuario,
-      });
+      const inicio = dados.evento === "ATIVIDADE_INICIADA";
+      try {
+        return await tx.historicoTicket.create({
+          data: {
+            ticketId,
+            evento: dados.evento,
+            descricao: dados.descricao,
+            usuarioId: dados.usuarioId,
+            equipeId: usuario.equipeId,
+            inicioEquipeId: inicio ? usuario.equipeId : null,
+          },
+          include: incluirUsuario,
+        });
+      } catch (erro) {
+        // uq_historico_inicio_equipe: outro membro da equipe iniciou primeiro,
+        // inclusive numa requisição simultânea. A transação desfaz o status.
+        if (inicio && erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2002") {
+          throw new TransicaoTicketInvalidaError("Sua equipe já iniciou os trabalhos neste ticket.");
+        }
+        throw erro;
+      }
     });
   }
 }

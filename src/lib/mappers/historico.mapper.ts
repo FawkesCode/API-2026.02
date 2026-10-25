@@ -22,6 +22,8 @@ export type LogItem =
     status: LogStatus;
     titulo: string;
     tituloTrechos: TrechoTitulo[];
+    /** Equipe que iniciou os trabalhos, só em ATIVIDADE_INICIADA. */
+    inicioEquipeId: string | null;
     descricao: string;
     criadoEm: Date;
   }
@@ -128,7 +130,8 @@ export function toLogItem(log: LogResposta): LogItem {
   if (ehEventoAutomatico(log.evento)) {
     const aviso = AvisoPorEvento[log.evento];
     const tituloTrechos = aviso.titulo({
-      equipe: log.usuario?.equipe?.nome ?? "responsável",
+      // A equipe gravada no log vale mais que a atual do autor, que pode ter mudado.
+      equipe: log.equipe?.nome ?? log.usuario?.equipe?.nome ?? "responsável",
       nome: log.usuario?.nome ?? "Usuário removido",
     });
 
@@ -138,6 +141,7 @@ export function toLogItem(log: LogResposta): LogItem {
       status: aviso.status,
       titulo: tituloTrechos.map((trecho) => trecho.texto).join(""),
       tituloTrechos,
+      inicioEquipeId: log.inicioEquipeId,
       descricao: log.descricao,
       criadoEm,
     };

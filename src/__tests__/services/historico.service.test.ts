@@ -1,10 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { Cargo, StatusTicket } from "@/lib/generated/prisma/client";
+import { Cargo, Prisma, StatusTicket } from "@/lib/generated/prisma/client";
 import {
   ServicoHistoricoTicket,
   TransicaoTicketInvalidaError,
   UsuarioSemAcessoAoTicketError,
 } from "@/services/historico.service";
+
+function violacaoDoInicioUnico() {
+  return new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+    code: "P2002",
+    clientVersion: "test",
+  });
+}
 
 function preparar({
   cargo = Cargo.GESTOR as Cargo,
@@ -134,16 +141,33 @@ describe("início dos trabalhos por equipe", () => {
       jaIniciou: false,
     });
     await servico.criar("ticket", inicio);
+    expect(tx.ticket.updateMany).not.toHaveBeenCalled();
+    // A equipe do momento fica gravada no log; o início ganha o marcador único.
+    expect(tx.historicoTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          equipeId: "equipe",
+          inicioEquipeId: "equipe",
+        }),
+      }),
+    );
+  });
+
+  it("grava a equipe sem o marcador de início nos outros eventos", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+    });
+    await servico.criar("ticket", { ...dados, evento: "ENCERRAMENTO_SOLICITADO" });
     expect(tx.historicoTicket.findFirst).toHaveBeenCalledWith({
-      where: {
-        ticketId: "ticket",
-        evento: "ATIVIDADE_INICIADA",
-        usuario: { equipeId: "equipe" },
-      },
+      where: { ticketId: "ticket", inicioEquipeId: "equipe" },
       select: { id: true },
     });
-    expect(tx.ticket.updateMany).not.toHaveBeenCalled();
-    expect(tx.historicoTicket.create).toHaveBeenCalledOnce();
+    expect(tx.historicoTicket.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ equipeId: "equipe", inicioEquipeId: null }),
+      }),
+    );
   });
 
   it.each([StatusTicket.NAO_INICIADO, StatusTicket.EM_REVISAO])(
@@ -162,16 +186,45 @@ describe("início dos trabalhos por equipe", () => {
     },
   );
 
-  it("não deixa a mesma equipe iniciar duas vezes", async () => {
+  it("converte a violação do índice único em transição inválida", async () => {
     const { servico, tx } = preparar({
       cargo: Cargo.TECNICO,
       status: StatusTicket.EM_ANDAMENTO,
-      jaIniciou: true,
     });
+    tx.historicoTicket.create.mockRejectedValue(violacaoDoInicioUnico());
     await expect(servico.criar("ticket", inicio)).rejects.toBeInstanceOf(
       TransicaoTicketInvalidaError,
     );
-    expect(tx.historicoTicket.create).not.toHaveBeenCalled();
+  });
+
+  it("aceita só um de dois inícios simultâneos da mesma equipe", async () => {
+    // Simula o banco: o índice único deixa passar só o primeiro insert do par
+    // (ticket, inicioEquipeId), mesmo que as duas transações tenham começado juntas.
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.EM_ANDAMENTO,
+    });
+    const inicios = new Set<string>();
+    tx.historicoTicket.create.mockImplementation(
+      async ({ data }: { data: { ticketId: string; inicioEquipeId: string | null } }) => {
+        await Promise.resolve();
+        const chave = `${data.ticketId}:${data.inicioEquipeId}`;
+        if (data.inicioEquipeId && inicios.has(chave)) throw violacaoDoInicioUnico();
+        inicios.add(chave);
+        return { id: "log" };
+      },
+    );
+
+    const resultados = await Promise.allSettled([
+      servico.criar("ticket", inicio),
+      servico.criar("ticket", { ...inicio, usuarioId: "outro-tecnico" }),
+    ]);
+
+    expect(resultados.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const recusado = resultados.find((r) => r.status === "rejected");
+    expect((recusado as PromiseRejectedResult).reason).toBeInstanceOf(
+      TransicaoTicketInvalidaError,
+    );
   });
 
   it.each([StatusTicket.SOLICITACAO_ENCERRAMENTO, StatusTicket.ENCERRADO])(
