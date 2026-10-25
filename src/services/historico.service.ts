@@ -79,6 +79,9 @@ export class ServicoHistoricoTicket {
           !ticket.equipesAlocadas.some((alocacao) => alocacao.equipeId === usuario.equipeId)) {
         throw new UsuarioSemAcessoAoTicketError();
       }
+      if (ticket.status === StatusTicket.ENCERRADO) {
+        throw new TransicaoTicketInvalidaError("Este ticket está encerrado e não recebe novos logs.");
+      }
       const decisao = ["ENCERRAMENTO_APROVADO", "ENCERRAMENTO_NEGADO"].includes(dados.evento);
       if ((decisao && usuario.cargo !== Cargo.GESTOR) || dados.evento === "PRIORIDADE_ALTERADA") {
         throw new UsuarioSemAcessoAoTicketError();

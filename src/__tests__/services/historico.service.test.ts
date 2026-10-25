@@ -201,3 +201,16 @@ describe("início dos trabalhos por equipe", () => {
     expect(tx.ticket.updateMany).not.toHaveBeenCalled();
   });
 });
+
+describe("ticket encerrado", () => {
+  it("não aceita log manual depois do encerramento", async () => {
+    const { servico, tx } = preparar({
+      cargo: Cargo.TECNICO,
+      status: StatusTicket.ENCERRADO,
+    });
+    await expect(
+      servico.criar("ticket", { ...dados, evento: "Visita extra" }),
+    ).rejects.toBeInstanceOf(TransicaoTicketInvalidaError);
+    expect(tx.historicoTicket.create).not.toHaveBeenCalled();
+  });
+});

@@ -107,6 +107,8 @@ function TicketLogs({
     equipeIniciou && ["Em andamento", "Em revisão"].includes(status);
   const podeDecidirAgora =
     podeDecidir && status === "Solicitação de encerramento";
+  // Ticket encerrado não recebe novos logs.
+  const mostrarAreaDeEnvio = podeRegistrar && !!autor && status !== "Encerrado";
 
   const listaRef = useRef<HTMLElement>(null);
   const jaRenderizou = useRef(false);
@@ -224,7 +226,10 @@ function TicketLogs({
       <section
         ref={listaRef}
         onScroll={aoRolar}
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-none border-x border-gray-200 bg-slate-100 p-6"
+        className={cn(
+          "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-none border-x border-gray-200 bg-slate-100 p-6",
+          !mostrarAreaDeEnvio && "rounded-b-md border-b",
+        )}
       >
         <h3 className="font-bold text-card-foreground">
           LOGS DE ATIVIDADE
@@ -266,7 +271,7 @@ function TicketLogs({
         )}
       </section>
 
-      {podeRegistrar && autor && (
+      {mostrarAreaDeEnvio && autor && (
         <section className="shrink-0 rounded-b-md border border-gray-200 bg-white p-6">
           {(podeIniciar || podeSolicitarEncerramento || podeDecidirAgora) && (
             <div className="flex flex-wrap gap-2 pb-4">
