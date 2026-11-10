@@ -15,3 +15,11 @@ export const createUserSchema = z.object({
 });
 
 export type CreateUserSchema = z.infer<typeof createUserSchema>;
+
+/**
+ * Edição (PUT): nome, email e cargo são obrigatórios. Senha não faz parte
+ * da edição; campos extras (como `senha`) são descartados pelo zod.
+ */
+export const updateUserSchema = createUserSchema.omit({ senha: true });
+
+export type UpdateUserSchema = z.infer<typeof updateUserSchema>;
