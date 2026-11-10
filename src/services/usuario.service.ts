@@ -6,6 +6,26 @@ import type { FiltrosUsuario } from "@/schemas/usuario-filtros.schema";
 
 export const TAMANHO_PAGINA_USUARIOS = 10;
 
+export class ErroUsuarioNaoEncontrado extends Error {
+  constructor(message = "Usuário não encontrado.") {
+    super(message);
+    this.name = "ErroUsuarioNaoEncontrado";
+  }
+}
+
+export class ErroAlterarProprioCargo extends Error {
+  constructor(message = "Você não pode alterar o seu próprio cargo.") {
+    super(message);
+    this.name = "ErroAlterarProprioCargo";
+  }
+}
+
+export interface DadosAtualizarUsuario {
+  nome: string;
+  email: string;
+  cargo: Cargo;
+}
+
 const ROTULO_CARGO: Record<Cargo, string> = {
   [Cargo.TECNICO]: "Técnico",
   [Cargo.GESTOR]: "Gestor",
@@ -86,6 +106,36 @@ function intervaloCriadoEm(filtros: FiltrosUsuario) {
   if (!inicio) return undefined;
   const fim = paraDia(filtros.dataFim) ?? inicio;
   return { gte: startOfDay(inicio), lte: endOfDay(fim) };
+}
+
+/**
+ * Cria a equipe própria de um gestor. Nome único do banco: em caso de
+ * homônimos, acrescenta um sufixo.
+ */
+async function criarEquipePropria(
+  tx: Prisma.TransactionClient,
+  nomeGestor: string,
+) {
+  const base = `Equipe ${nomeGestor}`.slice(0, 88);
+  let nomeEquipe = base;
+  let sufixo = 2;
+  while (
+    await tx.equipe.findUnique({
+      where: { nome: nomeEquipe },
+      select: { id: true },
+    })
+  ) {
+    const final = ` (${sufixo++})`;
+    nomeEquipe = `${base.slice(0, 100 - final.length)}${final}`;
+  }
+  const equipe = await tx.equipe.create({
+    data: {
+      nome: nomeEquipe,
+      descricao: `Equipe gerenciada por ${nomeGestor}.`,
+    },
+    select: { id: true },
+  });
+  return { id: equipe.id, nome: nomeEquipe };
 }
 
 export class ServicoUsuario {
@@ -186,26 +236,8 @@ export class ServicoUsuario {
     return prisma.$transaction(async (tx) => {
       if (userData.cargo === Cargo.GESTOR) {
         // Cada novo gestor recebe uma equipe própria desde o cadastro.
-        // Nome único do banco: em caso de homônimos, acrescenta um sufixo.
-        const base = `Equipe ${userData.nome}`.slice(0, 88);
-        let nomeEquipe = base;
-        let sufixo = 2;
-        while (
-          await tx.equipe.findUnique({
-            where: { nome: nomeEquipe },
-            select: { id: true },
-          })
-        ) {
-          const final = ` (${sufixo++})`;
-          nomeEquipe = `${base.slice(0, 100 - final.length)}${final}`;
-        }
-        const equipe = await tx.equipe.create({
-          data: {
-            nome: nomeEquipe,
-            descricao: `Equipe gerenciada por ${userData.nome}.`,
-          },
-          select: { id: true },
-        });
+        const equipe = await criarEquipePropria(tx, userData.nome);
+        const nomeEquipe = equipe.nome;
         const gestor = await tx.usuario.create({
           data: {
             ...userData,
@@ -253,6 +285,76 @@ export class ServicoUsuario {
           },
         });
       }
+      return usuario;
+    });
+  }
+
+  /**
+   * Edita nome, email e cargo de um usuário. A senha nunca é lida nem
+   * alterada aqui.
+   *
+   * Troca de cargo mantém a regra do cadastro:
+   * - virou GESTOR: recebe uma equipe própria nova;
+   * - deixou de ser GESTOR: sai da equipe (`equipeId = null`).
+   *
+   * Email duplicado sobe como P2002 do Prisma (tratado no controller).
+   */
+  async updateUser(
+    usuarioId: string,
+    editorId: string,
+    data: DadosAtualizarUsuario,
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const atual = await tx.usuario.findUnique({
+        where: { id: usuarioId },
+        select: { id: true, cargo: true },
+      });
+      if (!atual) throw new ErroUsuarioNaoEncontrado();
+
+      const trocouCargo = data.cargo !== atual.cargo;
+      // Evita que o analista perca o próprio acesso sem querer.
+      if (trocouCargo && usuarioId === editorId) {
+        throw new ErroAlterarProprioCargo();
+      }
+
+      let equipeId: string | null | undefined;
+      let equipeCriada: string | undefined;
+      if (trocouCargo && data.cargo === Cargo.GESTOR) {
+        const equipe = await criarEquipePropria(tx, data.nome);
+        equipeId = equipe.id;
+        equipeCriada = equipe.nome;
+      } else if (trocouCargo && atual.cargo === Cargo.GESTOR) {
+        equipeId = null;
+      }
+
+      const usuario = await tx.usuario.update({
+        where: { id: usuarioId },
+        data: {
+          nome: data.nome,
+          email: data.email,
+          cargo: data.cargo,
+          ...(equipeId !== undefined ? { equipeId } : {}),
+        },
+        select: createdUserData,
+      });
+
+      if (equipeCriada) {
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId: usuario.id,
+            tipo: "EQUIPE",
+            descricao: `Equipe ${equipeCriada} criada automaticamente para sua conta.`,
+          },
+        });
+      }
+      await tx.atividadeConta.create({
+        data: {
+          usuarioId: editorId,
+          tipo: "EDICAO",
+          descricao: `Editou usuário ${usuario.nome} do tipo ${ROTULO_CARGO[usuario.cargo]}.`,
+        },
+      });
+
       return usuario;
     });
   }
