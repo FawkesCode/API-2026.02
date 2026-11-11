@@ -6,7 +6,7 @@ import { format, isValid } from "date-fns";
 import { X } from "lucide-react";
 import DateRangePicker, { type IntervaloData } from "../date-range-picker";
 import { Button } from "../ui/button";
-import { Card, CardContent } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Field } from "../ui/field";
 // Exporte CLEAR_BUTTON_CLASS e FilterInput em ticket-filter.tsx (hoje são
 // internos). Ideal depois: mover os dois para components/filter-input.tsx.
@@ -106,7 +106,14 @@ export default function UsuariosFilter() {
   const algumFiltroAtivo = !!(busca || status || cargo || temDataNaUrl);
 
   return (
-    <Card className="col-span-full gap-4! overflow-visible">
+    <Card className="col-span-full gap-4! overflow-visible relative">
+      <CardHeader>
+        <CardTitle>
+          <p className="text-sm text-muted-foreground absolute -top-3 bg-muted p-1 pl-3 pr-3 rounded-xl border border-gray-200">
+            Filtros
+          </p>
+        </CardTitle>
+      </CardHeader>
       <CardContent className="flex flex-row flex-wrap items-center gap-x-4 gap-y-5 xl:flex-nowrap">
         <FilterInput
           title="Pesquisa"

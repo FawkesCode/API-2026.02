@@ -8,6 +8,7 @@ import {
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
 import { RELACOES_TICKET } from "@/services/ticket.service";
 import { ordenarTicketsPorPrioridade } from "@/services/ticket-order";
+import { normalizedPagination, PAGINATION_CONFIGS } from "@/lib/pagination";
 
 const DIAS_SLA_INSTALACAO_PADRAO = 7;
 
@@ -183,6 +184,8 @@ export class ServicoProjeto {
       status?: StatusTicket;
       titulo?: string;
       data?: string;
+      pagina?: number;
+      itensPorPagina?: number;
     },
   ) {
     const where: Prisma.TicketWhereInput = {
@@ -213,17 +216,25 @@ export class ServicoProjeto {
       };
     }
 
-    const tickets = await prisma.ticket.findMany({
+    const { pagina: paginaPedida, itensPorPagina } = normalizedPagination(
+      filtros?.pagina,
+      filtros?.itensPorPagina,
+    );
+
+    const total = await prisma.ticket.count({ where });
+    const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
+    const pagina = Math.min(paginaPedida, totalPaginas);
+
+    const itens = await prisma.ticket.findMany({
       where,
-      orderBy: {
-        criadoEm: "desc",
-      },
-      // A tela do projeto também precisa renderizar as equipes persistidas;
-      // sem este include, o mapper recebia tickets sem equipes e exibia vazio.
+      orderBy: [{ prioridade: "desc" }, { criadoEm: "desc" }, { id: "desc" }],
+      skip: (pagina - 1) * itensPorPagina,
+      take: itensPorPagina,
       include: RELACOES_TICKET,
     });
 
-    return ordenarTicketsPorPrioridade(tickets);
+    // Tirei a função de ordenar ticket, pq a principio o prioridade: desc faz o trabalho, mas aconselho revisitar isso para ter certeza
+    return { itens, total, pagina, totalPaginas, itensPorPagina };
   }
 
   async listarAtivos() {
@@ -260,6 +271,57 @@ export class ServicoProjeto {
         },
       },
     });
+  }
+
+  async listarAtivosPaginado(filtros?: {
+    pagina?: number;
+    itensPorPagina?: number;
+  }) {
+    const where: Prisma.ProjetoWhereInput = { ativo: true };
+
+    const { pagina: paginaPedida, itensPorPagina } = normalizedPagination(
+      filtros?.pagina,
+      filtros?.itensPorPagina,
+      PAGINATION_CONFIGS.projects,
+    );
+
+    const total = await prisma.projeto.count({ where });
+    const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
+    const pagina = Math.min(paginaPedida, totalPaginas);
+
+    const itens = await prisma.projeto.findMany({
+      where,
+      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
+      skip: (pagina - 1) * itensPorPagina,
+      take: itensPorPagina,
+      include: {
+        cliente: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+        equipe: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+        gestor: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+        _count: {
+          select: {
+            tickets: true,
+          },
+        },
+      },
+    });
+
+    return { itens, total, pagina, totalPaginas, itensPorPagina };
   }
 
   async listarTicketsPorProjeto(projetoId: string) {

@@ -19,6 +19,10 @@ export const filtrosUsuarioSchema = z.object({
   dataInicio: dataIso,
   dataFim: dataIso,
   pagina: z.coerce.number().int().min(1).catch(1),
+  itensPorPagina: z.coerce
+    .number()
+    .refine((n) => ([5, 10, 20, 50] as readonly number[]).includes(n))
+    .catch(10),
 });
 
 export type FiltrosUsuario = z.infer<typeof filtrosUsuarioSchema>;

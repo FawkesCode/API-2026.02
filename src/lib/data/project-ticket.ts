@@ -34,6 +34,8 @@ export interface FiltrosTicket {
   status?: StatusTicket;
   titulo?: string;
   data?: string;
+  pagina?: number;
+  itensPorPagina?: number;
 }
 
 export async function getProjectTickets(id: string, filtros?: FiltrosTicket) {
@@ -42,11 +44,12 @@ export async function getProjectTickets(id: string, filtros?: FiltrosTicket) {
   }
 
   let projeto;
-  let tickets;
+  let itens, total, pagina, totalPaginas, itensPorPagina;
 
   try {
     projeto = await servicoProjeto.buscarDetalhePorId(id);
-    tickets = await servicoProjeto.listarTicketsDoProjeto(id, filtros);
+    ({ itens, total, pagina, totalPaginas, itensPorPagina } =
+      await servicoProjeto.listarTicketsDoProjeto(id, filtros));
   } catch (error) {
     console.error(`[getProjectTickets] Erro ao buscar os tickets:`, error);
     throw new Error(
@@ -58,7 +61,13 @@ export async function getProjectTickets(id: string, filtros?: FiltrosTicket) {
     notFound();
   }
 
-  return tickets.map((ticket) => toTicketDTO(ticket));
+  return {
+    itens: itens.map((ticket) => toTicketDTO(ticket)),
+    total,
+    pagina,
+    totalPaginas,
+    itensPorPagina,
+  };
 }
 
 export async function getTicket(id: string) {

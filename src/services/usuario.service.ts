@@ -203,24 +203,21 @@ export class ServicoUsuario {
         : {}),
     };
 
+    const itensPorPagina = filtros?.itensPorPagina ?? 10;
     const total = await prisma.usuario.count({ where });
-    const totalPaginas = Math.max(
-      1,
-      Math.ceil(total / TAMANHO_PAGINA_USUARIOS),
-    );
+    const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
     // Link antigo / edição manual da URL: nunca cai numa página vazia.
     const pagina = Math.min(filtros.pagina, totalPaginas);
 
     const itens = await prisma.usuario.findMany({
       where,
       select: camposListaUsuario,
-      // `id` desempata nomes iguais para a paginação ficar estável.
       orderBy: [{ ativo: "desc" }, { nome: "asc" }, { id: "asc" }],
-      skip: (pagina - 1) * TAMANHO_PAGINA_USUARIOS,
-      take: TAMANHO_PAGINA_USUARIOS,
+      skip: (pagina - 1) * itensPorPagina,
+      take: itensPorPagina,
     });
 
-    return { itens, total, pagina, totalPaginas };
+    return { itens, total, pagina, totalPaginas, itensPorPagina };
   }
 
   async createUser(data: {

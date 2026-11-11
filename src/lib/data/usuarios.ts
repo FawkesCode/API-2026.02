@@ -7,8 +7,14 @@ import { toUsuarioListaItem } from "../mappers/usuario.mapper";
 export async function getUsuarios(
   filtros: FiltrosUsuario,
 ): Promise<UsuariosPaginados> {
-  const { itens, total, pagina, totalPaginas } =
+  const { itens, total, pagina, totalPaginas, itensPorPagina } =
     await servicoUsuario.listarPaginado(filtros);
 
-  return { itens: itens.map(toUsuarioListaItem), total, pagina, totalPaginas };
+  return {
+    itens: itens.map(toUsuarioListaItem),
+    total,
+    pagina,
+    totalPaginas,
+    itensPorPagina,
+  };
 }
