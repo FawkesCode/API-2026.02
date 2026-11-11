@@ -21,13 +21,14 @@ export function toUsuarioListaItem(registro: UsuarioListaRegistro): UsuarioLista
     nome: registro.nome,
     inicial: registro.nome.trim().charAt(0).toUpperCase(),
     email: registro.email,
+    cargo: registro.cargo,
     cargoLabel: ui.label,
     cor: ui.cor,
     ativo: registro.ativo,
     adicionadoEm: `${format(registro.criadoEm, "dd")} ${mes}, ${format(registro.criadoEm, "yyyy")}`,
     equipe: registro.equipe?.nome ?? null,
     adicionadoPor: registro.criadoPor
-  ? `${registro.criadoPor.nome} (${registro.criadoPor.email})`
-  : null,
+      ? `${registro.criadoPor.nome} (${registro.criadoPor.email})`
+      : null,
   };
 }

@@ -31,6 +31,8 @@ export interface UsuarioListaItem {
   nome: string;
   inicial: string;
   email: string;
+  /** Valor bruto do enum Cargo; usado para preencher o formulário de edição. */
+  cargo: string;
   cargoLabel: string;
   cor: string;
   ativo: boolean;
@@ -54,6 +56,9 @@ export interface CriarUsuarioPayload {
   cargo: Cargo;
   senha: string;
 }
+
+/** Edição (PUT): mesmos campos do cadastro, sem senha. */
+export type AtualizarUsuarioPayload = Omit<CriarUsuarioPayload, "senha">;
 
 export interface UsuarioCriadoDTO {
   id: string;
@@ -79,6 +84,10 @@ export type CriarUsuarioResultado =
   | {
       sucesso: false;
       erro: string;
+      /** Código de erro da API (ex.: ALTERAR_PROPRIO_CARGO). */
+      codigo?: string;
       errosCampos?: CamposErroCadastroUsuario;
       detalhes?: Record<string, unknown>;
     };
+
+export type AtualizarUsuarioResultado = CriarUsuarioResultado;

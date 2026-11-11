@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Pencil } from "lucide-react";
 import type { UsuarioListaItem } from "@/types/usuario";
 import {
   Accordion,
@@ -9,6 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "../ui/accordion";
+import { UsuarioFormDialog } from "./usuario-form-dialog";
 
 // Mesmas colunas no cabeçalho e nas linhas para tudo alinhar.
 const COLUNAS = "grid grid-cols-[2fr_1.3fr_1.6fr_1fr] items-center gap-2";
@@ -19,6 +20,8 @@ interface UsuariosTableProps {
 
 export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  const [usuarioEmEdicao, setUsuarioEmEdicao] =
+    useState<UsuarioListaItem | null>(null);
 
   if (usuarios.length === 0) {
     return (
@@ -57,9 +60,22 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
             onToggle={() =>
               setAbertoId(abertoId === usuario.id ? null : usuario.id)
             }
+            onEditar={() => setUsuarioEmEdicao(usuario)}
           />
         ))}
       </Accordion>
+
+      {/* Só montado com um usuário selecionado: evita o botão "Criar Novo" duplicado. */}
+      {usuarioEmEdicao && (
+        <UsuarioFormDialog
+          key={usuarioEmEdicao.id}
+          usuario={usuarioEmEdicao}
+          aberto
+          onAbertoChange={(aberto) => {
+            if (!aberto) setUsuarioEmEdicao(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -68,9 +84,10 @@ interface UsuarioRowProps {
   usuario: UsuarioListaItem;
   aberto: boolean;
   onToggle: () => void;
+  onEditar: () => void;
 }
 
-function UsuarioRow({ usuario, aberto, onToggle }: UsuarioRowProps) {
+function UsuarioRow({ usuario, aberto, onToggle, onEditar }: UsuarioRowProps) {
   const [copiado, setCopiado] = useState(false);
 
   async function copiarUuid() {
@@ -158,6 +175,16 @@ function UsuarioRow({ usuario, aberto, onToggle }: UsuarioRowProps) {
               <span className="text-gray-300">Adicionado por: </span>
               {usuario.adicionadoPor ?? "Sistema"}
             </p>
+            <div className="flex justify-end sm:col-span-2">
+              <button
+                type="button"
+                onClick={onEditar}
+                className="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+              >
+                <Pencil className="size-3.5" />
+                Editar
+              </button>
+            </div>
           </div>
         </div>
       </AccordionContent>
