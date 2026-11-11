@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { SelectInterface } from "@/lib/data/dropdown";
 import PageHeader from "../page-header";
 import DefaultPagination from "../default-pagination";
+import { PAGINATION_CONFIGS } from "@/lib/pagination";
 
 export interface ProjectInfo {
   id: string;
@@ -76,8 +77,9 @@ function ProjectsView({
             </p>
           )}
         </section>
-        {projects.length !== 0 && projects.length > 8 && (
+        {projects.length !== 0 && (
           <DefaultPagination
+            pageOptions={[...PAGINATION_CONFIGS.projects.sizes]}
             page={page}
             totalPages={totalPages}
             total={total}

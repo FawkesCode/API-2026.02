@@ -14,6 +14,7 @@ import type {
   AtualizarPrioridadeComAutor,
 } from "@/schemas/ticket.schema";
 import { ordenarTicketsPorPrioridade } from "@/services/ticket-order";
+import { normalizedPagination } from "@/lib/pagination";
 
 export class ErroConflitoPrioridade extends Error {
   constructor(message: string) {
@@ -383,13 +384,16 @@ export class ServicoTicket {
   async listarTodos(filtros?: FiltrosTicket) {
     const where: Prisma.TicketWhereInput = montarWhere(filtros);
 
-    const total = await prisma.ticket.count({ where });
+    const { pagina: paginaPedida, itensPorPagina } = normalizedPagination(
+      filtros?.pagina,
+      filtros?.itensPorPagina,
+    );
 
-    const itensPorPagina = filtros?.itensPorPagina ?? 5;
+    const total = await prisma.ticket.count({ where });
 
     const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
 
-    const pagina = Math.min(filtros?.pagina ?? 1, totalPaginas);
+    const pagina = Math.min(paginaPedida, totalPaginas);
 
     const itens = await prisma.ticket.findMany({
       where,

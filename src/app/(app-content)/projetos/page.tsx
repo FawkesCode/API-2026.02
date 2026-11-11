@@ -45,14 +45,14 @@ interface PageProps {
 }
 
 export default async function Projects({ searchParams }: PageProps) {
+  const { pagina, itensPorPagina } = await searchParams;
   const {
     itens,
     total,
     pagina: paginaAtual,
     totalPaginas,
     itensPorPagina: tamanho,
-  } = await getProjects();
-  const { pagina, itensPorPagina } = await searchParams;
+  } = await getProjects(Number(pagina), Number(itensPorPagina));
   const usuario = await getUsuarioAtual();
   const podeCriar = podeCriarProjeto(usuario?.cargo);
   const [clients, supervisors] = podeCriar

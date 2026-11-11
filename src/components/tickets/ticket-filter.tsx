@@ -261,6 +261,9 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
         params.delete(chave);
       }
     });
+
+    params.delete("pagina");
+
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 

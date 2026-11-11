@@ -8,7 +8,7 @@ import {
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
 import { RELACOES_TICKET } from "@/services/ticket.service";
 import { ordenarTicketsPorPrioridade } from "@/services/ticket-order";
-import { normalizedPagination } from "@/lib/pagination";
+import { normalizedPagination, PAGINATION_CONFIGS } from "@/lib/pagination";
 
 const DIAS_SLA_INSTALACAO_PADRAO = 7;
 
@@ -282,6 +282,7 @@ export class ServicoProjeto {
     const { pagina: paginaPedida, itensPorPagina } = normalizedPagination(
       filtros?.pagina,
       filtros?.itensPorPagina,
+      PAGINATION_CONFIGS.projects,
     );
 
     const total = await prisma.projeto.count({ where });

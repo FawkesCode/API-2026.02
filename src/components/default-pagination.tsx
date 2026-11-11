@@ -25,8 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { cn } from "cn";
 
 interface PaginationProps {
+  pageOptions?: number[];
   page: number;
   totalPages: number;
   total: number;
@@ -51,6 +53,7 @@ function getPageNumbers(page: number, totalPages: number) {
 }
 
 export default function DefaultPagination({
+  pageOptions,
   page,
   totalPages,
   itensPerPage,
@@ -80,11 +83,11 @@ export default function DefaultPagination({
     router.push(buildHref(1, Number(value)));
   }
 
-  const pageSizeOptions = [5, 10, 20, 50];
-  const currentPage = Number(searchParams.get("pagina")) || 1;
+  const pageSizeOptions = pageOptions ? pageOptions : [5, 10, 20, 50];
+  const currentPage = page;
 
   return (
-    <div className="  flex w-full justify-between items-center text-xs font-medium   p-3 pl-6 pr-6 rounded-xl">
+    <div className="flex w-full justify-between items-center text-xs font-medium   p-3 pl-6 pr-6 rounded-xl">
       <div className="flex gap-1 items-center">
         <p>
           Mostrando página{" "}
@@ -116,7 +119,9 @@ export default function DefaultPagination({
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious
-              className="text-xs"
+              className={cn("text-xs", {
+                "text-muted-foreground pointer-events-none": !hasPrev,
+              })}
               href={hasPrev ? buildHref(page - 1) : undefined}
               aria-disabled={!hasPrev}
             />
@@ -142,7 +147,9 @@ export default function DefaultPagination({
 
           <PaginationItem>
             <PaginationNext
-              className="text-xs"
+              className={cn("text-xs", {
+                "text-muted-foreground pointer-events-none": !hasNext,
+              })}
               href={hasNext ? buildHref(page + 1) : undefined}
               aria-disabled={!hasNext}
             />
