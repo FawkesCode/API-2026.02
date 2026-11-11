@@ -69,7 +69,6 @@ function ProjetoFilterCombobox({
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  console.log(projetos);
   const projetoSelecionado = projetos.find((projeto) => projeto.id === value);
 
   useEffect(() => {

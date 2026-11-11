@@ -1,11 +1,4 @@
 "use client";
-import Link from "next/link";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -15,7 +8,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "./ui/pagination";
-import { Button } from "@base-ui/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Select,
@@ -71,7 +63,7 @@ export default function DefaultPagination({
     if (newPage > 1) params.set("pagina", String(newPage));
     else params.delete("pagina");
 
-    if (newPageSize) params.set("itensPorPagina", String(newPageSize));
+    params.set("itensPorPagina", String(newPageSize ?? itensPerPage));
 
     const query = params.toString();
 
