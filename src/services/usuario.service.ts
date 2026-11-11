@@ -20,6 +20,13 @@ export class ErroAlterarProprioCargo extends Error {
   }
 }
 
+export class ErroAlterarProprioStatus extends Error {
+  constructor(message = "Você não pode inativar a sua própria conta.") {
+    super(message);
+    this.name = "ErroAlterarProprioStatus";
+  }
+}
+
 export interface DadosAtualizarUsuario {
   nome: string;
   email: string;
@@ -349,6 +356,41 @@ export class ServicoUsuario {
           usuarioId: editorId,
           tipo: "EDICAO",
           descricao: `Editou usuário ${usuario.nome} do tipo ${ROTULO_CARGO[usuario.cargo]}.`,
+        },
+      });
+
+      return usuario;
+    });
+  }
+
+  /**
+   * O analista não pode inativar a própria conta. Se o status já é o
+   * pedido, devolve o usuário sem gravar nada (nem atividade).
+   */
+  async updateUserStatus(usuarioId: string, editorId: string, ativo: boolean) {
+    if (!ativo && usuarioId === editorId) {
+      throw new ErroAlterarProprioStatus();
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const atual = await tx.usuario.findUnique({
+        where: { id: usuarioId },
+        select: createdUserData,
+      });
+      if (!atual) throw new ErroUsuarioNaoEncontrado();
+      if (atual.ativo === ativo) return atual;
+
+      const usuario = await tx.usuario.update({
+        where: { id: usuarioId },
+        data: { ativo },
+        select: createdUserData,
+      });
+
+      await tx.atividadeConta.create({
+        data: {
+          usuarioId: editorId,
+          tipo: "EDICAO",
+          descricao: `${ativo ? "Reativou" : "Inativou"} usuário ${usuario.nome} do tipo ${ROTULO_CARGO[usuario.cargo]}.`,
         },
       });
 
