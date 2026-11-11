@@ -10,7 +10,6 @@ import type {
   StatusTicket,
 } from "@/lib/generated/prisma/client";
 import DefaultPagination from "@/components/default-pagination";
-import FilterContainer from "@/components/filter-container";
 
 interface PageProps {
   searchParams: Promise<{
@@ -29,18 +28,6 @@ interface PageProps {
 
 export default async function TicketsPage({ searchParams }: PageProps) {
   const filters = await searchParams;
-
-  function pageHref(page: number, pageSize: number = 5) {
-    const params = new URLSearchParams();
-    const { pagina: _ignored, ...rest } = filters;
-    Object.entries(rest).forEach(([key, value]) => {
-      if (key) params.set(key, String(value));
-    });
-    if (page > 1) params.set("pagina", String(page));
-    if (pageSize) params.set("itensPorPagina", String(pageSize));
-    const query = params.toString();
-    return query ? `/tickets?${query}` : `/tickets`;
-  }
 
   const { itens, total, pagina, totalPaginas, itensPorPagina } =
     await getAllTickets({

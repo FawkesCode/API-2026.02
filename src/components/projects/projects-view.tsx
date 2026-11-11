@@ -5,6 +5,7 @@ import ProjectCard from "./project-card";
 import { useRouter } from "next/navigation";
 import { SelectInterface } from "@/lib/data/dropdown";
 import PageHeader from "../page-header";
+import DefaultPagination from "../default-pagination";
 
 export interface ProjectInfo {
   id: string;
@@ -21,6 +22,11 @@ interface ProjectsClientProps {
   clients: SelectInterface[];
   supervisors: SelectInterface[];
   podeCriar: boolean;
+  page: number;
+  totalPages: number;
+  total: number;
+  shown?: number;
+  itensPerPage: number;
 }
 
 function ProjectsView({
@@ -28,6 +34,10 @@ function ProjectsView({
   clients,
   supervisors,
   podeCriar,
+  page,
+  totalPages,
+  total,
+  itensPerPage,
 }: ProjectsClientProps) {
   const router = useRouter();
 
@@ -38,31 +48,43 @@ function ProjectsView({
   return (
     <>
       <PageHeader
-        other={podeCriar ? (
-          <div className="justify-self-end">
-            <ProjectFormDialog
-              onSuccess={handleSuccess}
-              clientsData={clients}
-              supervisorsData={supervisors}
-            />
-          </div>
-        ) : undefined}
+        other={
+          podeCriar ? (
+            <div className="justify-self-end">
+              <ProjectFormDialog
+                onSuccess={handleSuccess}
+                clientsData={clients}
+                supervisorsData={supervisors}
+              />
+            </div>
+          ) : undefined
+        }
       >
         Projetos
       </PageHeader>
 
-      <section className="grid grid-cols-1 md:grid-cols-2  xl:grid-cols-4  gap-4 pb-8">
-        {projects.length !== 0 ? (
-          projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))
-        ) : (
-          <p className="col-span-full text-sm text-muted-foreground">
-            Nenhum projeto registrado ainda. Realize o cadastro de um para
-            começar a gerenciar os tickets atribuídos a ele.
-          </p>
+      <div className=" flex flex-col h-full justify-between pb-8">
+        <section className="grid grid-cols-1 md:grid-cols-2  xl:grid-cols-4  gap-4 pb-4">
+          {projects.length !== 0 ? (
+            projects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))
+          ) : (
+            <p className="col-span-full text-sm text-muted-foreground">
+              Nenhum projeto registrado ainda. Realize o cadastro de um para
+              começar a gerenciar os tickets atribuídos a ele.
+            </p>
+          )}
+        </section>
+        {projects.length !== 0 && projects.length > 8 && (
+          <DefaultPagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            itensPerPage={itensPerPage}
+          />
         )}
-      </section>
+      </div>
     </>
   );
 }

@@ -45,6 +45,7 @@ export interface UsuariosPaginados {
   total: number;
   pagina: number;
   totalPaginas: number;
+  itensPorPagina: number;
 }
 
 export interface CriarUsuarioPayload {

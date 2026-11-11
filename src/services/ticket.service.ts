@@ -395,7 +395,7 @@ export class ServicoTicket {
       where,
       include: includeListagem,
       orderBy: [{ criadoEm: "desc" }],
-      skip: (pagina - 1) * TAMANHO_PAGINA_TICKETS,
+      skip: (pagina - 1) * itensPorPagina,
       take: Number(itensPorPagina),
     });
 
