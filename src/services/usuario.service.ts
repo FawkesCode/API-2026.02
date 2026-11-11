@@ -437,14 +437,30 @@ export class ServicoUsuario {
       if (!usuario.ativo) throw new ErroUsuarioInativo();
       if (usuario.cargo !== Cargo.TECNICO) throw new ErroUsuarioNaoTecnico();
 
-      return tx.usuario.update({
-        where: { id: usuarioId },
+      const resultado = await tx.usuario.updateMany({
+        where: {
+          id: usuarioId,
+          ativo: true,
+          cargo: Cargo.TECNICO,
+        },
         data: {
           senhaHash: await hash(senha, 12),
           senhaProvisoria: true,
         },
-        select: { id: true },
       });
+
+      if (resultado.count === 0) {
+        const atual = await tx.usuario.findUnique({
+          where: { id: usuarioId },
+          select: { ativo: true, cargo: true },
+        });
+
+        if (!atual) throw new ErroUsuarioNaoEncontrado();
+        if (!atual.ativo) throw new ErroUsuarioInativo();
+        throw new ErroUsuarioNaoTecnico();
+      }
+
+      return { id: usuarioId };
     });
   }
 
