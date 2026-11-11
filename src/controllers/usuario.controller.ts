@@ -7,9 +7,12 @@ import {
   updateUserSchema,
   updateUserStatusSchema,
 } from "@/schemas/user.schema";
+import { resetUserPasswordSchema } from "@/schemas/change-password.schema";
 import {
   ErroAlterarProprioCargo,
   ErroAlterarProprioStatus,
+  ErroUsuarioInativo,
+  ErroUsuarioNaoTecnico,
   ErroUsuarioNaoEncontrado,
   servicoUsuario,
 } from "@/services/usuario.service";
@@ -160,6 +163,83 @@ export class ControladorUsuario {
       return NextResponse.json(user, { status: 200 });
     } catch (error) {
       return handleUpdateUserError(error);
+    }
+  }
+
+  async resetUserPassword(request: Request, userId: string) {
+    const validatedId = z.uuid().safeParse(userId);
+    if (!validatedId.success) {
+      return NextResponse.json(
+        { erro: "ID do usuário inválido.", codigo: "ID_INVALIDO" },
+        { status: 400 },
+      );
+    }
+
+    const acesso = await exigirCargo(request, Cargo.SUPORTE_INTERNO);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          erro: "Corpo da requisição precisa ser um JSON válido.",
+          codigo: "JSON_INVALIDO",
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = resetUserPasswordSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          erro: "Dados inválidos.",
+          codigo: "DADOS_INVALIDOS",
+          detalhes: z.flattenError(result.error).fieldErrors,
+        },
+        { status: 400 },
+      );
+    }
+
+    try {
+      await servicoUsuario.redefinirSenhaDeTecnico(
+        validatedId.data,
+        result.data.novaSenha,
+      );
+      return NextResponse.json(
+        { mensagem: "Senha redefinida com sucesso." },
+        { status: 200 },
+      );
+    } catch (error) {
+      if (error instanceof ErroUsuarioNaoEncontrado) {
+        return NextResponse.json(
+          { erro: error.message, codigo: "USUARIO_NAO_ENCONTRADO" },
+          { status: 404 },
+        );
+      }
+      if (error instanceof ErroUsuarioInativo) {
+        return NextResponse.json(
+          { erro: error.message, codigo: "USUARIO_INATIVO" },
+          { status: 400 },
+        );
+      }
+      if (error instanceof ErroUsuarioNaoTecnico) {
+        return NextResponse.json(
+          { erro: error.message, codigo: "USUARIO_NAO_TECNICO" },
+          { status: 400 },
+        );
+      }
+
+      console.error(error);
+      return NextResponse.json(
+        {
+          erro: "Erro interno ao redefinir senha.",
+          codigo: "ERRO_INTERNO",
+        },
+        { status: 500 },
+      );
     }
   }
 
