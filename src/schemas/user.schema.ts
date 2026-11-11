@@ -23,3 +23,10 @@ export type CreateUserSchema = z.infer<typeof createUserSchema>;
 export const updateUserSchema = createUserSchema.omit({ senha: true });
 
 export type UpdateUserSchema = z.infer<typeof updateUserSchema>;
+
+/** Ativação/inativação (PATCH): só o status entra; outros campos são descartados. */
+export const updateUserStatusSchema = z.object({
+  ativo: z.boolean("ativo deve ser true ou false."),
+});
+
+export type UpdateUserStatusSchema = z.infer<typeof updateUserStatusSchema>;
