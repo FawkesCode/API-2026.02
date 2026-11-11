@@ -4,12 +4,13 @@ import TicketCard from "@/components/tickets/ticket-card";
 import TicketFilter from "@/components/tickets/ticket-filter";
 import { NovoTicketButton } from "@/components/tickets/novo-ticket-button";
 import { getAllTickets } from "@/lib/data/tickets";
-import { TicketView } from "@/types/ticket";
 import type {
   Categoria,
   Prioridade,
   StatusTicket,
 } from "@/lib/generated/prisma/client";
+import DefaultPagination from "@/components/default-pagination";
+import FilterContainer from "@/components/filter-container";
 
 interface PageProps {
   searchParams: Promise<{
@@ -21,22 +22,39 @@ interface PageProps {
     projetoId?: string;
     equipeId?: string;
     localInstalacao?: string;
+    pagina: number;
+    itensPorPagina: number;
   }>;
 }
 
 export default async function TicketsPage({ searchParams }: PageProps) {
-  const filtros = await searchParams;
+  const filters = await searchParams;
 
-  const tickets: TicketView[] = await getAllTickets({
-    prioridade: filtros.prioridade as Prioridade | undefined,
-    status: filtros.status as StatusTicket | undefined,
-    titulo: filtros.titulo,
-    data: filtros.data,
-    categoria: filtros.tipo as Categoria | undefined,
-    projetoId: filtros.projetoId,
-    equipeId: filtros.equipeId,
-    localInstalacao: filtros.localInstalacao,
-  });
+  function pageHref(page: number, pageSize: number = 5) {
+    const params = new URLSearchParams();
+    const { pagina: _ignored, ...rest } = filters;
+    Object.entries(rest).forEach(([key, value]) => {
+      if (key) params.set(key, String(value));
+    });
+    if (page > 1) params.set("pagina", String(page));
+    if (pageSize) params.set("itensPorPagina", String(pageSize));
+    const query = params.toString();
+    return query ? `/tickets?${query}` : `/tickets`;
+  }
+
+  const { itens, total, pagina, totalPaginas, itensPorPagina } =
+    await getAllTickets({
+      prioridade: filters.prioridade as Prioridade | undefined,
+      status: filters.status as StatusTicket | undefined,
+      titulo: filters.titulo,
+      data: filters.data,
+      categoria: filters.tipo as Categoria | undefined,
+      projetoId: filters.projetoId,
+      equipeId: filters.equipeId,
+      localInstalacao: filters.localInstalacao,
+      pagina: filters.pagina,
+      itensPorPagina: filters.itensPorPagina,
+    });
 
   return (
     <div>
@@ -46,14 +64,22 @@ export default async function TicketsPage({ searchParams }: PageProps) {
         <Suspense fallback={null}>
           <TicketFilter />
         </Suspense>
-        {tickets.length !== 0 ? (
-          tickets.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket}
-              ticketUrl={`/tickets/${ticket.id}`}
+        {itens.length !== 0 ? (
+          <>
+            {itens.map((ticket) => (
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                ticketUrl={`/tickets/${ticket.id}`}
+              />
+            ))}
+            <DefaultPagination
+              page={pagina}
+              totalPages={totalPaginas}
+              total={total}
+              itensPerPage={itensPorPagina}
             />
-          ))
+          </>
         ) : (
           <p className="col-span-full pl-2 text-sm text-muted-foreground">
             Nenhum ticket cadastrado ainda!

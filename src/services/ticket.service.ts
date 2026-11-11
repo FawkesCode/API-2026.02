@@ -22,6 +22,8 @@ export class ErroConflitoPrioridade extends Error {
   }
 }
 
+export const TAMANHO_PAGINA_TICKETS = 5;
+
 // NOTE: se esta classe já existir em outro arquivo de erros do projeto,
 // remova esta definição local e importe a existente em vez de duplicá-la.
 export class ErroNaoAutorizadoParaAlterarPrioridade extends Error {
@@ -42,6 +44,8 @@ export interface FiltrosTicket {
   projetoId?: string;
   equipeId?: string;
   localInstalacao?: string;
+  pagina: number;
+  itensPorPagina: number;
 }
 
 function montarWhere(
@@ -377,13 +381,25 @@ export class ServicoTicket {
   }
 
   async listarTodos(filtros?: FiltrosTicket) {
-    return this.db.ticket.findMany({
-      where: montarWhere(filtros),
-      orderBy: {
-        criadoEm: "desc",
-      },
+    const where: Prisma.TicketWhereInput = montarWhere(filtros);
+
+    const total = await prisma.ticket.count({ where });
+
+    const itensPorPagina = filtros?.itensPorPagina ?? 5;
+
+    const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
+
+    const pagina = Math.min(filtros?.pagina ?? 1, totalPaginas);
+
+    const itens = await prisma.ticket.findMany({
+      where,
       include: includeListagem,
+      orderBy: [{ criadoEm: "desc" }],
+      skip: (pagina - 1) * TAMANHO_PAGINA_TICKETS,
+      take: Number(itensPorPagina),
     });
+
+    return { itens, total, pagina, totalPaginas, itensPorPagina };
   }
 
   async buscarDetalhePorId(ticketId: string) {
@@ -472,7 +488,11 @@ export class ServicoTicket {
     });
   }
 
-  async desalocarEquipe(ticketId: string, equipeId: string, usuarioId?: string) {
+  async desalocarEquipe(
+    ticketId: string,
+    equipeId: string,
+    usuarioId?: string,
+  ) {
     const desalocado = await this.db.$transaction(async (tx) => {
       const status = await travarStatusDoTicket(tx, ticketId);
       if (!status) return false;
@@ -508,7 +528,7 @@ export class ServicoTicket {
     });
   }
 
-    async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string) {
+  async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string) {
     const resultado = await this.db.$transaction(async (tx) => {
       // Trava a linha: o status lido abaixo não muda até o commit.
       await travarStatusDoTicket(tx, ticketId);
@@ -519,7 +539,8 @@ export class ServicoTicket {
       if (!ticket) return null;
 
       await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
-      if (ticket.status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
+      if (ticket.status === StatusTicket.ENCERRADO)
+        throw new ErroTicketEncerrado();
 
       const equipe = await tx.equipe.findUnique({
         where: { id: equipeId },
@@ -563,10 +584,13 @@ export class ServicoTicket {
       if (!ticket) return null;
 
       await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
-      if (ticket.status === StatusTicket.ENCERRADO) throw new ErroTicketEncerrado();
+      if (ticket.status === StatusTicket.ENCERRADO)
+        throw new ErroTicketEncerrado();
 
       if (!ticket.equipesAlocadas.some((e) => e.equipeId === equipeId)) {
-        throw new ErroEquipeInvalida("Esta equipe não está atribuída ao ticket.");
+        throw new ErroEquipeInvalida(
+          "Esta equipe não está atribuída ao ticket.",
+        );
       }
       if (ticket.equipesAlocadas.length <= 1) {
         throw new ErroUltimaEquipeDoTicket();
@@ -591,9 +615,7 @@ export class ServicoTicket {
       });
     });
   }
-
 }
-
 
 export class ErroNaoAutorizadoParaGerenciarEquipes extends Error {
   constructor(

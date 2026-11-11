@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format, isValid } from "date-fns";
-import { X } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import DateRangePicker, { type IntervaloData } from "../date-range-picker";
 import { Field, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
@@ -22,6 +22,11 @@ import {
   type ProjetoResumo,
 } from "@/hooks/use-available-projects";
 import { useEquipes } from "@/hooks/use-equipes";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../ui/collapsible";
 
 interface SelectItemsOptions {
   label: string;
@@ -329,102 +334,133 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
     </Field>
   );
 
+  const filtrosEscondidosAtivos = [
+    projetoId,
+    localInstalacao,
+    temDataNaUrl,
+    equipeId,
+    tipo,
+    prioridade,
+  ].filter(Boolean).length;
+
+  const [aberto, setAberto] = useState(filtrosEscondidosAtivos > 0);
+
   return (
-    <Card className="col-span-full gap-4! overflow-visible">
+    <Card className="col-span-full gap-4! overflow-visible relative">
       <CardHeader>
         <CardTitle>
-          <p className="text-sm text-foreground">Filtrar por:</p>
+          <p className="text-sm text-muted-foreground absolute -top-3 bg-muted p-1 pl-3 pr-3 rounded-xl border border-gray-200">
+            Filtros
+          </p>
         </CardTitle>
       </CardHeader>
       {mostrarFiltrosDeTicket ? (
-        <CardContent className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
-            <FilterInput
-              title="Título"
-              id="titulo"
-              value={tituloInput}
-              onChange={(evento) => setTituloInput(evento.target.value)}
-              onClear={() => {
-                setTituloInput("");
-                updateParam("titulo", undefined);
-              }}
-            />
-            <ProjetoFilterCombobox
-              projetos={projetos}
-              value={projetoId}
-              onSelect={(id) => updateParam("projetoId", id)}
-              onClear={() => updateParam("projetoId", undefined)}
-            />
-            <FilterInput
-              title="Local de instalação"
-              id="localInstalacao"
-              value={localInput}
-              onChange={(evento) => setLocalInput(evento.target.value)}
-              onClear={() => {
-                setLocalInput("");
-                updateParam("localInstalacao", undefined);
-              }}
-            />
-
-            {filtroData}
-
-            {!equipesIndisponivel && (
+        <CardContent className="flex flex-col gap-5">
+          <Collapsible open={aberto} onOpenChange={setAberto}>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-5">
               <FilterInput
-                title="Time"
-                id="equipe"
-                type="select"
-                value={equipeId}
-                onValueChange={(valor) =>
-                  updateParam("equipeId", valor || undefined)
-                }
-                onClear={() => updateParam("equipeId", undefined)}
-                items={equipeItems}
+                title="Título"
+                id="titulo"
+                value={tituloInput}
+                onChange={(evento) => setTituloInput(evento.target.value)}
+                onClear={() => {
+                  setTituloInput("");
+                  updateParam("titulo", undefined);
+                }}
               />
-            )}
+              <FilterInput
+                title="Status"
+                id="status"
+                type="select"
+                value={status}
+                onValueChange={(valor) =>
+                  updateParam("status", valor || undefined)
+                }
+                onClear={() => updateParam("status", undefined)}
+                selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Solicitação de encerramento,SOLICITACAO_ENCERRAMENTO|Em revisão,EM_REVISAO|Encerrado,ENCERRADO"
+              />
 
-            <FilterInput
-              title="Tipo"
-              id="tipo"
-              type="select"
-              value={tipo}
-              onValueChange={(valor) => updateParam("tipo", valor || undefined)}
-              onClear={() => updateParam("tipo", undefined)}
-              selectOptions="Instalação,INSTALACAO|Manutenção,MANUTENCAO"
-            />
-            <FilterInput
-              title="Prioridade"
-              id="priority"
-              type="select"
-              value={prioridade}
-              onValueChange={(valor) =>
-                updateParam("prioridade", valor || undefined)
-              }
-              onClear={() => updateParam("prioridade", undefined)}
-              selectOptions="Crítica,CRITICA|Alta,ALTA|Média,MEDIA|Baixa,BAIXA"
-            />
-            <FilterInput
-              title="Status"
-              id="status"
-              type="select"
-              value={status}
-              onValueChange={(valor) =>
-                updateParam("status", valor || undefined)
-              }
-              onClear={() => updateParam("status", undefined)}
-              selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Solicitação de encerramento,SOLICITACAO_ENCERRAMENTO|Em revisão,EM_REVISAO|Encerrado,ENCERRADO"
-            />
-          </div>
-          {algumFiltroAtivo && (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                onClick={limparFiltros}
-                className="rounded-xl cursor-pointer shrink-0"
-              >
-                Limpar Filtros
-              </Button>
+              <CollapsibleTrigger className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-input px-4 text-sm transition-colors hover:bg-muted">
+                <SlidersHorizontal className="size-4" />
+                {aberto ? "Menos Filtros" : "Mais Filtros"}
+                {filtrosEscondidosAtivos > 0 && (
+                  <span className="flex size-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                    {filtrosEscondidosAtivos}
+                  </span>
+                )}
+                <ChevronDown
+                  className={`size-4 transition-transform ${aberto ? "rotate-180" : ""}`}
+                />
+              </CollapsibleTrigger>
+
+              {algumFiltroAtivo && (
+                <Button
+                  type="button"
+                  onClick={limparFiltros}
+                  className="shrink-0 cursor-pointer rounded-xl"
+                >
+                  Limpar filtros
+                </Button>
+              )}
             </div>
-          )}
+
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-5 pt-5 sm:grid-cols-2 lg:grid-cols-3">
+                <ProjetoFilterCombobox
+                  projetos={projetos}
+                  value={projetoId}
+                  onSelect={(id) => updateParam("projetoId", id)}
+                  onClear={() => updateParam("projetoId", undefined)}
+                />
+                <FilterInput
+                  title="Local de instalação"
+                  id="localInstalacao"
+                  value={localInput}
+                  onChange={(evento) => setLocalInput(evento.target.value)}
+                  onClear={() => {
+                    setLocalInput("");
+                    updateParam("localInstalacao", undefined);
+                  }}
+                />
+                {filtroData}
+                {!equipesIndisponivel && (
+                  <FilterInput
+                    title="Time"
+                    id="equipe"
+                    type="select"
+                    value={equipeId}
+                    onValueChange={(valor) =>
+                      updateParam("equipeId", valor || undefined)
+                    }
+                    onClear={() => updateParam("equipeId", undefined)}
+                    items={equipeItems}
+                  />
+                )}
+                <FilterInput
+                  title="Tipo"
+                  id="tipo"
+                  type="select"
+                  value={tipo}
+                  onValueChange={(valor) =>
+                    updateParam("tipo", valor || undefined)
+                  }
+                  onClear={() => updateParam("tipo", undefined)}
+                  selectOptions="Instalação,INSTALACAO|Manutenção,MANUTENCAO"
+                />
+                <FilterInput
+                  title="Prioridade"
+                  id="priority"
+                  type="select"
+                  value={prioridade}
+                  onValueChange={(valor) =>
+                    updateParam("prioridade", valor || undefined)
+                  }
+                  onClear={() => updateParam("prioridade", undefined)}
+                  selectOptions="Crítica,CRITICA|Alta,ALTA|Média,MEDIA|Baixa,BAIXA"
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       ) : (
         <CardContent className="flex flex-row flex-wrap items-center gap-x-4 gap-y-5 xl:flex-nowrap">
