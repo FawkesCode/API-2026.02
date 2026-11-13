@@ -1,5 +1,7 @@
 import type { UsuarioFormValues } from "@/schemas/usuario-form.schema";
 import type {
+  AtualizarUsuarioPayload,
+  AtualizarUsuarioResultado,
   CamposErroCadastroUsuario,
   CriarUsuarioPayload,
   CriarUsuarioResultado,
@@ -11,6 +13,9 @@ export const ENDPOINT_USUARIOS = "/api/usuarios";
 export const MENSAGEM_ERRO_CADASTRO_USUARIO =
   "Não foi possível cadastrar o usuário. Tente novamente.";
 
+export const MENSAGEM_ERRO_EDICAO_USUARIO =
+  "Não foi possível atualizar o usuário. Tente novamente.";
+
 export function toCriarUsuarioPayload(
   dados: UsuarioFormValues,
 ): CriarUsuarioPayload {
@@ -19,6 +24,16 @@ export function toCriarUsuarioPayload(
     email: dados.email.trim(),
     cargo: dados.tipoConta.value,
     senha: dados.senha,
+  };
+}
+
+export function toAtualizarUsuarioPayload(
+  dados: UsuarioFormValues,
+): AtualizarUsuarioPayload {
+  return {
+    nome: dados.nome.trim(),
+    email: dados.email.trim(),
+    cargo: dados.tipoConta.value,
   };
 }
 
@@ -65,22 +80,24 @@ export function mapearErrosCamposUsuario(
 }
 
 /**
- * Função assíncrona client-side que realiza o envio dos dados do formulário
- * via `fetch` para o endpoint `POST /api/usuarios` e normaliza a resposta.
+ * Envia o JSON ao endpoint e normaliza a resposta (sucesso ou erro).
+ * Compartilhado entre cadastro (POST) e edição (PUT).
  */
-export async function cadastrarUsuario(
-  dados: UsuarioFormValues,
-  fetchFn: typeof fetch = fetch,
+async function enviarUsuario(
+  url: string,
+  method: "POST" | "PUT",
+  payload: CriarUsuarioPayload | AtualizarUsuarioPayload,
+  mensagemErroPadrao: string,
+  fetchFn: typeof fetch,
 ): Promise<CriarUsuarioResultado> {
-  const payload: CriarUsuarioPayload = toCriarUsuarioPayload(dados);
   const initRequisicao: RequestInit = {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   };
 
   try {
-    const resposta = await fetchFn(ENDPOINT_USUARIOS, initRequisicao);
+    const resposta = await fetchFn(url, initRequisicao);
 
     if (resposta.ok) {
       const usuario = (await resposta
@@ -95,6 +112,7 @@ export async function cadastrarUsuario(
     const corpo = (await resposta.json().catch(() => null)) as {
       erro?: string;
       message?: string;
+      codigo?: string;
       detalhes?: Record<string, unknown>;
     } | null;
 
@@ -103,19 +121,54 @@ export async function cadastrarUsuario(
         ? corpo.detalhes
         : undefined;
     const errosCampos = mapearErrosCamposUsuario(detalhes);
-    const erro =
-      corpo?.erro ?? corpo?.message ?? MENSAGEM_ERRO_CADASTRO_USUARIO;
+    const erro = corpo?.erro ?? corpo?.message ?? mensagemErroPadrao;
 
     return {
       sucesso: false,
       erro,
+      ...(corpo?.codigo ? { codigo: corpo.codigo } : {}),
       errosCampos,
       ...(detalhes ? { detalhes } : {}),
     };
   } catch {
     return {
       sucesso: false,
-      erro: MENSAGEM_ERRO_CADASTRO_USUARIO,
+      erro: mensagemErroPadrao,
     };
   }
+}
+
+/**
+ * Função assíncrona client-side que realiza o envio dos dados do formulário
+ * via `fetch` para o endpoint `POST /api/usuarios` e normaliza a resposta.
+ */
+export function cadastrarUsuario(
+  dados: UsuarioFormValues,
+  fetchFn: typeof fetch = fetch,
+): Promise<CriarUsuarioResultado> {
+  return enviarUsuario(
+    ENDPOINT_USUARIOS,
+    "POST",
+    toCriarUsuarioPayload(dados),
+    MENSAGEM_ERRO_CADASTRO_USUARIO,
+    fetchFn,
+  );
+}
+
+/**
+ * Envia a edição para `PUT /api/usuarios/[id]` (nome, e-mail e cargo)
+ * e normaliza a resposta.
+ */
+export function atualizarUsuario(
+  id: string,
+  dados: UsuarioFormValues,
+  fetchFn: typeof fetch = fetch,
+): Promise<AtualizarUsuarioResultado> {
+  return enviarUsuario(
+    `${ENDPOINT_USUARIOS}/${id}`,
+    "PUT",
+    toAtualizarUsuarioPayload(dados),
+    MENSAGEM_ERRO_EDICAO_USUARIO,
+    fetchFn,
+  );
 }
