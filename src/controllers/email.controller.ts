@@ -3,7 +3,6 @@ import { z } from "zod";
 import { exigirSessao } from "@/auth/exigir-cargo";
 import EmailManagerService from "@/services/email.service";
 import { sendMailToManager } from "@/schemas/sendMailManager.schema";
-import { prisma } from "@/lib/prisma";
 
 async function extractJson(request: Request) {
   try {
@@ -52,22 +51,8 @@ export class EmailController {
 
     try {
       const { managerId, ticketId } = data;
-      const manager = await prisma.usuario.findFirst({
-        where: { id: managerId, cargo: "GESTOR", ativo: true },
-        select: { equipeId: true },
-      });
-      if (!manager?.equipeId) {
-        return NextResponse.json(
-          { error: "Perfil inativo ou não encontrado." },
-          { status: 404 },
-        );
-      }
 
-      const emailService = new EmailManagerService(
-        manager.equipeId,
-        ticketId,
-        "Um novo ticket foi atribuído ao seu time.",
-      );
+      const emailService = new EmailManagerService(managerId, ticketId);
       const result = await emailService.sendMail();
 
       if (result && !result.success) {
