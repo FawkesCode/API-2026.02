@@ -70,11 +70,12 @@ export default async function TicketsLogsView({ id }: { id: string }) {
               ) : (
                 <span>Times ainda não atribuídos.</span>
               )}
-              {podeEditarTicket && (
+              {daEquipe && ticket.status !== "Encerrado" && (
                 <GerenciarEquipesTicket
                   ticketId={id}
                   equipesDoTicket={ticket.teams}
                   equipeDoUsuarioId={usuarioLogado?.equipeId}
+                  podeDesatribuir={podeAlterarPrioridade}
                 />
               )}
             </div>
