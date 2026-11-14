@@ -23,6 +23,11 @@ export const criarTicketSchema = z.object({
 
 export const alocarEquipeTicketSchema = z.object({
   equipeId: z.uuid("equipeId deve ser um UUID válido."),
+  relatorio: z.string().trim().min(1, "Informe por que você está acionando este time.").max(10_000, "O relatório deve ter até 10.000 caracteres."),
+});
+
+export const desalocarEquipeTicketSchema = z.object({
+  equipeId: z.uuid("equipeId deve ser um UUID válido."),
 });
  
 export type AlocarEquipeTicketSchema = z.infer<typeof alocarEquipeTicketSchema>;
