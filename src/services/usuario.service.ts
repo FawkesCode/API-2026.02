@@ -6,6 +6,47 @@ import type { FiltrosUsuario } from "@/schemas/usuario-filtros.schema";
 
 export const TAMANHO_PAGINA_USUARIOS = 10;
 
+export class ErroUsuarioNaoEncontrado extends Error {
+  constructor(message = "Usuário não encontrado.") {
+    super(message);
+    this.name = "ErroUsuarioNaoEncontrado";
+  }
+}
+
+export class ErroAlterarProprioCargo extends Error {
+  constructor(message = "Você não pode alterar o seu próprio cargo.") {
+    super(message);
+    this.name = "ErroAlterarProprioCargo";
+  }
+}
+
+export class ErroAlterarProprioStatus extends Error {
+  constructor(message = "Você não pode inativar a sua própria conta.") {
+    super(message);
+    this.name = "ErroAlterarProprioStatus";
+  }
+}
+
+export class ErroUsuarioInativo extends Error {
+  constructor(message = "Não é possível redefinir a senha de um usuário inativo.") {
+    super(message);
+    this.name = "ErroUsuarioInativo";
+  }
+}
+
+export class ErroUsuarioNaoTecnico extends Error {
+  constructor(message = "A redefinição de senha está disponível apenas para técnicos.") {
+    super(message);
+    this.name = "ErroUsuarioNaoTecnico";
+  }
+}
+
+export interface DadosAtualizarUsuario {
+  nome: string;
+  email: string;
+  cargo: Cargo;
+}
+
 const ROTULO_CARGO: Record<Cargo, string> = {
   [Cargo.TECNICO]: "Técnico",
   [Cargo.GESTOR]: "Gestor",
@@ -88,6 +129,36 @@ function intervaloCriadoEm(filtros: FiltrosUsuario) {
   return { gte: startOfDay(inicio), lte: endOfDay(fim) };
 }
 
+/**
+ * Cria a equipe própria de um gestor. Nome único do banco: em caso de
+ * homônimos, acrescenta um sufixo.
+ */
+async function criarEquipePropria(
+  tx: Prisma.TransactionClient,
+  nomeGestor: string,
+) {
+  const base = `Equipe ${nomeGestor}`.slice(0, 88);
+  let nomeEquipe = base;
+  let sufixo = 2;
+  while (
+    await tx.equipe.findUnique({
+      where: { nome: nomeEquipe },
+      select: { id: true },
+    })
+  ) {
+    const final = ` (${sufixo++})`;
+    nomeEquipe = `${base.slice(0, 100 - final.length)}${final}`;
+  }
+  const equipe = await tx.equipe.create({
+    data: {
+      nome: nomeEquipe,
+      descricao: `Equipe gerenciada por ${nomeGestor}.`,
+    },
+    select: { id: true },
+  });
+  return { id: equipe.id, nome: nomeEquipe };
+}
+
 export class ServicoUsuario {
   /**
    * Lista usuários ativos com apenas id/nome, opcionalmente filtrando por
@@ -153,24 +224,21 @@ export class ServicoUsuario {
         : {}),
     };
 
+    const itensPorPagina = filtros?.itensPorPagina ?? 10;
     const total = await prisma.usuario.count({ where });
-    const totalPaginas = Math.max(
-      1,
-      Math.ceil(total / TAMANHO_PAGINA_USUARIOS),
-    );
+    const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
     // Link antigo / edição manual da URL: nunca cai numa página vazia.
     const pagina = Math.min(filtros.pagina, totalPaginas);
 
     const itens = await prisma.usuario.findMany({
       where,
       select: camposListaUsuario,
-      // `id` desempata nomes iguais para a paginação ficar estável.
       orderBy: [{ ativo: "desc" }, { nome: "asc" }, { id: "asc" }],
-      skip: (pagina - 1) * TAMANHO_PAGINA_USUARIOS,
-      take: TAMANHO_PAGINA_USUARIOS,
+      skip: (pagina - 1) * itensPorPagina,
+      take: itensPorPagina,
     });
 
-    return { itens, total, pagina, totalPaginas };
+    return { itens, total, pagina, totalPaginas, itensPorPagina };
   }
 
   async createUser(data: {
@@ -186,26 +254,8 @@ export class ServicoUsuario {
     return prisma.$transaction(async (tx) => {
       if (userData.cargo === Cargo.GESTOR) {
         // Cada novo gestor recebe uma equipe própria desde o cadastro.
-        // Nome único do banco: em caso de homônimos, acrescenta um sufixo.
-        const base = `Equipe ${userData.nome}`.slice(0, 88);
-        let nomeEquipe = base;
-        let sufixo = 2;
-        while (
-          await tx.equipe.findUnique({
-            where: { nome: nomeEquipe },
-            select: { id: true },
-          })
-        ) {
-          const final = ` (${sufixo++})`;
-          nomeEquipe = `${base.slice(0, 100 - final.length)}${final}`;
-        }
-        const equipe = await tx.equipe.create({
-          data: {
-            nome: nomeEquipe,
-            descricao: `Equipe gerenciada por ${userData.nome}.`,
-          },
-          select: { id: true },
-        });
+        const equipe = await criarEquipePropria(tx, userData.nome);
+        const nomeEquipe = equipe.nome;
         const gestor = await tx.usuario.create({
           data: {
             ...userData,
@@ -257,6 +307,111 @@ export class ServicoUsuario {
     });
   }
 
+  /**
+   * Edita nome, email e cargo de um usuário. A senha nunca é lida nem
+   * alterada aqui.
+   *
+   * Troca de cargo mantém a regra do cadastro:
+   * - virou GESTOR: recebe uma equipe própria nova;
+   * - deixou de ser GESTOR: sai da equipe (`equipeId = null`).
+   *
+   * Email duplicado sobe como P2002 do Prisma (tratado no controller).
+   */
+  async updateUser(
+    usuarioId: string,
+    editorId: string,
+    data: DadosAtualizarUsuario,
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const atual = await tx.usuario.findUnique({
+        where: { id: usuarioId },
+        select: { id: true, cargo: true },
+      });
+      if (!atual) throw new ErroUsuarioNaoEncontrado();
+
+      const trocouCargo = data.cargo !== atual.cargo;
+      // Evita que o analista perca o próprio acesso sem querer.
+      if (trocouCargo && usuarioId === editorId) {
+        throw new ErroAlterarProprioCargo();
+      }
+
+      let equipeId: string | null | undefined;
+      let equipeCriada: string | undefined;
+      if (trocouCargo && data.cargo === Cargo.GESTOR) {
+        const equipe = await criarEquipePropria(tx, data.nome);
+        equipeId = equipe.id;
+        equipeCriada = equipe.nome;
+      } else if (trocouCargo && atual.cargo === Cargo.GESTOR) {
+        equipeId = null;
+      }
+
+      const usuario = await tx.usuario.update({
+        where: { id: usuarioId },
+        data: {
+          nome: data.nome,
+          email: data.email,
+          cargo: data.cargo,
+          ...(equipeId !== undefined ? { equipeId } : {}),
+        },
+        select: createdUserData,
+      });
+
+      if (equipeCriada) {
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId: usuario.id,
+            tipo: "EQUIPE",
+            descricao: `Equipe ${equipeCriada} criada automaticamente para sua conta.`,
+          },
+        });
+      }
+      await tx.atividadeConta.create({
+        data: {
+          usuarioId: editorId,
+          tipo: "EDICAO",
+          descricao: `Editou usuário ${usuario.nome} do tipo ${ROTULO_CARGO[usuario.cargo]}.`,
+        },
+      });
+
+      return usuario;
+    });
+  }
+
+  /**
+   * O analista não pode inativar a própria conta. Se o status já é o
+   * pedido, devolve o usuário sem gravar nada (nem atividade).
+   */
+  async updateUserStatus(usuarioId: string, editorId: string, ativo: boolean) {
+    if (!ativo && usuarioId === editorId) {
+      throw new ErroAlterarProprioStatus();
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const atual = await tx.usuario.findUnique({
+        where: { id: usuarioId },
+        select: createdUserData,
+      });
+      if (!atual) throw new ErroUsuarioNaoEncontrado();
+      if (atual.ativo === ativo) return atual;
+
+      const usuario = await tx.usuario.update({
+        where: { id: usuarioId },
+        data: { ativo },
+        select: createdUserData,
+      });
+
+      await tx.atividadeConta.create({
+        data: {
+          usuarioId: editorId,
+          tipo: "EDICAO",
+          descricao: `${ativo ? "Reativou" : "Inativou"} usuário ${usuario.nome} do tipo ${ROTULO_CARGO[usuario.cargo]}.`,
+        },
+      });
+
+      return usuario;
+    });
+  }
+
   async buscarPorEmail(email: string) {
     return prisma.usuario.findUnique({
       where: { email },
@@ -268,6 +423,44 @@ export class ServicoUsuario {
     return prisma.usuario.findUnique({
       where: { email },
       select: credenciaisLogin,
+    });
+  }
+
+  async redefinirSenhaDeTecnico(usuarioId: string, senha: string) {
+    return prisma.$transaction(async (tx) => {
+      const usuario = await tx.usuario.findUnique({
+        where: { id: usuarioId },
+        select: { id: true, ativo: true, cargo: true },
+      });
+
+      if (!usuario) throw new ErroUsuarioNaoEncontrado();
+      if (!usuario.ativo) throw new ErroUsuarioInativo();
+      if (usuario.cargo !== Cargo.TECNICO) throw new ErroUsuarioNaoTecnico();
+
+      const resultado = await tx.usuario.updateMany({
+        where: {
+          id: usuarioId,
+          ativo: true,
+          cargo: Cargo.TECNICO,
+        },
+        data: {
+          senhaHash: await hash(senha, 12),
+          senhaProvisoria: true,
+        },
+      });
+
+      if (resultado.count === 0) {
+        const atual = await tx.usuario.findUnique({
+          where: { id: usuarioId },
+          select: { ativo: true, cargo: true },
+        });
+
+        if (!atual) throw new ErroUsuarioNaoEncontrado();
+        if (!atual.ativo) throw new ErroUsuarioInativo();
+        throw new ErroUsuarioNaoTecnico();
+      }
+
+      return { id: usuarioId };
     });
   }
 
