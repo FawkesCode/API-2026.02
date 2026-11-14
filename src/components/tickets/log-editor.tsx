@@ -20,16 +20,12 @@ import {
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useEquipes } from "@/hooks/use-equipes";
 
 interface LogEditorProps {
   onEnviar?: (log: {
     titulo: string;
     conteudo: string;
-    relatorio: string;
-    equipeMencionada?: { id: string; nome: string };
   }) => Promise<void> | void;
-  equipesDoTicket: Array<{ id: string; nome: string }>;
   className?: string;
 }
 
@@ -56,13 +52,8 @@ function validarLog(titulo: string, editor: Editor): ErrosLog {
   return erros;
 }
 
-function LogEditor({ onEnviar, equipesDoTicket, className }: LogEditorProps) {
+function LogEditor({ onEnviar, className }: LogEditorProps) {
   const [titulo, setTitulo] = useState("");
-  const [equipeMencionadaId, setEquipeMencionadaId] = useState("");
-  const { equipes, carregando, indisponivel } = useEquipes();
-  const equipesDisponiveis = equipes.filter(
-    (equipe) => !equipesDoTicket.some((alocada) => alocada.id === equipe.id),
-  );
   const [erros, setErros] = useState<ErrosLog>({});
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -104,16 +95,8 @@ function LogEditor({ onEnviar, equipesDoTicket, className }: LogEditorProps) {
     setEnviando(true);
 
     try {
-      await onEnviar?.({
-        titulo: tituloLimpo,
-        conteudo: editor.getHTML(),
-        relatorio: editor.getText().trim(),
-        equipeMencionada: equipesDisponiveis.find(
-          (equipe) => equipe.id === equipeMencionadaId,
-        ),
-      });
+      await onEnviar?.({ titulo: tituloLimpo, conteudo: editor.getHTML() });
       setTitulo("");
-      setEquipeMencionadaId("");
       editor.commands.clearContent();
     } catch (erro) {
       setErroEnvio(
@@ -128,27 +111,6 @@ function LogEditor({ onEnviar, equipesDoTicket, className }: LogEditorProps) {
 
   return (
     <div className={cn("flex flex-col gap-3  ", className)}>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="mencionar-equipe" className="text-sm font-medium text-foreground">
-          Mencionar um time (opcional)
-        </label>
-        <select
-          id="mencionar-equipe"
-          value={equipeMencionadaId}
-          onChange={(event) => setEquipeMencionadaId(event.target.value)}
-          disabled={carregando || indisponivel || enviando}
-          className="w-full rounded-lg border border-input bg-white px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-        >
-          <option value="">Não mencionar time</option>
-          {equipesDisponiveis.map((equipe) => (
-            <option key={equipe.id} value={equipe.id}>{equipe.nome}</option>
-          ))}
-        </select>
-        {indisponivel && <p className="text-xs text-destructive">Não foi possível carregar os times para mencionar.</p>}
-        {!indisponivel && !carregando && equipesDisponiveis.length === 0 && (
-          <p className="text-xs text-muted-foreground">Todos os times já estão neste ticket.</p>
-        )}
-      </div>
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-3">
           <label
