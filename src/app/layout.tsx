@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className={cn("h-full", "antialiased", "font-sans")}>
-      <body className="min-h-full h-screen flex flex-col bg-[#05325A]">
+      <body className="min-h-full h-screen flex flex-col overflow-hidden bg-[#05325A]">
         {children}
         <Toaster />
       </body>

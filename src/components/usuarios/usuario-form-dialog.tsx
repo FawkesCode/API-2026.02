@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Controller,
   useForm,
   useWatch,
   type FieldErrors,
+  type Resolver,
   type UseFormResetField,
   type UseFormSetError,
 } from "react-hook-form";
@@ -32,18 +33,23 @@ import {
   FormSelect,
 } from "@/components/form/form-field";
 import {
+  atualizarUsuario,
   cadastrarUsuario,
   mapearErrosCamposUsuario,
   MENSAGEM_ERRO_CADASTRO_USUARIO,
+  MENSAGEM_ERRO_EDICAO_USUARIO,
 } from "@/lib/usuarios-client";
 import { cn } from "@/lib/utils";
 import {
   OPCOES_TIPO_CONTA,
   REGRAS_SENHA,
+  toUsuarioFormInput,
+  usuarioEdicaoFormSchema,
   usuarioFormSchema,
   type UsuarioFormInput,
   type UsuarioFormValues,
 } from "@/schemas/usuario-form.schema";
+import type { UsuarioListaItem } from "@/types/usuario";
 
 export const VALORES_INICIAIS_USUARIO_FORM: UsuarioFormInput = {
   email: "",
@@ -62,6 +68,9 @@ export interface AcoesSubmissaoUsuarioForm {
   atualizarLista: () => void;
   notificarSucesso?: () => void;
   enviarCadastro?: typeof cadastrarUsuario;
+  /** Presente => modo edição (PUT /api/usuarios/[id]). */
+  usuarioId?: string;
+  enviarEdicao?: typeof atualizarUsuario;
 }
 
 export function tratarFalhaValidacaoSenha(
@@ -80,13 +89,17 @@ export async function processarEnvioCadastroUsuario(
 ): Promise<void> {
   acoes.setErroEnvio(null);
 
-  const enviar = acoes.enviarCadastro ?? cadastrarUsuario;
+  const editando = Boolean(acoes.usuarioId);
   let resultado: Awaited<ReturnType<typeof cadastrarUsuario>>;
 
   try {
-    resultado = await enviar(data);
+    resultado = editando
+      ? await (acoes.enviarEdicao ?? atualizarUsuario)(acoes.usuarioId!, data)
+      : await (acoes.enviarCadastro ?? cadastrarUsuario)(data);
   } catch {
-    acoes.setErroEnvio(MENSAGEM_ERRO_CADASTRO_USUARIO);
+    acoes.setErroEnvio(
+      editando ? MENSAGEM_ERRO_EDICAO_USUARIO : MENSAGEM_ERRO_CADASTRO_USUARIO,
+    );
     return;
   }
 
@@ -98,11 +111,20 @@ export async function processarEnvioCadastroUsuario(
     } else {
       toast.add({
         type: "success",
-        title: "Usuário cadastrado",
-        description: "O novo usuário foi cadastrado com sucesso.",
+        title: editando ? "Usuário atualizado" : "Usuário cadastrado",
+        description: editando
+          ? "As alterações foram salvas com sucesso."
+          : "O novo usuário foi cadastrado com sucesso.",
       });
     }
     acoes.atualizarLista();
+    return;
+  }
+
+  // O backend bloqueia a troca do próprio cargo (resposta sem `detalhes`):
+  // mostramos o erro direto no campo "Tipo de conta".
+  if (resultado.codigo === "ALTERAR_PROPRIO_CARGO") {
+    acoes.setError("tipoConta", { type: "server", message: resultado.erro });
     return;
   }
 
@@ -129,10 +151,30 @@ export async function processarEnvioCadastroUsuario(
   acoes.setErroEnvio(resultado.erro);
 }
 
-export function UsuarioFormDialog() {
+interface UsuarioFormDialogProps {
+  /** Usuário selecionado na tabela: presente => modo edição. */
+  usuario?: UsuarioListaItem | null;
+  /** Controle externo de abertura (usado na edição, pela tabela). */
+  aberto?: boolean;
+  onAbertoChange?: (aberto: boolean) => void;
+}
+
+export function UsuarioFormDialog({
+  usuario = null,
+  aberto: abertoProp,
+  onAbertoChange,
+}: UsuarioFormDialogProps = {}) {
   const router = useRouter();
-  const [aberto, setAberto] = useState(false);
+  const editando = usuario !== null;
+  const [abertoInterno, setAbertoInterno] = useState(false);
+  const aberto = abertoProp ?? abertoInterno;
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+
+  const valoresIniciais = useMemo(
+    () =>
+      usuario ? toUsuarioFormInput(usuario) : VALORES_INICIAIS_USUARIO_FORM,
+    [usuario],
+  );
 
   const {
     register,
@@ -143,18 +185,25 @@ export function UsuarioFormDialog() {
     setError,
     formState: { errors, isSubmitting },
   } = useForm<UsuarioFormInput, unknown, UsuarioFormValues>({
-    resolver: zodResolver(usuarioFormSchema),
-    defaultValues: VALORES_INICIAIS_USUARIO_FORM,
+    resolver: zodResolver(
+      editando ? usuarioEdicaoFormSchema : usuarioFormSchema,
+    ) as Resolver<UsuarioFormInput, unknown, UsuarioFormValues>,
+    defaultValues: valoresIniciais,
   });
 
   const senhaDigitada =
     useWatch({ control, name: "senha", defaultValue: "" }) ?? "";
   const usuarioComecouADigitarSenha = senhaDigitada.length > 0;
 
+  function definirAberto(valor: boolean) {
+    setAbertoInterno(valor);
+    onAbertoChange?.(valor);
+  }
+
   function aoMudarAbertura(valor: boolean) {
-    setAberto(valor);
+    definirAberto(valor);
     if (!valor) {
-      reset(VALORES_INICIAIS_USUARIO_FORM);
+      reset(valoresIniciais);
       setErroEnvio(null);
     }
   }
@@ -168,30 +217,35 @@ export function UsuarioFormDialog() {
       reset,
       resetField,
       setError,
-      setAberto,
+      setAberto: definirAberto,
       setErroEnvio,
       atualizarLista: () => router.refresh(),
+      usuarioId: usuario?.id,
     });
   }
 
   return (
     <Dialog open={aberto} onOpenChange={aoMudarAbertura}>
-      <DialogTrigger
-        render={
-          <Button
-            type="button"
-            variant="default"
-            className="cursor-pointer rounded-md bg-accent px-4 text-white hover:bg-cyan-400"
-          />
-        }
-      >
-        <Plus className="size-4" />
-        Criar Novo
-      </DialogTrigger>
+      {!editando && (
+        <DialogTrigger
+          render={
+            <Button
+              type="button"
+              variant="default"
+              className="cursor-pointer rounded-md bg-accent px-4 text-white hover:bg-cyan-400"
+            />
+          }
+        >
+          <Plus className="size-4" />
+          Criar Novo
+        </DialogTrigger>
+      )}
 
       <DialogContent className="flex max-h-[90vh] flex-col gap-5 overflow-y-auto">
         <DialogHeader className="h-fit">
-          <DialogTitle>Cadastrar novo Usuário</DialogTitle>
+          <DialogTitle>
+            {editando ? "Editar Usuário" : "Cadastrar novo Usuário"}
+          </DialogTitle>
           <DialogDivider />
           <DialogDescription>
             Os campos com (*) são obrigatórios.
@@ -240,57 +294,62 @@ export function UsuarioFormDialog() {
               />
             </div>
 
-            <FormPassword
-              label="Senha:"
-              required
-              placeholder="Digite a senha..."
-              error={errors.senha?.message}
-              {...register("senha")}
-            />
+            {!editando && (
+              <>
+                <FormPassword
+                  label="Senha:"
+                  required
+                  placeholder="Digite a senha..."
+                  error={errors.senha?.message}
+                  {...register("senha")}
+                />
 
-            <FormPassword
-              label="Confirmar Senha:"
-              required
-              placeholder="Confirme a senha informada..."
-              error={errors.confirmarSenha?.message}
-              {...register("confirmarSenha")}
-            />
+                <FormPassword
+                  label="Confirmar Senha:"
+                  required
+                  placeholder="Confirme a senha informada..."
+                  error={errors.confirmarSenha?.message}
+                  {...register("confirmarSenha")}
+                />
 
-            <div className="flex flex-col gap-1.5 text-xs">
-              <p className="font-semibold text-card-foreground">
-                Senha deve conter:
-              </p>
-              <ul className="list-disc space-y-1 pl-5">
-                {REGRAS_SENHA.map((regra) => {
-                  const atendida = regra.validar(senhaDigitada);
-                  return (
-                    <li
-                      key={regra.id}
-                      data-testid={`regra-senha-${regra.id}`}
-                      data-status={
-                        !usuarioComecouADigitarSenha
-                          ? "pending"
-                          : atendida
-                            ? "valid"
-                            : "invalid"
-                      }
-                      className={cn(
-                        "transition-colors",
-                        !usuarioComecouADigitarSenha && "text-muted-foreground",
-                        usuarioComecouADigitarSenha &&
-                          atendida &&
-                          "text-emerald-600",
-                        usuarioComecouADigitarSenha &&
-                          !atendida &&
-                          "text-destructive",
-                      )}
-                    >
-                      {regra.label}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+                <div className="flex flex-col gap-1.5 text-xs">
+                  <p className="font-semibold text-card-foreground">
+                    Senha deve conter:
+                  </p>
+                  <ul className="list-disc space-y-1 pl-5">
+                    {REGRAS_SENHA.map((regra) => {
+                      const atendida = regra.validar(senhaDigitada);
+                      return (
+                        <li
+                          key={regra.id}
+                          data-testid={`regra-senha-${regra.id}`}
+                          data-status={
+                            !usuarioComecouADigitarSenha
+                              ? "pending"
+                              : atendida
+                                ? "valid"
+                                : "invalid"
+                          }
+                          className={cn(
+                            "transition-colors",
+                            !usuarioComecouADigitarSenha &&
+                              "text-muted-foreground",
+                            usuarioComecouADigitarSenha &&
+                              atendida &&
+                              "text-emerald-600",
+                            usuarioComecouADigitarSenha &&
+                              !atendida &&
+                              "text-destructive",
+                          )}
+                        >
+                          {regra.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </>
+            )}
           </DialogBody>
 
           {erroEnvio && (
@@ -308,7 +367,13 @@ export function UsuarioFormDialog() {
               disabled={isSubmitting}
               className="cursor-pointer rounded-md bg-accent px-6 text-white hover:bg-cyan-400"
             >
-              {isSubmitting ? "Cadastrando..." : "Cadastrar Usuário"}
+              {isSubmitting
+                ? editando
+                  ? "Salvando..."
+                  : "Cadastrando..."
+                : editando
+                  ? "Salvar Alterações"
+                  : "Cadastrar Usuário"}
             </Button>
           </DialogFooter>
         </form>
