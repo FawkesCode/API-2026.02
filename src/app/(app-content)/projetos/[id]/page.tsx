@@ -5,6 +5,7 @@ import TicketFilter from "@/components/tickets/ticket-filter";
 import { getProjectById, getProjectTickets } from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
 import type { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
+import DefaultPagination from "@/components/default-pagination";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -13,6 +14,8 @@ interface PageProps {
     status?: string;
     titulo?: string;
     data?: string;
+    pagina: number;
+    itensPorPagina: number;
   }>;
 }
 
@@ -21,35 +24,48 @@ async function page({ params, searchParams }: PageProps) {
   const filtros = await searchParams;
 
   const { title } = await getProjectById(id);
-  const tickets: TicketView[] = await getProjectTickets(id, {
-    prioridade: filtros.prioridade as Prioridade | undefined,
-    status: filtros.status as StatusTicket | undefined,
-    titulo: filtros.titulo,
-    data: filtros.data,
-  });
+  const { itens, total, pagina, totalPaginas, itensPorPagina } =
+    await getProjectTickets(id, {
+      prioridade: filtros.prioridade as Prioridade | undefined,
+      status: filtros.status as StatusTicket | undefined,
+      titulo: filtros.titulo,
+      data: filtros.data,
+      pagina: filtros.pagina,
+      itensPorPagina: filtros.itensPorPagina,
+    });
 
   return (
     <>
       <PageHeader>{`Projeto ${title} > Tickets`}</PageHeader>
 
-      <section className="flex flex-col gap-4 pb-8">
-        <Suspense fallback={null}>
-          <TicketFilter />
-        </Suspense>
-        {tickets.length !== 0 ? (
-          tickets.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket}
-              ticketUrl={`/projetos/${id}/${ticket.id}`}
-            />
-          ))
-        ) : (
-          <p className="col-span-full pl-2 text-sm text-muted-foreground">
-            Nenhum ticket cadastrado para o projeto {title} ainda!
-          </p>
+      <div className=" flex flex-col h-full justify-between pb-8">
+        <section className="flex flex-col gap-4 pb-8">
+          <Suspense fallback={null}>
+            <TicketFilter />
+          </Suspense>
+          {itens.length !== 0 ? (
+            itens.map((ticket) => (
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                ticketUrl={`/projetos/${id}/${ticket.id}`}
+              />
+            ))
+          ) : (
+            <p className="col-span-full pl-2 text-sm text-muted-foreground">
+              Nenhum ticket cadastrado para o projeto {title} ainda!
+            </p>
+          )}
+        </section>
+        {itens.length !== 0 && (
+          <DefaultPagination
+            page={pagina}
+            totalPages={totalPaginas}
+            total={total}
+            itensPerPage={itensPorPagina}
+          />
         )}
-      </section>
+      </div>
     </>
   );
 }
