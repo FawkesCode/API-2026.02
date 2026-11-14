@@ -79,6 +79,7 @@ interface TicketLogsProps {
   podeDecidir: boolean;
   /** Se a equipe do usuário já enviou "começou a trabalhar" neste ticket. */
   equipeIniciou: boolean;
+  equipesDoTicket: Array<{ id: string; nome: string }>;
   className?: string;
 }
 
@@ -91,6 +92,7 @@ function TicketLogs({
   podeRegistrar,
   podeDecidir,
   equipeIniciou,
+  equipesDoTicket,
 }: TicketLogsProps) {
   const router = useRouter();
 
@@ -214,11 +216,32 @@ function TicketLogs({
   async function enviarLogManual({
     titulo,
     conteudo,
+    equipeMencionada,
+    relatorio,
   }: {
     titulo: string;
     conteudo: string;
+    equipeMencionada?: { id: string; nome: string };
+    relatorio: string;
   }) {
-    await registrarLog(titulo, conteudo);
+    if (equipeMencionada) {
+      const resposta = await fetch(`/api/tickets/${ticketId}/equipes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ equipeId: equipeMencionada.id, relatorio }),
+      });
+      const corpo = await resposta.json().catch(() => null);
+      if (!resposta.ok) {
+        throw new Error(corpo?.erro ?? "Não foi possível mencionar este time.");
+      }
+    }
+
+    await registrarLog(
+      titulo,
+      equipeMencionada
+        ? `<p><strong>@${equipeMencionada.nome}</strong></p>${conteudo}`
+        : conteudo,
+    );
   }
 
   return (
@@ -382,7 +405,7 @@ function TicketLogs({
             </p>
           )}
 
-          <LogEditor onEnviar={enviarLogManual} />
+          <LogEditor onEnviar={enviarLogManual} equipesDoTicket={equipesDoTicket} />
         </section>
       )}
     </div>
