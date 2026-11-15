@@ -7,6 +7,7 @@ import { useEquipes } from "@/hooks/use-equipes";
 
 interface Props {
   ticketId: string;
+  relatorio: string;
   equipesDoTicket: { id: string; nome: string }[];
   equipeDoUsuarioId?: string | null;
 }
@@ -15,6 +16,7 @@ type Modo = "atribuir" | "desatribuir";
 
 export function GerenciarEquipesTicket({
   ticketId,
+  relatorio,
   equipesDoTicket,
   equipeDoUsuarioId,
 }: Props) {
@@ -44,7 +46,11 @@ export function GerenciarEquipesTicket({
       const res = await fetch(`/api/tickets/${ticketId}/equipes`, {
         method: modo === "atribuir" ? "POST" : "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ equipeId: equipe.id }),
+        body: JSON.stringify(
+          modo === "atribuir"
+            ? { equipeId: equipe.id, relatorio }
+            : { equipeId: equipe.id },
+        ),
       });
       if (!res.ok) {
         const corpo = await res.json().catch(() => null);

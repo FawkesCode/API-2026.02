@@ -558,6 +558,7 @@ export class ServicoTicket {
     // Se já estava no ticket, não recria nem reenvia e-mail.
     if (resultado.jaAlocada) {
       return {
+        jaAlocada: true as const,
         ticket: await this.db.ticket.findUniqueOrThrow({
           where: { id: ticketId },
           include: RELACOES_TICKET,
@@ -572,6 +573,7 @@ export class ServicoTicket {
       include: RELACOES_TICKET,
     });
     return {
+      jaAlocada: false as const,
       ticket,
       notificacaoEmail: "PENDENTE" as const,
       notificarEmail: true as const,
@@ -581,24 +583,32 @@ export class ServicoTicket {
   async notificarGestorDaEquipe(
     ticketId: string,
     equipeId: string,
+    relatorio?: string,
   ): Promise<StatusNotificacaoEquipe> {
     try {
-      const gestorDaEquipe = await this.db.usuario.findFirst({
-        where: { equipeId, cargo: Cargo.GESTOR, ativo: true },
-        select: { id: true },
+      const membros = await this.db.usuario.findMany({
+        where: { equipeId, ativo: true },
+        select: { nome: true, email: true },
       });
 
-      if (!gestorDaEquipe) {
+      if (membros.length === 0) {
         console.warn(
-          `Nenhum gestor ativo encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`,
+          `Nenhum membro ativo encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`,
         );
         return "SEM_GESTOR";
       }
 
-      const resultado = await new EmailManagerService(
-        gestorDaEquipe.id,
+      const ticket = await this.db.ticket.findUnique({
+        where: { id: ticketId },
+        select: { descricao: true },
+      });
+      if (!ticket) return "FALHOU";
+
+      const resultado = await new EmailManagerService({
+        destinatarios: membros,
         ticketId,
-      ).sendMail();
+        relatorio: relatorio?.trim() || ticket.descricao,
+      }).sendMail();
       if (!resultado?.success) {
         console.error(
           "Falha ao enviar e-mail de atribuição de equipe:",

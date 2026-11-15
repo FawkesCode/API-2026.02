@@ -290,11 +290,18 @@ export class ControladorTicket {
             { status: 404 },
           );
         }
+        if (resultado.jaAlocada) {
+          return NextResponse.json(
+            { erro: "A equipe já está associada a este ticket." },
+            { status: 409 },
+          );
+        }
         if (resultado.notificarEmail) {
           after(async () => {
             const status = await servicoTicket.notificarGestorDaEquipe(
               idValidado.data,
               dados.equipeId,
+              dados.relatorio,
             );
             console.info(
               `[notificacao-equipe] ticket=${idValidado.data} equipe=${dados.equipeId} status=${status}`,

@@ -73,6 +73,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
               {podeEditarTicket && (
                 <GerenciarEquipesTicket
                   ticketId={id}
+                  relatorio={ticket.description}
                   equipesDoTicket={ticket.teams}
                   equipeDoUsuarioId={usuarioLogado?.equipeId}
                 />
