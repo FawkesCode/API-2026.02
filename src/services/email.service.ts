@@ -191,7 +191,9 @@ Acesse o sistema para mais detalhes.`;
     try {
       const info = await transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: destinatarios.map(({ email }) => email),
+        // Usa a própria conta remetente no campo To e oculta os membros em BCC.
+        to: process.env.EMAIL_USER,
+        bcc: destinatarios.map(({ email }) => email),
         subject: `Ticket atribuido ao seu time ${ticketInfo.titulo}`,
         text: text,
         html: html,

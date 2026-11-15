@@ -515,43 +515,64 @@ export class ServicoTicket {
   }
 
   async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string) {
-    const resultado = await this.db.$transaction(async (tx) => {
-      // Trava a linha: o status lido abaixo não muda até o commit.
-      await travarStatusDoTicket(tx, ticketId);
-      const ticket = await tx.ticket.findUnique({
-        where: { id: ticketId },
-        include: { equipesAlocadas: { select: { equipeId: true } } },
-      });
-      if (!ticket) return null;
+    let resultado: { jaAlocada: boolean } | null;
+    try {
+      resultado = await this.db.$transaction(async (tx) => {
+        // Serializa as atribuições do mesmo ticket. A UNIQUE abaixo continua
+        // sendo a última proteção contra duplicidade em concorrência.
+        await travarStatusDoTicket(tx, ticketId);
+        const ticket = await tx.ticket.findUnique({
+          where: { id: ticketId },
+          include: { equipesAlocadas: { select: { equipeId: true } } },
+        });
+        if (!ticket) return null;
 
-      await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
-      if (ticket.status === StatusTicket.ENCERRADO)
-        throw new ErroTicketEncerrado();
+        await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+        if (ticket.status === StatusTicket.ENCERRADO)
+          throw new ErroTicketEncerrado();
 
-      const equipe = await tx.equipe.findUnique({
-        where: { id: equipeId },
-        select: { ativo: true, nome: true },
+        const equipe = await tx.equipe.findUnique({
+          where: { id: equipeId },
+          select: { ativo: true, nome: true },
+        });
+        if (!equipe?.ativo) {
+          throw new ErroEquipeInvalida("Equipe não encontrada ou inativa.");
+        }
+
+        const jaAlocada = ticket.equipesAlocadas.some(
+          (e) => e.equipeId === equipeId,
+        );
+        if (jaAlocada) return { jaAlocada: true };
+
+        await tx.ticketEquipe.create({ data: { ticketId, equipeId } });
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId,
+            tipo: "TICKET",
+            descricao: `Atribuiu equipe ${equipe.nome} ao ticket ${ticket.titulo}.`,
+          },
+        });
+
+        return { jaAlocada: false };
       });
-      if (!equipe?.ativo) {
-        throw new ErroEquipeInvalida("Equipe não encontrada ou inativa.");
+    } catch (erro) {
+      // Se duas requisições simultâneas passarem pela leitura inicial, a
+      // restrição UNIQUE pode rejeitar uma delas. Converte esse caso em
+      // duplicidade normal, sem tentar enviar um segundo e-mail.
+      if (
+        erro instanceof Prisma.PrismaClientKnownRequestError &&
+        erro.code === "P2002"
+      ) {
+        const associacaoExistente = await this.db.ticketEquipe.findUnique({
+          where: { ticketId_equipeId: { ticketId, equipeId } },
+          select: { id: true },
+        });
+        if (associacaoExistente) resultado = { jaAlocada: true };
+        else throw erro;
+      } else {
+        throw erro;
       }
-
-      const jaAlocada = ticket.equipesAlocadas.some(
-        (e) => e.equipeId === equipeId,
-      );
-      if (jaAlocada) return { jaAlocada: true };
-
-      await tx.ticketEquipe.create({ data: { ticketId, equipeId } });
-      await tx.atividadeConta.create({
-        data: {
-          usuarioId,
-          tipo: "TICKET",
-          descricao: `Atribuiu equipe ${equipe.nome} ao ticket ${ticket.titulo}.`,
-        },
-      });
-
-      return { jaAlocada: false };
-    });
+    }
 
     if (!resultado) return null;
 
