@@ -25,6 +25,13 @@ export class ErroConflitoPrioridade extends Error {
 
 export const TAMANHO_PAGINA_TICKETS = 5;
 
+export type StatusNotificacaoEquipe =
+  | "PENDENTE"
+  | "ENVIADO"
+  | "FALHOU"
+  | "SEM_GESTOR"
+  | "NAO_NECESSARIA";
+
 // NOTE: se esta classe já existir em outro arquivo de erros do projeto,
 // remova esta definição local e importe a existente em vez de duplicá-la.
 export class ErroNaoAutorizadoParaAlterarPrioridade extends Error {
@@ -459,32 +466,7 @@ export class ServicoTicket {
     });
     if (!alocado) return null;
 
-    try {
-      const gestorDaEquipe = await this.db.usuario.findFirst({
-        where: {
-          equipeId: equipeId,
-          cargo: "GESTOR",
-        },
-        select: { id: true },
-      });
-
-      if (gestorDaEquipe) {
-        const emailService = new EmailManagerService(
-          gestorDaEquipe.id,
-          ticketId,
-        );
-        await emailService.sendMail();
-      } else {
-        console.warn(
-          `Nenhum gestor encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`,
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Erro ao tentar enviar e-mail de alocação de equipe:",
-        error,
-      );
-    }
+    await this.notificarGestorDaEquipe(ticketId, equipeId);
 
     return this.db.ticket.findUniqueOrThrow({
       where: { id: ticketId },
@@ -548,29 +530,87 @@ export class ServicoTicket {
 
       const equipe = await tx.equipe.findUnique({
         where: { id: equipeId },
-        select: { ativo: true },
+        select: { ativo: true, nome: true },
       });
       if (!equipe?.ativo) {
         throw new ErroEquipeInvalida("Equipe não encontrada ou inativa.");
       }
 
-      return {
-        jaAlocada: ticket.equipesAlocadas.some((e) => e.equipeId === equipeId),
-      };
+      const jaAlocada = ticket.equipesAlocadas.some(
+        (e) => e.equipeId === equipeId,
+      );
+      if (jaAlocada) return { jaAlocada: true };
+
+      await tx.ticketEquipe.create({ data: { ticketId, equipeId } });
+      await tx.atividadeConta.create({
+        data: {
+          usuarioId,
+          tipo: "TICKET",
+          descricao: `Atribuiu equipe ${equipe.nome} ao ticket ${ticket.titulo}.`,
+        },
+      });
+
+      return { jaAlocada: false };
     });
 
     if (!resultado) return null;
 
     // Se já estava no ticket, não recria nem reenvia e-mail.
     if (resultado.jaAlocada) {
-      return this.db.ticket.findUniqueOrThrow({
-        where: { id: ticketId },
-        include: RELACOES_TICKET,
-      });
+      return {
+        ticket: await this.db.ticket.findUniqueOrThrow({
+          where: { id: ticketId },
+          include: RELACOES_TICKET,
+        }),
+        notificacaoEmail: "NAO_NECESSARIA" as const,
+        notificarEmail: false as const,
+      };
     }
 
-    // Reaproveita a lógica existente (upsert + e-mail ao gestor da equipe).
-    return this.alocarEquipe(ticketId, equipeId, usuarioId);
+    const ticket = await this.db.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
+      include: RELACOES_TICKET,
+    });
+    return {
+      ticket,
+      notificacaoEmail: "PENDENTE" as const,
+      notificarEmail: true as const,
+    };
+  }
+
+  async notificarGestorDaEquipe(
+    ticketId: string,
+    equipeId: string,
+  ): Promise<StatusNotificacaoEquipe> {
+    try {
+      const gestorDaEquipe = await this.db.usuario.findFirst({
+        where: { equipeId, cargo: Cargo.GESTOR, ativo: true },
+        select: { id: true },
+      });
+
+      if (!gestorDaEquipe) {
+        console.warn(
+          `Nenhum gestor ativo encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`,
+        );
+        return "SEM_GESTOR";
+      }
+
+      const resultado = await new EmailManagerService(
+        gestorDaEquipe.id,
+        ticketId,
+      ).sendMail();
+      if (!resultado?.success) {
+        console.error(
+          "Falha ao enviar e-mail de atribuição de equipe:",
+          resultado?.error,
+        );
+        return "FALHOU";
+      }
+      return "ENVIADO";
+    } catch (erro) {
+      console.error("Falha ao notificar o gestor da equipe:", erro);
+      return "FALHOU";
+    }
   }
 
   async desatribuirEquipe(

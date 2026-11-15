@@ -1,11 +1,21 @@
-import dotenv from "dotenv";
 import { prisma } from "../lib/prisma";
 
-import path from "path";
 import CreateTransporter from "./default-classes/transporter";
 
-dotenv.config({ path: path.resolve(process.cwd(), "src", ".env") });
 const transporter = CreateTransporter.transporter;
+
+function escaparHtml(valor: string) {
+  return valor.replace(/[&<>"']/g, (caractere) => {
+    const entidades: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return entidades[caractere];
+  });
+}
 
 export default class EmailManagerService {
   private managerId: string;
@@ -57,6 +67,13 @@ export default class EmailManagerService {
     const dataAtribuicao = new Date().toLocaleString("pt-BR", {
       timeZone: "America/Sao_Paulo",
     });
+    const nomeGestorHtml = escaparHtml(managerInfo.nome);
+    const tituloTicketHtml = escaparHtml(ticketInfo.titulo);
+    const nomeProjetoHtml = escaparHtml(ticketInfo.projeto.nome);
+    const categoriaHtml = escaparHtml(ticketInfo.categoria);
+    const prioridadeHtml = escaparHtml(ticketInfo.prioridade);
+    const statusHtml = escaparHtml(ticketInfo.status);
+    const dataAtribuicaoHtml = escaparHtml(dataAtribuicao);
 
     const text = `Olá, ${managerInfo.nome}!
 
@@ -91,7 +108,7 @@ Acesse o sistema para mais detalhes.`;
     <tr>
       <td style="padding: 32px;">
         <p style="font-size: 16px; margin: 0 0 16px 0; color: #0f172a;">
-          Olá, <strong>${managerInfo.nome}</strong>!
+          Olá, <strong>${nomeGestorHtml}</strong>!
         </p>
         <p style="font-size: 14px; margin: 0 0 24px 0; color: #475569; line-height: 1.5;">
           Um novo ticket foi atribuído ao seu time. Abaixo estão as informações detalhadas:
@@ -101,26 +118,26 @@ Acesse o sistema para mais detalhes.`;
           <tbody>
             <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1; width: 30%;">Título</td>
-              <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 500;">${ticketInfo.titulo}</td>
+              <td style="padding: 12px 16px; font-size: 14px; color: #0f172a; font-weight: 500;">${tituloTicketHtml}</td>
             </tr>
             <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Projeto</td>
-              <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${ticketInfo.projeto.nome}</td>
+              <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${nomeProjetoHtml}</td>
             </tr>
             <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Categoria</td>
-              <td style="padding: 12px 16px; font-size: 14px; color: #334155;">${ticketInfo.categoria}</td>
+              <td style="padding: 12px 16px; font-size: 14px; color: #334155;">${categoriaHtml}</td>
             </tr><tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Prioridade</td>
-              <td style="padding: 12px 16px; font-size: 14px; color: #334155;">${ticketInfo.prioridade}</td>
+              <td style="padding: 12px 16px; font-size: 14px; color: #334155;">${prioridadeHtml}</td>
             </tr>
             <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Status</td>
-              <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${ticketInfo.status}</td>
+              <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${statusHtml}</td>
             </tr>
             <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #0369a1;">Atribuído em</td>
-              <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${dataAtribuicao}</td>
+              <td style="padding: 12px 16px; font-size: 14px; color: #334155; font-weight: 500;">${dataAtribuicaoHtml}</td>
             </tr>
           </tbody>
         </table>

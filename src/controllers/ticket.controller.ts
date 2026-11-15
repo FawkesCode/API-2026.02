@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { Cargo, Prisma } from "@/lib/generated/prisma/client";
 import { exigirCargo, exigirSessao } from "@/auth/exigir-cargo";
@@ -183,8 +183,11 @@ export class ControladorTicket {
     }
 
     try {
-      const tickets = await servicoTicket.listarTodos();
-      return NextResponse.json(tickets.map(toTicketDTO), { status: 200 });
+      const resultado = await servicoTicket.listarTodos();
+      return NextResponse.json(
+        { ...resultado, itens: resultado.itens.map(toTicketDTO) },
+        { status: 200 },
+      );
     } catch (erro) {
       return tratarErroInesperado(erro);
     }
@@ -250,43 +253,6 @@ export class ControladorTicket {
     }
   }
 
-  async alocarEquipe(requisicao: Request, ticketId: string) {
-    const acesso = await exigirSessao(requisicao);
-    if (!acesso.autorizado) return acesso.resposta;
-
-    const idValidado = z.uuid().safeParse(ticketId);
-    if (!idValidado.success) {
-      return NextResponse.json(
-        { erro: "ID do ticket inválido." },
-        { status: 400 },
-      );
-    }
-
-    const { corpo, erro: erroDeParse } = await extrairJson(requisicao);
-    if (erroDeParse) return erroDeParse;
-
-    const { dados, erro: erroDeValidacao } = validarCorpo(
-      alocarEquipeTicketSchema,
-      corpo,
-    );
-    if (erroDeValidacao) return erroDeValidacao;
-
-    try {
-      const ticket = await servicoTicket.alocarEquipe(
-        idValidado.data,
-        dados.equipeId,
-      );
-      if (!ticket) {
-        return NextResponse.json(
-          { erro: "Ticket não encontrado." },
-          { status: 404 },
-        );
-      }
-      return NextResponse.json(toTicketDTO(ticket), { status: 200 });
-    } catch (erro) {
-      return tratarErroInesperado(erro);
-    }
-  }
   private async gerenciarEquipe(
     requisicao: Request,
     ticketId: string,
@@ -312,13 +278,48 @@ export class ControladorTicket {
     if (erroDeValidacao) return erroDeValidacao;
 
     try {
-      const ticket =
-        acao === "atribuir"
-          ? await servicoTicket.atribuirEquipe(idValidado.data, dados.equipeId, sessao.usuarioId)
-          : await servicoTicket.desatribuirEquipe(idValidado.data, dados.equipeId, sessao.usuarioId);
+      if (acao === "atribuir") {
+        const resultado = await servicoTicket.atribuirEquipe(
+          idValidado.data,
+          dados.equipeId,
+          sessao.usuarioId,
+        );
+        if (!resultado) {
+          return NextResponse.json(
+            { erro: "Ticket não encontrado." },
+            { status: 404 },
+          );
+        }
+        if (resultado.notificarEmail) {
+          after(async () => {
+            const status = await servicoTicket.notificarGestorDaEquipe(
+              idValidado.data,
+              dados.equipeId,
+            );
+            console.info(
+              `[notificacao-equipe] ticket=${idValidado.data} equipe=${dados.equipeId} status=${status}`,
+            );
+          });
+        }
+        return NextResponse.json(
+          {
+            ...toTicketDTO(resultado.ticket),
+            notificacaoEmail: resultado.notificacaoEmail,
+          },
+          { status: 200 },
+        );
+      }
 
+      const ticket = await servicoTicket.desatribuirEquipe(
+        idValidado.data,
+        dados.equipeId,
+        sessao.usuarioId,
+      );
       if (!ticket) {
-        return NextResponse.json({ erro: "Ticket não encontrado." }, { status: 404 });
+        return NextResponse.json(
+          { erro: "Ticket não encontrado." },
+          { status: 404 },
+        );
       }
       return NextResponse.json(toTicketDTO(ticket), { status: 200 });
     } catch (erro) {
