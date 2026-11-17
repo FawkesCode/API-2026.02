@@ -216,12 +216,11 @@ async function exigirGestorDoTicket(
   tx: Prisma.TransactionClient,
   equipesDoTicket: { equipeId: string }[],
   usuarioId: string,
-  permitirTecnico = false,
 ) {
   const gestor = await tx.usuario.findUnique({ where: { id: usuarioId } });
   if (
     !gestor?.ativo ||
-    (gestor.cargo !== Cargo.GESTOR && !(permitirTecnico && gestor.cargo === Cargo.TECNICO)) ||
+    gestor.cargo !== Cargo.GESTOR ||
     !gestor.equipeId ||
     !equipesDoTicket.some((e) => e.equipeId === gestor.equipeId)
   ) {
@@ -461,12 +460,25 @@ export class ServicoTicket {
     if (!alocado) return null;
 
     try {
-      const emailService = new EmailManagerService(
-        equipeId,
-        ticketId,
-        "Uma equipe foi atribuída ao ticket.",
-      );
-      await emailService.sendMail();
+      const gestorDaEquipe = await this.db.usuario.findFirst({
+        where: {
+          equipeId: equipeId,
+          cargo: "GESTOR",
+        },
+        select: { id: true },
+      });
+
+      if (gestorDaEquipe) {
+        const emailService = new EmailManagerService(
+          gestorDaEquipe.id,
+          ticketId,
+        );
+        await emailService.sendMail();
+      } else {
+        console.warn(
+          `Nenhum gestor encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`,
+        );
+      }
     } catch (error) {
       console.error(
         "Erro ao tentar enviar e-mail de alocação de equipe:",
@@ -520,7 +532,7 @@ export class ServicoTicket {
     });
   }
 
-  async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string, relatorio: string) {
+  async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string) {
     const resultado = await this.db.$transaction(async (tx) => {
       // Trava a linha: o status lido abaixo não muda até o commit.
       await travarStatusDoTicket(tx, ticketId);
@@ -530,7 +542,7 @@ export class ServicoTicket {
       });
       if (!ticket) return null;
 
-      await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId, true);
+      await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
       if (ticket.status === StatusTicket.ENCERRADO)
         throw new ErroTicketEncerrado();
 
@@ -542,34 +554,23 @@ export class ServicoTicket {
         throw new ErroEquipeInvalida("Equipe não encontrada ou inativa.");
       }
 
-      if (ticket.equipesAlocadas.some((e) => e.equipeId === equipeId)) {
-        throw new ErroEquipeJaAtribuida();
-      }
-
-      await tx.ticketEquipe.create({ data: { ticketId, equipeId } });
-      await tx.atividadeConta.create({
-        data: {
-          usuarioId,
-          tipo: "TICKET",
-          descricao: `Atribuiu a equipe ${equipeId} ao ticket ${ticket.titulo}.`,
-        },
-      });
-      return true;
+      return {
+        jaAlocada: ticket.equipesAlocadas.some((e) => e.equipeId === equipeId),
+      };
     });
 
     if (!resultado) return null;
 
-    try {
-      const emailService = new EmailManagerService(equipeId, ticketId, relatorio);
-      await emailService.sendMail();
-    } catch (error) {
-      console.error("Erro ao tentar enviar e-mail de menção de equipe:", error);
+    // Se já estava no ticket, não recria nem reenvia e-mail.
+    if (resultado.jaAlocada) {
+      return this.db.ticket.findUniqueOrThrow({
+        where: { id: ticketId },
+        include: RELACOES_TICKET,
+      });
     }
 
-    return this.db.ticket.findUniqueOrThrow({
-      where: { id: ticketId },
-      include: RELACOES_TICKET,
-    });
+    // Reaproveita a lógica existente (upsert + e-mail ao gestor da equipe).
+    return this.alocarEquipe(ticketId, equipeId, usuarioId);
   }
 
   async desatribuirEquipe(
@@ -622,17 +623,10 @@ export class ServicoTicket {
 
 export class ErroNaoAutorizadoParaGerenciarEquipes extends Error {
   constructor(
-    message = "Apenas um técnico ou gestor de uma equipe do ticket pode atribuir equipes; somente gestores podem desatribuir.",
+    message = "Apenas o gestor de uma equipe do ticket pode atribuir ou desatribuir equipes.",
   ) {
     super(message);
     this.name = "ErroNaoAutorizadoParaGerenciarEquipes";
-  }
-}
-
-export class ErroEquipeJaAtribuida extends Error {
-  constructor(message = "Este time já está atribuído ao ticket.") {
-    super(message);
-    this.name = "ErroEquipeJaAtribuida";
   }
 }
 

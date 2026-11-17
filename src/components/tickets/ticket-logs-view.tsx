@@ -2,6 +2,7 @@ import { PriorityBadge } from "@/components/priority-badge";
 import { PriorityEditor } from "@/components/tickets/priority-editor";
 import { Badge } from "@/components/ui/badge";
 import TicketLogs from "@/components/tickets/ticket-logs";
+import { GerenciarEquipesTicket } from "@/components/tickets/gerenciar-equipes-ticket";
 import { getTicket } from "@/lib/data/project-ticket";
 import { TicketView } from "@/types/ticket";
 import { getTicketLogs } from "@/lib/data/ticket-logs";
@@ -69,7 +70,13 @@ export default async function TicketsLogsView({ id }: { id: string }) {
               ) : (
                 <span>Times ainda não atribuídos.</span>
               )}
-
+              {podeEditarTicket && (
+                <GerenciarEquipesTicket
+                  ticketId={id}
+                  equipesDoTicket={ticket.teams}
+                  equipeDoUsuarioId={usuarioLogado?.equipeId}
+                />
+              )}
             </div>
           </>
         ) : null}
@@ -79,7 +86,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
 
       <TicketLogs ticketId={id} logsIniciais={logs} autor={usuarioLogado ? toAutor(usuarioLogado) : null}
         status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade}
-        equipeIniciou={equipeIniciou} equipesDoTicket={ticket.teams} />
+        equipeIniciou={equipeIniciou} />
     </>
   );
 }
