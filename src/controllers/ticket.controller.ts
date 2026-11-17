@@ -8,6 +8,7 @@ import {
   ErroEquipeInvalida,
   ErroNaoAutorizadoParaAlterarPrioridade,
   ErroNaoAutorizadoParaGerenciarEquipes,
+  ErroRelatorioEquipeInvalido,
   ErroTicketEncerrado,
   ErroUltimaEquipeDoTicket,
   ProjetoNaoEncontradoError,
@@ -57,6 +58,9 @@ function tratarErroInesperado(erro: unknown) {
     return NextResponse.json({ erro: erro.message }, { status: 403 });
   }
   if (erro instanceof ErroEquipeInvalida) {
+    return NextResponse.json({ erro: erro.message }, { status: 400 });
+  }
+  if (erro instanceof ErroRelatorioEquipeInvalido) {
     return NextResponse.json({ erro: erro.message }, { status: 400 });
   }
   if (erro instanceof ErroUltimaEquipeDoTicket || erro instanceof ErroTicketEncerrado) {
@@ -283,6 +287,7 @@ export class ControladorTicket {
           idValidado.data,
           dados.equipeId,
           sessao.usuarioId,
+          dados.relatorio,
         );
         if (!resultado) {
           return NextResponse.json(
@@ -301,7 +306,7 @@ export class ControladorTicket {
             const status = await servicoTicket.notificarGestorDaEquipe(
               idValidado.data,
               dados.equipeId,
-              dados.relatorio,
+              resultado.relatorio,
             );
             console.info(
               `[notificacao-equipe] ticket=${idValidado.data} equipe=${dados.equipeId} status=${status}`,

@@ -89,7 +89,10 @@ export default class EmailManagerService {
     });
     const nomesDestinatarios = destinatarios.map(({ nome }) => nome).join(", ");
     const nomesDestinatariosHtml = escaparHtml(nomesDestinatarios);
-    const relatorio = this.dados.relatorio?.trim() || ticketInfo.descricao;
+    const relatorio = this.dados.relatorio?.trim() || ticketInfo.descricao.trim();
+    if (!relatorio) {
+      throw new Error("Informe a razão do acionamento da equipe.");
+    }
     const relatorioHtml = escaparHtml(relatorio).replace(/\r?\n/g, "<br />");
     const tituloTicketHtml = escaparHtml(ticketInfo.titulo);
     const nomeProjetoHtml = escaparHtml(ticketInfo.projeto.nome);

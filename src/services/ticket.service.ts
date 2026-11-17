@@ -23,6 +23,13 @@ export class ErroConflitoPrioridade extends Error {
   }
 }
 
+export class ErroRelatorioEquipeInvalido extends Error {
+  constructor() {
+    super("Informe a razão do acionamento da equipe.");
+    this.name = "ErroRelatorioEquipeInvalido";
+  }
+}
+
 export const TAMANHO_PAGINA_TICKETS = 5;
 
 export type StatusNotificacaoEquipe =
@@ -514,8 +521,16 @@ export class ServicoTicket {
     });
   }
 
-  async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string) {
-    let resultado: { jaAlocada: boolean } | null;
+  async atribuirEquipe(
+    ticketId: string,
+    equipeId: string,
+    usuarioId: string,
+    relatorio?: string,
+  ) {
+    let resultado:
+      | { jaAlocada: true; relatorio?: string }
+      | { jaAlocada: false; relatorio: string }
+      | null;
     try {
       resultado = await this.db.$transaction(async (tx) => {
         // Serializa as atribuições do mesmo ticket. A UNIQUE abaixo continua
@@ -530,6 +545,9 @@ export class ServicoTicket {
         await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
         if (ticket.status === StatusTicket.ENCERRADO)
           throw new ErroTicketEncerrado();
+
+        const relatorioEfetivo = relatorio?.trim() || ticket.descricao?.trim();
+        if (!relatorioEfetivo) throw new ErroRelatorioEquipeInvalido();
 
         const equipe = await tx.equipe.findUnique({
           where: { id: equipeId },
@@ -553,7 +571,7 @@ export class ServicoTicket {
           },
         });
 
-        return { jaAlocada: false };
+        return { jaAlocada: false, relatorio: relatorioEfetivo };
       });
     } catch (erro) {
       // Se duas requisições simultâneas passarem pela leitura inicial, a
@@ -596,6 +614,7 @@ export class ServicoTicket {
     return {
       jaAlocada: false as const,
       ticket,
+      relatorio: resultado.relatorio,
       notificacaoEmail: "PENDENTE" as const,
       notificarEmail: true as const,
     };

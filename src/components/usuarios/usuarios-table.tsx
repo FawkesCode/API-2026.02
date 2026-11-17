@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Pencil } from "lucide-react";
+import { Check, Copy, KeyRound, Pencil } from "lucide-react";
 import type { UsuarioListaItem } from "@/types/usuario";
 import {
   Accordion,
@@ -10,6 +10,9 @@ import {
   AccordionTrigger,
 } from "../ui/accordion";
 import { UsuarioFormDialog } from "./usuario-form-dialog";
+import { RedefinirSenhaDialog } from "./redefinir-senha-dialog";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { Cargo } from "@/types/ticket-enums";
 
 // Mesmas colunas no cabeçalho e nas linhas para tudo alinhar.
 const COLUNAS = "grid grid-cols-[2fr_1.3fr_1.6fr_1fr] items-center gap-2";
@@ -22,6 +25,10 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [usuarioEmEdicao, setUsuarioEmEdicao] =
     useState<UsuarioListaItem | null>(null);
+  const [usuarioParaRedefinirSenha, setUsuarioParaRedefinirSenha] =
+    useState<UsuarioListaItem | null>(null);
+  const usuarioAtual = useCurrentUser();
+  const podeRedefinirSenha = usuarioAtual?.cargo === Cargo.SUPORTE_INTERNO;
 
   if (usuarios.length === 0) {
     return (
@@ -61,6 +68,11 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
               setAbertoId(abertoId === usuario.id ? null : usuario.id)
             }
             onEditar={() => setUsuarioEmEdicao(usuario)}
+            onRedefinirSenha={
+              podeRedefinirSenha && usuario.cargo === Cargo.TECNICO
+                ? () => setUsuarioParaRedefinirSenha(usuario)
+                : undefined
+            }
           />
         ))}
       </Accordion>
@@ -76,6 +88,15 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
           }}
         />
       )}
+      {usuarioParaRedefinirSenha && (
+        <RedefinirSenhaDialog
+          usuario={usuarioParaRedefinirSenha}
+          open
+          onOpenChange={(aberto) => {
+            if (!aberto) setUsuarioParaRedefinirSenha(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -85,9 +106,16 @@ interface UsuarioRowProps {
   aberto: boolean;
   onToggle: () => void;
   onEditar: () => void;
+  onRedefinirSenha?: () => void;
 }
 
-function UsuarioRow({ usuario, aberto, onToggle, onEditar }: UsuarioRowProps) {
+function UsuarioRow({
+  usuario,
+  aberto,
+  onToggle,
+  onEditar,
+  onRedefinirSenha,
+}: UsuarioRowProps) {
   const [copiado, setCopiado] = useState(false);
 
   async function copiarUuid() {
@@ -175,7 +203,17 @@ function UsuarioRow({ usuario, aberto, onToggle, onEditar }: UsuarioRowProps) {
               <span className="text-gray-300">Adicionado por: </span>
               {usuario.adicionadoPor ?? "Sistema"}
             </p>
-            <div className="flex justify-end sm:col-span-2">
+            <div className="flex justify-end gap-4 sm:col-span-2">
+              {onRedefinirSenha && (
+                <button
+                  type="button"
+                  onClick={onRedefinirSenha}
+                  className="flex cursor-pointer items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+                >
+                  <KeyRound className="size-3.5" />
+                  Redefinir senha
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onEditar}

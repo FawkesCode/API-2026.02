@@ -48,17 +48,21 @@ describe("ServicoProjeto.listarTicketsPorProjeto", () => {
 describe("ServicoProjeto.listarTicketsDoProjeto", () => {
   it("carrega as relações de equipe para exibir atribuições na lista do projeto", async () => {
     vi.spyOn(prisma.ticket, "findMany").mockResolvedValue([]);
+    vi.spyOn(prisma.ticket, "count").mockResolvedValue(0);
 
     await servicoProjeto.listarTicketsDoProjeto(projetoId);
 
     expect(prisma.ticket.findMany).toHaveBeenCalledWith({
       where: { projetoId },
-      orderBy: { criadoEm: "desc" },
+      orderBy: [{ prioridade: "desc" }, { criadoEm: "desc" }, { id: "desc" }],
+      skip: 0,
+      take: 5,
       include: RELACOES_TICKET,
     });
   });
 
-  it("ordena os tickets do projeto por prioridade, mantendo os mais novos primeiro em empates", async () => {
+  it("retorna os itens paginados fornecidos pelo banco", async () => {
+    vi.spyOn(prisma.ticket, "count").mockResolvedValue(5);
     vi.spyOn(prisma.ticket, "findMany").mockResolvedValue([
       {
         id: "media",
@@ -89,12 +93,13 @@ describe("ServicoProjeto.listarTicketsDoProjeto", () => {
 
     const resultado = await servicoProjeto.listarTicketsDoProjeto(projetoId);
 
-    expect(resultado.map((ticket) => ticket.id)).toEqual([
-      "critica-nova",
-      "critica-antiga",
-      "alta",
+    expect(resultado.total).toBe(5);
+    expect(resultado.itens.map((ticket) => ticket.id)).toEqual([
       "media",
       "baixa",
+      "critica-antiga",
+      "critica-nova",
+      "alta",
     ]);
   });
 });

@@ -135,7 +135,6 @@ describe("ServicoEquipe.atualizar", () => {
         id: { in: [technicianId] },
         ativo: true,
         cargo: Cargo.TECNICO,
-        equipeId: null,
       },
       data: { equipeId: teamId },
     });

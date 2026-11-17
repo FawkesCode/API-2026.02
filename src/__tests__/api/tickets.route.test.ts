@@ -439,9 +439,13 @@ describe("rotas de tickets", () => {
     };
     const listarTodos = vi
       .spyOn(servicoTicket, "listarTodos")
-      .mockResolvedValue([ticket] as unknown as Awaited<
-        ReturnType<typeof servicoTicket.listarTodos>
-      >);
+      .mockResolvedValue({
+        itens: [ticket],
+        total: 1,
+        pagina: 1,
+        totalPaginas: 1,
+        itensPorPagina: 5,
+      } as unknown as Awaited<ReturnType<typeof servicoTicket.listarTodos>>);
     const listarPorEquipe = vi.spyOn(servicoTicket, "listarPorEquipeDoUsuario");
 
     const resposta = await GET(
@@ -450,10 +454,16 @@ describe("rotas de tickets", () => {
     const corpo = await resposta.json();
 
     expect(resposta.status).toBe(200);
-    expect(corpo).toHaveLength(1);
-    expect(corpo[0]).toMatchObject({
-      id: ticketId,
-      title: "Falha no equipamento",
+    expect(corpo).toMatchObject({
+      total: 1,
+      pagina: 1,
+      totalPaginas: 1,
+      itens: [
+        {
+          id: ticketId,
+          title: "Falha no equipamento",
+        },
+      ],
     });
     expect(listarTodos).toHaveBeenCalledWith();
     expect(listarPorEquipe).not.toHaveBeenCalled();
