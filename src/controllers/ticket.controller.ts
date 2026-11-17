@@ -6,6 +6,7 @@ import { obterSessaoDaRequisicao } from "@/auth/sessao";
 import {
   ErroConflitoPrioridade,
   ErroEquipeInvalida,
+  ErroEquipeJaAtribuida,
   ErroNaoAutorizadoParaAlterarPrioridade,
   ErroNaoAutorizadoParaGerenciarEquipes,
   ErroTicketEncerrado,
@@ -19,6 +20,7 @@ import {
   atualizarPrioridadeTicketSchema,
   criarTicketSchema,
   alocarEquipeTicketSchema,
+  desalocarEquipeTicketSchema,
 } from "@/schemas/ticket.schema";
 
 async function extrairJson(requisicao: Request) {
@@ -58,6 +60,9 @@ function tratarErroInesperado(erro: unknown) {
   }
   if (erro instanceof ErroEquipeInvalida) {
     return NextResponse.json({ erro: erro.message }, { status: 400 });
+  }
+  if (erro instanceof ErroEquipeJaAtribuida) {
+    return NextResponse.json({ erro: erro.message }, { status: 409 });
   }
   if (erro instanceof ErroUltimaEquipeDoTicket || erro instanceof ErroTicketEncerrado) {
     return NextResponse.json({ erro: erro.message }, { status: 409 });
@@ -309,7 +314,7 @@ export class ControladorTicket {
     if (erroDeParse) return erroDeParse;
 
     const { dados, erro: erroDeValidacao } = validarCorpo(
-      alocarEquipeTicketSchema,
+      acao === "atribuir" ? alocarEquipeTicketSchema : desalocarEquipeTicketSchema,
       corpo,
     );
     if (erroDeValidacao) return erroDeValidacao;
@@ -317,7 +322,7 @@ export class ControladorTicket {
     try {
       const ticket =
         acao === "atribuir"
-          ? await servicoTicket.atribuirEquipe(idValidado.data, dados.equipeId, sessao.usuarioId)
+          ? await servicoTicket.atribuirEquipe(idValidado.data, dados.equipeId, sessao.usuarioId, "relatorio" in dados ? dados.relatorio : "")
           : await servicoTicket.desatribuirEquipe(idValidado.data, dados.equipeId, sessao.usuarioId);
 
       if (!ticket) {
