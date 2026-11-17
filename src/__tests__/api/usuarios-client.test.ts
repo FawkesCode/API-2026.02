@@ -55,11 +55,15 @@ beforeEach(() => {
     id: suporteId,
     nome: "Suporte",
     email: "suporte@example.com",
-    cargo: "SUPORTE",
+    cargo: "SUPORTE_INTERNO",
     ativo: true,
     equipeId: null,
     equipe: null,
   });
+  vi.spyOn(prisma, "$transaction").mockImplementation(((
+    fn: (tx: typeof prisma) => unknown,
+  ) => fn(prisma)) as never);
+  vi.spyOn(prisma.atividadeConta, "create").mockResolvedValue({} as never);
 });
 
 afterEach(() => vi.restoreAllMocks());

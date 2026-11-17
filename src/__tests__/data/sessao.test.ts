@@ -16,6 +16,7 @@ const massa = {
   id: "550e8400-e29b-41d4-a716-446655440001",
   nome: "Fernando",
   email: "fernando@massanori.japa",
+  criadoEm: new Date(),
   cargo: "TECNICO" as const,
   ativo: true,
   equipeId: "550e8400-e29b-41d4-a716-446655440003",
