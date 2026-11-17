@@ -1,5 +1,6 @@
 import type { UsuarioFormValues } from "@/schemas/usuario-form.schema";
 import type {
+  AlterarStatusUsuarioResultado,
   AtualizarUsuarioPayload,
   AtualizarUsuarioResultado,
   CamposErroCadastroUsuario,
@@ -15,6 +16,9 @@ export const MENSAGEM_ERRO_CADASTRO_USUARIO =
 
 export const MENSAGEM_ERRO_EDICAO_USUARIO =
   "Não foi possível atualizar o usuário. Tente novamente.";
+
+export const MENSAGEM_ERRO_STATUS_USUARIO =
+  "Não foi possível alterar o status do usuário. Tente novamente.";
 
 export function toCriarUsuarioPayload(
   dados: UsuarioFormValues,
@@ -171,4 +175,43 @@ export function atualizarUsuario(
     MENSAGEM_ERRO_EDICAO_USUARIO,
     fetchFn,
   );
+}
+
+/**
+ * Inativa (`ativo: false`) ou reativa (`ativo: true`) o usuário via
+ * `PATCH /api/usuarios/[id]` e normaliza a resposta.
+ */
+export async function alterarStatusUsuario(
+  id: string,
+  ativo: boolean,
+  fetchFn: typeof fetch = fetch,
+): Promise<AlterarStatusUsuarioResultado> {
+  try {
+    const resposta = await fetchFn(`${ENDPOINT_USUARIOS}/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ativo }),
+    });
+
+    if (resposta.ok) {
+      const usuario = (await resposta
+        .json()
+        .catch(() => null)) as UsuarioCriadoDTO | null;
+      return { sucesso: true, usuario };
+    }
+
+    const corpo = (await resposta.json().catch(() => null)) as {
+      erro?: string;
+      message?: string;
+      codigo?: string;
+    } | null;
+
+    return {
+      sucesso: false,
+      erro: corpo?.erro ?? corpo?.message ?? MENSAGEM_ERRO_STATUS_USUARIO,
+      ...(corpo?.codigo ? { codigo: corpo.codigo } : {}),
+    };
+  } catch {
+    return { sucesso: false, erro: MENSAGEM_ERRO_STATUS_USUARIO };
+  }
 }
