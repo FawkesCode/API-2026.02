@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
+import { resetUserPasswordSchema } from "@/schemas/change-password.schema";
 import type { UsuarioListaItem } from "@/types/usuario";
 
 interface RedefinirSenhaDialogProps {
@@ -43,6 +44,11 @@ export function RedefinirSenhaDialog({
   async function submeter(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setErro(null);
+    const validacao = resetUserPasswordSchema.safeParse({ novaSenha });
+    if (!validacao.success) {
+      setErro(validacao.error.issues[0].message);
+      return;
+    }
     if (novaSenha !== confirmacao) {
       setErro("As senhas não coincidem.");
       return;
@@ -58,10 +64,11 @@ export function RedefinirSenhaDialog({
       const corpo = (await resposta.json().catch(() => null)) as {
         erro?: string;
         mensagem?: string;
+        detalhes?: { novaSenha?: string[] };
       } | null;
 
       if (!resposta.ok) {
-        setErro(corpo?.erro ?? "Não foi possível redefinir a senha.");
+        setErro(corpo?.detalhes?.novaSenha?.[0] ?? corpo?.erro ?? "Não foi possível redefinir a senha.");
         return;
       }
 

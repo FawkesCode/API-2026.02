@@ -184,7 +184,10 @@ export class ControladorTicket {
 
     try {
       const tickets = await servicoTicket.listarTodos();
-      return NextResponse.json(tickets.map(toTicketDTO), { status: 200 });
+      return NextResponse.json(
+        { ...tickets, itens: tickets.itens.map(toTicketDTO) },
+        { status: 200 },
+      );
     } catch (erro) {
       return tratarErroInesperado(erro);
     }

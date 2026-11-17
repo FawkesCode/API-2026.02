@@ -475,7 +475,16 @@ export class ServicoUsuario {
     });
   }
 
-  async buscarPorId(usuarioId: string) {
+  async buscarPorId(usuarioId: string): Promise<{
+    id: string;
+    nome: string;
+    email: string;
+    cargo: Cargo;
+    ativo: boolean;
+    equipeId: string | null;
+    equipe: { nome: string } | null;
+    criadoEm?: Date;
+  } | null> {
     return prisma.usuario.findUnique({
       where: { id: usuarioId },
       select: dadosUsuarioAtual,

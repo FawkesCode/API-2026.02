@@ -11,6 +11,7 @@ const gestor = {
   id: "550e8400-e29b-41d4-a716-446655440002",
   nome: "Gestor da Equipe Massa",
   email: "gestor.seed@example.com",
+  criadoEm: new Date(),
   cargo: "GESTOR" as const,
   ativo: true,
   equipeId: "550e8400-e29b-41d4-a716-446655440003",

@@ -107,7 +107,9 @@ export function toUsuarioFormInput(
     email: usuario.email,
     nome: usuario.nome,
     tipoConta:
-      OPCOES_TIPO_CONTA.find((opcao) => opcao.value === usuario.cargo) ?? null,
+      (OPCOES_TIPO_CONTA.find((opcao) => opcao.value === usuario.cargo) as
+        | UsuarioFormInput["tipoConta"]
+        | undefined) ?? null,
     senha: "",
     confirmarSenha: "",
   };

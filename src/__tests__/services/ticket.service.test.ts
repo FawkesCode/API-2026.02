@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { Cargo, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
 import {
   ErroConflitoPrioridade,
   ErroNaoAutorizadoParaAlterarPrioridade,
@@ -235,14 +236,16 @@ describe("ServicoTicket equipes", () => {
     const ticket = { id: ticketId, titulo: "Falha no equipamento" };
     const criar = vi.fn().mockResolvedValue(ticket);
     const atividade = vi.fn().mockResolvedValue({});
-    const tx = {
+    const transacao = {
       ticket: { create: criar, findUniqueOrThrow: vi.fn().mockResolvedValue(ticket) },
       projeto: { findUnique: vi.fn().mockResolvedValue({ nome: "Projeto A" }) },
       atividadeConta: { create: atividade },
     };
     const banco = {
-      ...tx,
-      $transaction: vi.fn((operacao: (tx: typeof tx) => unknown) => operacao(tx)),
+      ...transacao,
+      $transaction: vi.fn(
+        (operacao: (tx: typeof transacao) => unknown) => operacao(transacao),
+      ),
     };
     const servico = new ServicoTicket(banco as unknown as BancoTicket);
 
@@ -349,15 +352,21 @@ describe("ordenação das listas de tickets", () => {
   ];
 
   it("mantém a lista geral em ordem de criação mais recente", async () => {
-    const servico = new ServicoTicket({
-      ticket: { findMany: vi.fn().mockResolvedValue(tickets) },
-    } as unknown as BancoTicket);
+    vi.spyOn(prisma.ticket, "count").mockResolvedValue(tickets.length);
+    const findMany = vi.spyOn(prisma.ticket, "findMany").mockResolvedValue(tickets as never);
+    const servico = new ServicoTicket();
 
     const resultado = await servico.listarTodos();
 
-    expect(resultado.map((ticket) => ticket.id)).toEqual(
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      orderBy: [{ criadoEm: "desc" }],
+      skip: 0,
+      take: 5,
+    }));
+    expect(resultado.itens.map((ticket) => ticket.id)).toEqual(
       tickets.map((ticket) => ticket.id),
     );
+    vi.restoreAllMocks();
   });
 
   it("ordena a lista da equipe pela mesma regra", async () => {
