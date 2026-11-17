@@ -1,8 +1,10 @@
-import { controladorTicket } from "@/controllers/ticket.controller";
+import { NextResponse } from "next/server";
 
-type ContextoRota = { params: Promise<{ id: string }> };
-
-export async function PATCH(requisicao: Request, contexto: ContextoRota) {
-  const { id } = await contexto.params;
-  return controladorTicket.alocarEquipe(requisicao, id);
+export async function PATCH() {
+  return NextResponse.json(
+    {
+      erro: "Esta rota foi descontinuada. Use /api/tickets/:id/equipes para atribuir uma equipe ao ticket.",
+    },
+    { status: 410 },
+  );
 }

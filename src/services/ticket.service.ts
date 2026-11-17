@@ -23,7 +23,21 @@ export class ErroConflitoPrioridade extends Error {
   }
 }
 
+export class ErroRelatorioEquipeInvalido extends Error {
+  constructor() {
+    super("Informe a razão do acionamento da equipe.");
+    this.name = "ErroRelatorioEquipeInvalido";
+  }
+}
+
 export const TAMANHO_PAGINA_TICKETS = 5;
+
+export type StatusNotificacaoEquipe =
+  | "PENDENTE"
+  | "ENVIADO"
+  | "FALHOU"
+  | "SEM_GESTOR"
+  | "NAO_NECESSARIA";
 
 // NOTE: se esta classe já existir em outro arquivo de erros do projeto,
 // remova esta definição local e importe a existente em vez de duplicá-la.
@@ -459,32 +473,7 @@ export class ServicoTicket {
     });
     if (!alocado) return null;
 
-    try {
-      const gestorDaEquipe = await this.db.usuario.findFirst({
-        where: {
-          equipeId: equipeId,
-          cargo: "GESTOR",
-        },
-        select: { id: true },
-      });
-
-      if (gestorDaEquipe) {
-        const emailService = new EmailManagerService(
-          gestorDaEquipe.id,
-          ticketId,
-        );
-        await emailService.sendMail();
-      } else {
-        console.warn(
-          `Nenhum gestor encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`,
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Erro ao tentar enviar e-mail de alocação de equipe:",
-        error,
-      );
-    }
+    await this.notificarGestorDaEquipe(ticketId, equipeId);
 
     return this.db.ticket.findUniqueOrThrow({
       where: { id: ticketId },
@@ -532,45 +521,146 @@ export class ServicoTicket {
     });
   }
 
-  async atribuirEquipe(ticketId: string, equipeId: string, usuarioId: string) {
-    const resultado = await this.db.$transaction(async (tx) => {
-      // Trava a linha: o status lido abaixo não muda até o commit.
-      await travarStatusDoTicket(tx, ticketId);
-      const ticket = await tx.ticket.findUnique({
-        where: { id: ticketId },
-        include: { equipesAlocadas: { select: { equipeId: true } } },
-      });
-      if (!ticket) return null;
+  async atribuirEquipe(
+    ticketId: string,
+    equipeId: string,
+    usuarioId: string,
+    relatorio?: string,
+  ) {
+    let resultado:
+      | { jaAlocada: true; relatorio?: string }
+      | { jaAlocada: false; relatorio: string }
+      | null;
+    try {
+      resultado = await this.db.$transaction(async (tx) => {
+        // Serializa as atribuições do mesmo ticket. A UNIQUE abaixo continua
+        // sendo a última proteção contra duplicidade em concorrência.
+        await travarStatusDoTicket(tx, ticketId);
+        const ticket = await tx.ticket.findUnique({
+          where: { id: ticketId },
+          include: { equipesAlocadas: { select: { equipeId: true } } },
+        });
+        if (!ticket) return null;
 
-      await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
-      if (ticket.status === StatusTicket.ENCERRADO)
-        throw new ErroTicketEncerrado();
+        await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+        if (ticket.status === StatusTicket.ENCERRADO)
+          throw new ErroTicketEncerrado();
 
-      const equipe = await tx.equipe.findUnique({
-        where: { id: equipeId },
-        select: { ativo: true },
+        const relatorioEfetivo = relatorio?.trim() || ticket.descricao?.trim();
+        if (!relatorioEfetivo) throw new ErroRelatorioEquipeInvalido();
+
+        const equipe = await tx.equipe.findUnique({
+          where: { id: equipeId },
+          select: { ativo: true, nome: true },
+        });
+        if (!equipe?.ativo) {
+          throw new ErroEquipeInvalida("Equipe não encontrada ou inativa.");
+        }
+
+        const jaAlocada = ticket.equipesAlocadas.some(
+          (e) => e.equipeId === equipeId,
+        );
+        if (jaAlocada) return { jaAlocada: true };
+
+        await tx.ticketEquipe.create({ data: { ticketId, equipeId } });
+        await tx.atividadeConta.create({
+          data: {
+            usuarioId,
+            tipo: "TICKET",
+            descricao: `Atribuiu equipe ${equipe.nome} ao ticket ${ticket.titulo}.`,
+          },
+        });
+
+        return { jaAlocada: false, relatorio: relatorioEfetivo };
       });
-      if (!equipe?.ativo) {
-        throw new ErroEquipeInvalida("Equipe não encontrada ou inativa.");
+    } catch (erro) {
+      // Se duas requisições simultâneas passarem pela leitura inicial, a
+      // restrição UNIQUE pode rejeitar uma delas. Converte esse caso em
+      // duplicidade normal, sem tentar enviar um segundo e-mail.
+      if (
+        erro instanceof Prisma.PrismaClientKnownRequestError &&
+        erro.code === "P2002"
+      ) {
+        const associacaoExistente = await this.db.ticketEquipe.findUnique({
+          where: { ticketId_equipeId: { ticketId, equipeId } },
+          select: { id: true },
+        });
+        if (associacaoExistente) resultado = { jaAlocada: true };
+        else throw erro;
+      } else {
+        throw erro;
       }
-
-      return {
-        jaAlocada: ticket.equipesAlocadas.some((e) => e.equipeId === equipeId),
-      };
-    });
+    }
 
     if (!resultado) return null;
 
     // Se já estava no ticket, não recria nem reenvia e-mail.
     if (resultado.jaAlocada) {
-      return this.db.ticket.findUniqueOrThrow({
-        where: { id: ticketId },
-        include: RELACOES_TICKET,
-      });
+      return {
+        jaAlocada: true as const,
+        ticket: await this.db.ticket.findUniqueOrThrow({
+          where: { id: ticketId },
+          include: RELACOES_TICKET,
+        }),
+        notificacaoEmail: "NAO_NECESSARIA" as const,
+        notificarEmail: false as const,
+      };
     }
 
-    // Reaproveita a lógica existente (upsert + e-mail ao gestor da equipe).
-    return this.alocarEquipe(ticketId, equipeId, usuarioId);
+    const ticket = await this.db.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
+      include: RELACOES_TICKET,
+    });
+    return {
+      jaAlocada: false as const,
+      ticket,
+      relatorio: resultado.relatorio,
+      notificacaoEmail: "PENDENTE" as const,
+      notificarEmail: true as const,
+    };
+  }
+
+  async notificarGestorDaEquipe(
+    ticketId: string,
+    equipeId: string,
+    relatorio?: string,
+  ): Promise<StatusNotificacaoEquipe> {
+    try {
+      const membros = await this.db.usuario.findMany({
+        where: { equipeId, ativo: true },
+        select: { nome: true, email: true },
+      });
+
+      if (membros.length === 0) {
+        console.warn(
+          `Nenhum membro ativo encontrado para a equipe ${equipeId}. O e-mail não foi enviado.`,
+        );
+        return "SEM_GESTOR";
+      }
+
+      const ticket = await this.db.ticket.findUnique({
+        where: { id: ticketId },
+        select: { descricao: true },
+      });
+      if (!ticket) return "FALHOU";
+
+      const resultado = await new EmailManagerService({
+        destinatarios: membros,
+        ticketId,
+        relatorio: relatorio?.trim() || ticket.descricao,
+      }).sendMail();
+      if (!resultado?.success) {
+        console.error(
+          "Falha ao enviar e-mail de atribuição de equipe:",
+          resultado?.error,
+        );
+        return "FALHOU";
+      }
+      return "ENVIADO";
+    } catch (erro) {
+      console.error("Falha ao notificar o gestor da equipe:", erro);
+      return "FALHOU";
+    }
   }
 
   async desatribuirEquipe(
