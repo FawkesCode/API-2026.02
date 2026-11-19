@@ -45,3 +45,16 @@ export const createClientSchema = z.object({
 });
 
 export type CreateClientSchema = z.infer<typeof createClientSchema>;
+
+/**
+ * Edição parcial (PATCH): só os campos enviados são validados e gravados,
+ * com as mesmas regras do cadastro. Campos desconhecidos são descartados.
+ */
+export const updateClientSchema = createClientSchema
+  .extend({ ativo: z.boolean("ativo deve ser true ou false.") })
+  .partial()
+  .refine((data) => Object.values(data).some((value) => value !== undefined), {
+    message: "Informe ao menos um campo para atualizar.",
+  });
+
+export type UpdateClientSchema = z.infer<typeof updateClientSchema>;
