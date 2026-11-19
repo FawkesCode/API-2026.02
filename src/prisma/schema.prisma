@@ -54,6 +54,7 @@ model Usuario {
   relatorios          Relatorio[]
   eventosHistorico    HistoricoTicket[]
   atividadesConta     AtividadeConta[]
+  mensagensPadraoLog   MensagemPadraoLog[]
 
   criadoPorId String?   @map("criado_por_id") @db.Char(36)
   criadoPor   Usuario?  @relation("UsuarioCriadoPor", fields: [criadoPorId], references: [id])
@@ -228,6 +229,19 @@ model HistoricoTicket {
   @@index([equipeId], map: "ix_historico_equipe")
   @@index([inicioEquipeId], map: "ix_historico_inicio_equipe")
   @@map("historico_ticket")
+}
+
+model MensagemPadraoLog {
+  id           String   @id @default(uuid()) @db.Char(36)
+  mensagem     String   @db.Text
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
+
+  usuarioId String  @map("usuario_id") @db.Char(36)
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, criadoEm], map: "ix_mensagens_padrao_log_usuario_data")
+  @@map("mensagens_padrao_log")
 }
 
 model AtividadeConta {
