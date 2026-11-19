@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Cargo, Prisma } from "@/lib/generated/prisma/client";
 import { exigirCargo, exigirSessao } from "@/auth/exigir-cargo";
-import { createClientSchema } from "@/schemas/client.schema";
+import { createClientSchema, updateClientSchema } from "@/schemas/client.schema";
 import {
   ErroClienteNaoEncontrado,
   ErroCnpjJaCadastrado,
@@ -10,7 +10,13 @@ import {
   servicoCliente,
 } from "@/services/cliente.service";
 
-function handleCreateClientError(error: unknown) {
+function handleClientWriteError(error: unknown, internalErrorMessage: string) {
+  if (error instanceof ErroClienteNaoEncontrado) {
+    return NextResponse.json(
+      { erro: error.message, codigo: "CLIENTE_NAO_ENCONTRADO" },
+      { status: 404 },
+    );
+  }
   if (error instanceof ErroCnpjJaCadastrado) {
     return NextResponse.json(
       {
@@ -43,9 +49,28 @@ function handleCreateClientError(error: unknown) {
 
   console.error(error);
   return NextResponse.json(
-    { erro: "Erro interno ao cadastrar cliente.", codigo: "ERRO_INTERNO" },
+    { erro: internalErrorMessage, codigo: "ERRO_INTERNO" },
     { status: 500 },
   );
+}
+
+async function readJsonBody(
+  request: Request,
+): Promise<{ ok: true; body: unknown } | { ok: false; response: NextResponse }> {
+  try {
+    return { ok: true, body: await request.json() };
+  } catch {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          erro: "Corpo da requisição precisa ser um JSON válido.",
+          codigo: "JSON_INVALIDO",
+        },
+        { status: 400 },
+      ),
+    };
+  }
 }
 
 export class ControladorCliente {
@@ -118,20 +143,10 @@ export class ControladorCliente {
     const acesso = await exigirCargo(request, Cargo.COMERCIAL);
     if (!acesso.autorizado) return acesso.resposta;
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        {
-          erro: "Corpo da requisição precisa ser um JSON válido.",
-          codigo: "JSON_INVALIDO",
-        },
-        { status: 400 },
-      );
-    }
+    const json = await readJsonBody(request);
+    if (!json.ok) return json.response;
 
-    const result = createClientSchema.safeParse(body);
+    const result = createClientSchema.safeParse(json.body);
     if (!result.success) {
       return NextResponse.json(
         {
@@ -147,7 +162,43 @@ export class ControladorCliente {
       const client = await servicoCliente.createClient(result.data);
       return NextResponse.json(client, { status: 201 });
     } catch (error) {
-      return handleCreateClientError(error);
+      return handleClientWriteError(error, "Erro interno ao cadastrar cliente.");
+    }
+  }
+
+  async updateClient(request: Request, clientId: string) {
+    const validatedId = z.uuid().safeParse(clientId);
+    if (!validatedId.success) {
+      return NextResponse.json(
+        { erro: "ID do cliente inválido.", codigo: "ID_INVALIDO" },
+        { status: 400 },
+      );
+    }
+
+    const acesso = await exigirCargo(request, Cargo.COMERCIAL);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    const json = await readJsonBody(request);
+    if (!json.ok) return json.response;
+
+    const result = updateClientSchema.safeParse(json.body);
+    if (!result.success) {
+      const flattened = z.flattenError(result.error);
+      return NextResponse.json(
+        {
+          erro: flattened.formErrors[0] ?? "Dados inválidos.",
+          codigo: "DADOS_INVALIDOS",
+          detalhes: flattened.fieldErrors,
+        },
+        { status: 400 },
+      );
+    }
+
+    try {
+      const client = await servicoCliente.updateClient(validatedId.data, result.data);
+      return NextResponse.json(client, { status: 200 });
+    } catch (error) {
+      return handleClientWriteError(error, "Erro interno ao atualizar cliente.");
     }
   }
 }
