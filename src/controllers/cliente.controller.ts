@@ -4,6 +4,7 @@ import { Cargo, Prisma } from "@/lib/generated/prisma/client";
 import { exigirCargo, exigirSessao } from "@/auth/exigir-cargo";
 import { createClientSchema } from "@/schemas/client.schema";
 import {
+  ErroClienteNaoEncontrado,
   ErroCnpjJaCadastrado,
   ErroNomeClienteJaCadastrado,
   servicoCliente,
@@ -59,6 +60,55 @@ export class ControladorCliente {
       console.error(erro);
       return NextResponse.json(
         { erro: "Erro interno ao listar clientes." },
+        { status: 500 },
+      );
+    }
+  }
+
+  async listDetailed(request: Request) {
+    const acesso = await exigirCargo(request, Cargo.COMERCIAL);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    try {
+      const clients = await servicoCliente.listDetailed();
+      return NextResponse.json(clients, { status: 200 });
+    } catch (error) {
+      console.error(error);
+      return NextResponse.json(
+        { erro: "Erro interno ao listar clientes.", codigo: "ERRO_INTERNO" },
+        { status: 500 },
+      );
+    }
+  }
+
+  async getClient(request: Request, clientId: string) {
+    const validatedId = z.uuid().safeParse(clientId);
+    if (!validatedId.success) {
+      return NextResponse.json(
+        { erro: "ID do cliente inválido.", codigo: "ID_INVALIDO" },
+        { status: 400 },
+      );
+    }
+
+    const acesso = await exigirCargo(request, Cargo.COMERCIAL);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    try {
+      const client = await servicoCliente.getClientById(validatedId.data);
+      if (!client) {
+        return NextResponse.json(
+          {
+            erro: new ErroClienteNaoEncontrado().message,
+            codigo: "CLIENTE_NAO_ENCONTRADO",
+          },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json(client, { status: 200 });
+    } catch (error) {
+      console.error(error);
+      return NextResponse.json(
+        { erro: "Erro interno ao buscar cliente.", codigo: "ERRO_INTERNO" },
         { status: 500 },
       );
     }

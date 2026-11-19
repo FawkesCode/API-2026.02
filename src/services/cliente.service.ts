@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/prisma";
 
+export class ErroClienteNaoEncontrado extends Error {
+  constructor() {
+    super("Cliente não encontrado.");
+    this.name = "ErroClienteNaoEncontrado";
+  }
+}
+
 export class ErroCnpjJaCadastrado extends Error {
   constructor() {
     super("Este CNPJ já está cadastrado.");
@@ -32,6 +39,18 @@ export class ServicoCliente {
       select: { id: true, nome: true },
       orderBy: { nome: "asc" },
     });
+  }
+
+  /** Tela de gestão: todos os clientes (ativos e inativos) com todos os campos. */
+  async listDetailed() {
+    return prisma.cliente.findMany({
+      select: clientData,
+      orderBy: { nome: "asc" },
+    });
+  }
+
+  async getClientById(id: string) {
+    return prisma.cliente.findUnique({ where: { id }, select: clientData });
   }
 
   /**
