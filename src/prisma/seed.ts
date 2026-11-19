@@ -176,8 +176,15 @@ async function main() {
 
     const cliente = await tx.cliente.upsert({
       where: { nome: "Cliente Demonstração" },
-      create: { nome: "Cliente Demonstração" },
-      update: {},
+      create: {
+        nome: "Cliente Demonstração",
+        cnpj: "11222333000181",
+        localizacao: "São José dos Campos - SP",
+      },
+      update: {
+        cnpj: "11222333000181",
+        localizacao: "São José dos Campos - SP",
+      },
     });
 
     const agora = Date.now();

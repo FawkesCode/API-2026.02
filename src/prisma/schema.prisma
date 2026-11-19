@@ -83,6 +83,8 @@ model Equipe {
 model Cliente {
   id           String   @id @default(uuid()) @db.Char(36)
   nome         String   @unique(map: "uq_clientes_nome") @db.VarChar(150)
+  cnpj         String   @unique(map: "uq_clientes_cnpj") @db.Char(14)
+  localizacao  String   @db.VarChar(255)
   ativo        Boolean  @default(true)
   criadoEm     DateTime @default(now()) @map("criado_em") @db.DateTime(3)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
