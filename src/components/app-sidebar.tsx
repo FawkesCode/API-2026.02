@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   ClipboardList,
+  House,
   LogOut,
   LucideIcon,
   Ticket,
@@ -46,6 +47,7 @@ export function AppSidebar() {
   const [saindo, setSaindo] = useState(false);
 
   const items: NavItem[] = [
+    { title: "Dashboard", url: "/dashboard", icon: House },
     { title: "Projetos", url: "/projetos", icon: ClipboardList },
     { title: "Tickets", url: "/tickets", icon: Ticket },
     ...(podeVerMinhaEquipe(loggedUser?.cargo)

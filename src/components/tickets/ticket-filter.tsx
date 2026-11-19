@@ -60,7 +60,7 @@ interface ProjetoFilterComboboxProps {
  * filtrados por equipe via useProjetosDisponiveis), só que compacta pra
  * caber como um campo de filtro em vez de uma tela cheia de seleção.
  */
-function ProjetoFilterCombobox({
+export function ProjetoFilterCombobox({
   projetos,
   value,
   onSelect,
