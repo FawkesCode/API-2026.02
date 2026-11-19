@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "sla:watch": "tsx scripts/alerta-sla-watch.ts",
+    "sla:test": "tsx scripts/testar-alerta-sla.ts",
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",

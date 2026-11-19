@@ -144,12 +144,25 @@ model Ticket {
   relatorios Relatorio[]
   historico  HistoricoTicket[]
   equipesAlocadas TicketEquipe[]
+  alertasSla AlertaSla[]
 
   @@index([projetoId, status, prioridade, criadoEm], map: "ix_tickets_fila")
   @@index([status, slaEm], map: "ix_tickets_sla")
   @@index([abertoPorId], map: "ix_tickets_aberto_por")
   @@index([responsavelId], map: "ix_tickets_responsavel")
   @@map("tickets")
+}
+
+model AlertaSla {
+  id          String    @id @default(uuid()) @db.Char(36)
+  ticketId    String    @map("ticket_id") @db.Char(36)
+  ticket      Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  slaEm       DateTime  @map("sla_em") @db.DateTime(3)
+  reservadoEm DateTime  @default(now()) @map("reservado_em") @db.DateTime(3)
+  enviadoEm   DateTime? @map("enviado_em") @db.DateTime(3)
+
+  @@unique([ticketId, slaEm], map: "uq_alertas_sla_ticket_prazo")
+  @@map("alertas_sla")
 }
 
 model TicketEquipe {
