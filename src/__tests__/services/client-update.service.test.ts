@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import {
   ErroClienteNaoEncontrado,
+  ErroClientePossuiProjetosAtivos,
   ErroCnpjJaCadastrado,
   ErroNomeClienteJaCadastrado,
   servicoCliente,
@@ -14,7 +15,11 @@ afterEach(() => vi.restoreAllMocks());
 function mockDatabase(options?: {
   exists?: boolean;
   duplicate?: { cnpj: string } | null;
+  activeProjects?: number;
 }) {
+  const countProjects = vi
+    .spyOn(prisma.projeto, "count")
+    .mockResolvedValue((options?.activeProjects ?? 0) as never);
   vi.spyOn(prisma, "$transaction").mockImplementation(((
     fn: (tx: typeof prisma) => unknown,
   ) => fn(prisma)) as never);
@@ -30,7 +35,7 @@ function mockDatabase(options?: {
       id: clientId,
       ...args.data,
     })) as never);
-  return { findFirst, update };
+  return { findFirst, update, countProjects };
 }
 
 describe("ServicoCliente.updateClient", () => {
@@ -86,6 +91,39 @@ describe("ServicoCliente.updateClient", () => {
       servicoCliente.updateClient(clientId, { cnpj: "11222333000181" }),
     ).rejects.toBeInstanceOf(ErroCnpjJaCadastrado);
     expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it("inativa quando o cliente não tem projetos ativos", async () => {
+    const db = mockDatabase({ activeProjects: 0 });
+
+    await servicoCliente.updateClient(clientId, { ativo: false });
+
+    expect(db.countProjects.mock.calls[0][0]?.where).toEqual({
+      clienteId: clientId,
+      ativo: true,
+    });
+    expect(db.update.mock.calls[0][0].data).toEqual({ ativo: false });
+  });
+
+  it("bloqueia inativação com projetos ativos sem atualizar", async () => {
+    const db = mockDatabase({ activeProjects: 2 });
+
+    await expect(
+      servicoCliente.updateClient(clientId, { ativo: false, nome: "Acme" }),
+    ).rejects.toBeInstanceOf(ErroClientePossuiProjetosAtivos);
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["reativação", { ativo: true }],
+    ["edição sem ativo", { nome: "Acme" }],
+  ])("não confere projetos na %s", async (_case, data) => {
+    const db = mockDatabase({ activeProjects: 2 });
+
+    await servicoCliente.updateClient(clientId, data);
+
+    expect(db.countProjects).not.toHaveBeenCalled();
+    expect(db.update).toHaveBeenCalled();
   });
 
   it("rejeita nome de outro cliente", async () => {

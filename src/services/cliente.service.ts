@@ -21,6 +21,24 @@ export class ErroNomeClienteJaCadastrado extends Error {
   }
 }
 
+export class ErroClientePossuiProjetos extends Error {
+  constructor() {
+    super(
+      "Cliente possui projetos vinculados e não pode ser excluído. Inative o cliente em vez de excluí-lo.",
+    );
+    this.name = "ErroClientePossuiProjetos";
+  }
+}
+
+export class ErroClientePossuiProjetosAtivos extends Error {
+  constructor() {
+    super(
+      "Cliente possui projetos ativos e não pode ser inativado. Inative os projetos antes.",
+    );
+    this.name = "ErroClientePossuiProjetosAtivos";
+  }
+}
+
 const clientData = {
   id: true,
   nome: true,
@@ -84,6 +102,14 @@ export class ServicoCliente {
       });
       if (!current) throw new ErroClienteNaoEncontrado();
 
+      // Projeto ativo de cliente inativo sumiria do dropdown sem aviso.
+      if (data.ativo === false) {
+        const activeProjects = await tx.projeto.count({
+          where: { clienteId: id, ativo: true },
+        });
+        if (activeProjects > 0) throw new ErroClientePossuiProjetosAtivos();
+      }
+
       const uniqueFields = [
         ...(data.cnpj !== undefined ? [{ cnpj: data.cnpj }] : []),
         ...(data.nome !== undefined ? [{ nome: data.nome }] : []),
@@ -98,6 +124,26 @@ export class ServicoCliente {
       }
 
       return tx.cliente.update({ where: { id }, data, select: clientData });
+    });
+  }
+
+  /**
+   * Exclusão definitiva, só para cliente sem nenhum projeto (ativo ou não):
+   * projetos guardam tickets e histórico, então o caminho é inativar.
+   * Um projeto criado no meio do caminho ainda é barrado pela FK (P2003).
+   */
+  async deleteClient(id: string) {
+    await prisma.$transaction(async (tx) => {
+      const current = await tx.cliente.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!current) throw new ErroClienteNaoEncontrado();
+
+      const projects = await tx.projeto.count({ where: { clienteId: id } });
+      if (projects > 0) throw new ErroClientePossuiProjetos();
+
+      await tx.cliente.delete({ where: { id } });
     });
   }
 }

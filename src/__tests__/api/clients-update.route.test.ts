@@ -4,6 +4,7 @@ import { criarTokenDeSessao } from "@/auth/sessao";
 import { Prisma } from "@/lib/generated/prisma/client";
 import {
   ErroClienteNaoEncontrado,
+  ErroClientePossuiProjetosAtivos,
   ErroCnpjJaCadastrado,
   ErroNomeClienteJaCadastrado,
   servicoCliente,
@@ -223,6 +224,19 @@ describe("PATCH /api/clientes/:id", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ codigo });
+  });
+
+  it("devolve 400 ao inativar cliente com projetos ativos", async () => {
+    vi.spyOn(servicoCliente, "updateClient").mockRejectedValue(
+      new ErroClientePossuiProjetosAtivos(),
+    );
+
+    const response = await patch({ ativo: false });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      codigo: "CLIENTE_POSSUI_PROJETOS_ATIVOS",
+    });
   });
 
   it("devolve 500 em erro inesperado", async () => {
