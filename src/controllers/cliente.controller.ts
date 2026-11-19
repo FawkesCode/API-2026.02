@@ -5,6 +5,8 @@ import { exigirCargo, exigirSessao } from "@/auth/exigir-cargo";
 import { createClientSchema, updateClientSchema } from "@/schemas/client.schema";
 import {
   ErroClienteNaoEncontrado,
+  ErroClientePossuiProjetos,
+  ErroClientePossuiProjetosAtivos,
   ErroCnpjJaCadastrado,
   ErroNomeClienteJaCadastrado,
   servicoCliente,
@@ -15,6 +17,24 @@ function handleClientWriteError(error: unknown, internalErrorMessage: string) {
     return NextResponse.json(
       { erro: error.message, codigo: "CLIENTE_NAO_ENCONTRADO" },
       { status: 404 },
+    );
+  }
+  if (error instanceof ErroClientePossuiProjetosAtivos) {
+    return NextResponse.json(
+      { erro: error.message, codigo: "CLIENTE_POSSUI_PROJETOS_ATIVOS" },
+      { status: 400 },
+    );
+  }
+  if (
+    error instanceof ErroClientePossuiProjetos ||
+    (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003")
+  ) {
+    return NextResponse.json(
+      {
+        erro: new ErroClientePossuiProjetos().message,
+        codigo: "CLIENTE_POSSUI_PROJETOS",
+      },
+      { status: 400 },
     );
   }
   if (error instanceof ErroCnpjJaCadastrado) {
@@ -199,6 +219,26 @@ export class ControladorCliente {
       return NextResponse.json(client, { status: 200 });
     } catch (error) {
       return handleClientWriteError(error, "Erro interno ao atualizar cliente.");
+    }
+  }
+
+  async deleteClient(request: Request, clientId: string) {
+    const validatedId = z.uuid().safeParse(clientId);
+    if (!validatedId.success) {
+      return NextResponse.json(
+        { erro: "ID do cliente inválido.", codigo: "ID_INVALIDO" },
+        { status: 400 },
+      );
+    }
+
+    const acesso = await exigirCargo(request, Cargo.COMERCIAL);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    try {
+      await servicoCliente.deleteClient(validatedId.data);
+      return new NextResponse(null, { status: 204 });
+    } catch (error) {
+      return handleClientWriteError(error, "Erro interno ao excluir cliente.");
     }
   }
 }
