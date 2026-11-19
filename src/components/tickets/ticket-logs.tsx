@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
 import { LogEditor } from "@/components/tickets/log-editor";
+import { MencionarEquipeTicket } from "@/components/tickets/mencionar-equipe-ticket";
 import { LogState } from "@/components/tickets/log-states";
 import { LogSuggestion } from "@/components/tickets/log-suggestions";
 import UserMessages from "@/components/tickets/user-messages";
@@ -77,6 +78,8 @@ interface TicketLogsProps {
   status: string;
   podeRegistrar: boolean;
   podeDecidir: boolean;
+  podeMencionarEquipe: boolean;
+  equipesAssociadas: string[];
   /** Se a equipe do usuário já enviou "começou a trabalhar" neste ticket. */
   equipeIniciou: boolean;
   className?: string;
@@ -90,6 +93,8 @@ function TicketLogs({
   status,
   podeRegistrar,
   podeDecidir,
+  podeMencionarEquipe,
+  equipesAssociadas,
   equipeIniciou,
 }: TicketLogsProps) {
   const router = useRouter();
@@ -382,6 +387,9 @@ function TicketLogs({
             </p>
           )}
 
+          {podeMencionarEquipe && (
+            <MencionarEquipeTicket ticketId={ticketId} equipesAssociadas={equipesAssociadas} />
+          )}
           <LogEditor onEnviar={enviarLogManual} />
         </section>
       )}
