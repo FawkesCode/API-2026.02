@@ -34,11 +34,6 @@ function paraDia(valor?: string): Date | undefined {
   return isValid(data) ? data : undefined;
 }
 
-/**
- * Resolve o filtro de data do dashboard em um intervalo inclusivo (`startOfDay`..`endOfDay`).
- * - `?dataInicio=&dataFim=` (ou apenas uma das pontas): aplica intervalo aberto/fechado.
- * - `?data=`: aplica o dia específico inteiro.
- */
 export function resolverIntervaloDatasDashboard(
   filtros?: Pick<FiltrosDashboard, "data" | "dataInicio" | "dataFim">,
 ): Prisma.DateTimeFilter<"Ticket"> | undefined {
@@ -63,19 +58,6 @@ export function resolverIntervaloDatasDashboard(
   };
 }
 
-/**
- * Monta o filtro `where` reutilizável para todas as consultas do dashboard
- * (volume, status, urgência, SLA e duração real).
- *
- * Decisões baseadas no schema do banco:
- * - Equipe (`equipeId`): filtra via `equipesAlocadas` (`ticket_equipes`), pois um
- *   ticket pode ser alocado a equipes diferentes da equipe padrão do projeto.
- *   Quando omitido, considera "Todas as equipes".
- * - Usuário (`usuarioId`): relaciona o usuário a tickets que ele abriu (`abertoPorId`),
- *   pelos quais é responsável (`responsavelId`) ou nos quais atuou via logs (`historico`).
- * - Cliente (`clienteId`): relaciona o ticket ao cliente através do seu `projeto`.
- * - Data: aplica o intervalo sobre `criadoEm` (padrão) ou `encerradoEm` (fechados).
- */
 export function montarWhereDashboard(
   filtros?: FiltrosDashboard,
   opcoes: OpcoesWhereDashboard = {},
@@ -191,20 +173,11 @@ function montarAgregacaoUrgencia(
 export class ServicoDashboard {
   constructor(private readonly db: PrismaClient = prisma) {}
 
-  /**
-   * Conta a quantidade de chamados criados conforme os filtros aplicados
-   * (alimenta o indicador "Total de tickets" / "Quantidade de chamados criados").
-   */
   async contarChamadosCriados(filtros?: FiltrosDashboard): Promise<number> {
     const where = montarWhereDashboard(filtros, { campoData: "criadoEm" });
     return this.db.ticket.count({ where });
   }
 
-  /**
-   * Conta a quantidade de chamados fechados (`status = ENCERRADO`).
-   * Quando há filtro de data, utiliza `encerradoEm` para refletir exatamente
-   * os chamados encerrados no período selecionado.
-   */
   async contarChamadosFechados(filtros?: FiltrosDashboard): Promise<number> {
     const where = montarWhereDashboard(filtros, {
       campoData: "encerradoEm",
@@ -213,11 +186,6 @@ export class ServicoDashboard {
     return this.db.ticket.count({ where });
   }
 
-  /**
-   * Agrupa chamados por status (`NAO_INICIADO`, `EM_ANDAMENTO`,
-   * `SOLICITACAO_ENCERRAMENTO`, `EM_REVISAO`, `ENCERRADO`), garantindo
-   * presença de todos os status (com `quantidade: 0` quando ausentes).
-   */
   async agruparPorStatus(
     filtros?: FiltrosDashboard,
   ): Promise<AgregacaoStatusDashboard> {
@@ -231,10 +199,6 @@ export class ServicoDashboard {
     return montarAgregacaoStatus(grupos);
   }
 
-  /**
-   * Conta chamados abertos (`status != ENCERRADO`) agrupados por equipe
-   * alocada (`ticket_equipes`), junto ao total distinto de chamados abertos.
-   */
   async agruparAbertosPorEquipe(
     filtros?: FiltrosDashboard,
   ): Promise<AgregacaoAbertosPorEquipeDashboard> {
@@ -254,10 +218,6 @@ export class ServicoDashboard {
     };
   }
 
-  /**
-   * Agrupa chamados por urgência (`Prioridade`: `CRITICA`, `ALTA`, `MEDIA`, `BAIXA`),
-   * garantindo presença de todos os níveis em ordem de severidade.
-   */
   async agruparPorUrgencia(
     filtros?: FiltrosDashboard,
   ): Promise<AgregacaoUrgenciaDashboard> {
@@ -271,10 +231,6 @@ export class ServicoDashboard {
     return montarAgregacaoUrgencia(grupos);
   }
 
-  /**
-   * Executa em paralelo todas as agregações de volume, status, abertos por equipe
-   * e urgência para alimentar o endpoint do dashboard com o mínimo de consultas.
-   */
   async obterAgregacoesVolumeStatusUrgencia(
     filtros?: FiltrosDashboard,
   ): Promise<AgregacoesVolumeStatusUrgenciaDashboard> {
@@ -315,8 +271,6 @@ export class ServicoDashboard {
       by: ["equipeId"],
       where: {
         ticket: whereTicketAberto,
-        // Quando o filtro de uma equipe específica está ativo, evita listar
-        // outras equipes que compartilhem o mesmo ticket alocado.
         ...(filtros?.equipeId ? { equipeId: filtros.equipeId } : {}),
       },
       _count: { _all: true },

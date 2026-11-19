@@ -1,10 +1,3 @@
-/**
- * Espelho dos enums do Prisma (Categoria, Prioridade, StatusTicket, Cargo) para uso em
- * componentes client. O client gerado pelo Prisma (@/lib/generated/prisma/client)
- * não deve ser importado no navegador — arrasta runtime de servidor
- * junto e quebra o bundler (Turbopack/webpack). Os valores abaixo
- * precisam ficar idênticos aos do schema.prisma.
- */
 export const Categoria = {
   MANUTENCAO: "MANUTENCAO",
   INSTALACAO: "INSTALACAO",

@@ -1,11 +1,5 @@
 import { Prioridade, StatusTicket } from "@/types/ticket-enums";
 
-/**
- * Filtros comuns às consultas do dashboard.
- * - `equipeId` omitido representa "Todas as equipes".
- * - Para filtro de data: `data` representa um dia específico (`YYYY-MM-DD`);
- *   `dataInicio` e/ou `dataFim` representam um intervalo inclusivo (`YYYY-MM-DD`).
- */
 export interface FiltrosDashboard {
   equipeId?: string;
   usuarioId?: string;
@@ -47,16 +41,9 @@ export const ROTULO_URGENCIA_DASHBOARD: Record<Prioridade, string> = {
 };
 
 export interface ResumoVolumeDashboard {
-  /** Total de chamados criados no recorte filtrado (card "Total de tickets"). */
   criados: number;
-  /**
-   * Total de chamados encerrados (`status = ENCERRADO`).
-   * Quando há filtro de data, considera a data de encerramento (`encerradoEm`).
-   */
   fechados: number;
-  /** Total de chamados em aberto (`status != ENCERRADO`) no recorte filtrado. */
   abertos: number;
-  /** Total de chamados com status `SOLICITACAO_ENCERRAMENTO` (card "Encerramento solicitado"). */
   encerramentoSolicitado: number;
 }
 
@@ -80,11 +67,6 @@ export interface ItemAbertosPorEquipe {
 }
 
 export interface AgregacaoAbertosPorEquipeDashboard {
-  /**
-   * Total de tickets distintos em aberto (`status != ENCERRADO`).
-   * Um ticket alocado a mais de uma equipe entra em cada barra correspondente,
-   * mas é contado apenas uma vez neste total.
-   */
   totalAbertos: number;
   equipes: ItemAbertosPorEquipe[];
 }

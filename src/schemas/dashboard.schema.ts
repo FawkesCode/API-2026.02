@@ -71,10 +71,6 @@ type ParametrosConsulta =
   | URLSearchParams
   | Record<string, string | string[] | undefined>;
 
-/**
- * Converte `URLSearchParams` (ou `searchParams` de página/endpoint) e valida
- * usando `filtrosDashboardSchema`, pronto para ser usado em controllers/rotas.
- */
 export function validarFiltrosDashboard(params: ParametrosConsulta) {
   const bruto: Record<string, string | undefined> =
     params instanceof URLSearchParams
@@ -112,7 +108,6 @@ export function validarFiltrosDashboard(params: ParametrosConsulta) {
   return filtrosDashboardSchema.safeParse(bruto);
 }
 
-// Garante em tempo de compilação que o tipo inferido do schema é compatível com o contrato público.
 export type _CompatibilidadeFiltrosDashboard = FiltrosDashboardSchema extends FiltrosDashboard
   ? true
   : never;

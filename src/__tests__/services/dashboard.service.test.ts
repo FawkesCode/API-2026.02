@@ -235,7 +235,6 @@ describe("ServicoDashboard", () => {
 
   it("agrupa chamados abertos por equipe sem duplicar totalAbertos e mantendo equipes ativas zeradas", async () => {
     const banco = criarBancoMock();
-    // 1 ticket compartilhado entre Equipe A e Equipe Inativa => totalAbertos = 7, soma das barras = 8.
     banco.ticket.count.mockResolvedValue(7);
     banco.ticketEquipe.groupBy.mockResolvedValue([
       { equipeId: EQUIPE_A_ID, _count: { _all: 5 } },
@@ -383,7 +382,6 @@ describe("ServicoDashboard", () => {
       dataFim: "2026-11-30",
     });
 
-    // Apenas 1 chamada a ticket.count (fechados por encerradoEm); criados e abertos vêm do groupBy de status.
     expect(banco.ticket.count).toHaveBeenCalledTimes(1);
     expect(resumo.volume).toEqual({
       criados: 28,
