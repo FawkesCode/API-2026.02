@@ -30,6 +30,8 @@ export default async function TicketsLogsView({ id }: { id: string }) {
   const podeAlterarPrioridade = daEquipe && usuarioLogado?.cargo === Cargo.GESTOR;
   // Ticket encerrado fica só para leitura: sem trocar prioridade nem equipes.
   const podeEditarTicket = podeAlterarPrioridade && ticket.status !== "Encerrado";
+  const podeMencionarEquipe = daEquipe && ticket.status !== "Encerrado" &&
+    (usuarioLogado?.cargo === Cargo.TECNICO || usuarioLogado?.cargo === Cargo.GESTOR);
   // Sai dos logs já carregados, sem consulta extra.
   const equipeIniciou =
     daEquipe &&
@@ -88,7 +90,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
       <TicketLogs ticketId={id} logsIniciais={logs} autor={usuarioLogado ? toAutor(usuarioLogado) : null}
         status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade}
         equipeIniciou={equipeIniciou}
-        podeMencionarEquipe={podeEditarTicket}
+        podeMencionarEquipe={podeMencionarEquipe}
         equipesAssociadas={ticket.teams.map((equipe) => equipe.id)} />
     </>
   );
