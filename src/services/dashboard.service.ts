@@ -1,4 +1,12 @@
-import { endOfDay, isValid, parseISO, startOfDay } from "date-fns";
+import {
+  endOfDay,
+  endOfMonth,
+  format,
+  isValid,
+  parseISO,
+  startOfDay,
+  startOfMonth,
+} from "date-fns";
 import { prisma } from "@/lib/prisma";
 import {
   Prioridade,
@@ -55,6 +63,23 @@ export function resolverIntervaloDatasDashboard(
   return {
     gte: startOfDay(diaUnico),
     lte: endOfDay(diaUnico),
+  };
+}
+
+const DASHBOARD_DATE_FORMAT = "yyyy-MM-dd";
+
+export function applyDefaultDashboardFilters(
+  filters: FiltrosDashboard = {},
+  referenceDate: Date = new Date(),
+): FiltrosDashboard {
+  if (filters.data || filters.dataInicio || filters.dataFim) {
+    return { ...filters };
+  }
+
+  return {
+    ...filters,
+    dataInicio: format(startOfMonth(referenceDate), DASHBOARD_DATE_FORMAT),
+    dataFim: format(endOfMonth(referenceDate), DASHBOARD_DATE_FORMAT),
   };
 }
 
@@ -261,6 +286,15 @@ export class ServicoDashboard {
       },
       porUrgencia,
     };
+  }
+
+  async getDashboardAggregations(
+    filters?: FiltrosDashboard,
+    referenceDate: Date = new Date(),
+  ): Promise<AgregacoesVolumeStatusUrgenciaDashboard> {
+    return this.obterAgregacoesVolumeStatusUrgencia(
+      applyDefaultDashboardFilters(filters, referenceDate),
+    );
   }
 
   private async buscarEquipesAbertas(
