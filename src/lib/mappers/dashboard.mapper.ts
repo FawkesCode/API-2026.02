@@ -69,7 +69,7 @@ export function mapSlaEstimadoVsRealParaGrafico(
 ) {
   return agregacao.itens.map((item) => ({
     sla: item.label,
-    estimated: item.estimado,
-    real: item.real,
+    estimated: item.dentroDoSla,
+    real: item.atrasado,
   }));
 }

@@ -90,7 +90,7 @@ function DashboardView({ dados }: DashboardViewProps) {
 
       <section className="pb-8">
         <ChartsCardContainer
-          title="Chamados: SLA Estimado vs. Duração Real"
+          title="Tickets encerrados: Dentro do SLA vs. Fora do SLA"
           className="w-[50%]"
         >
           <EstimatedReal

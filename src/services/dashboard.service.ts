@@ -271,34 +271,36 @@ function montarResumoSla(
 function montarSlaEstimadoVsReal(
   tickets: TicketDadosSla[],
 ): AgregacaoSlaEstimadoVsRealDashboard {
-  const estimadoPorFaixa = new Map<FaixaSlaDashboard, number>();
-  const realPorFaixa = new Map<FaixaSlaDashboard, number>();
-  let totalReal = 0;
+  const dentroPorFaixa = new Map<FaixaSlaDashboard, number>();
+  const atrasadoPorFaixa = new Map<FaixaSlaDashboard, number>();
+  let totalDentroDoSla = 0;
+  let totalAtrasado = 0;
 
   for (const ticket of tickets) {
-    const faixaEstimada = classificarFaixaSla(ticket.criadoEm, ticket.slaEm);
-    estimadoPorFaixa.set(
-      faixaEstimada,
-      (estimadoPorFaixa.get(faixaEstimada) ?? 0) + 1,
-    );
+    if (ticket.status !== StatusTicket.ENCERRADO || !ticket.encerradoEm) {
+      continue;
+    }
 
-    if (ticket.status === StatusTicket.ENCERRADO && ticket.encerradoEm) {
-      const faixaReal = classificarFaixaSla(ticket.criadoEm, ticket.encerradoEm);
-      realPorFaixa.set(faixaReal, (realPorFaixa.get(faixaReal) ?? 0) + 1);
-      totalReal++;
+    const faixa = classificarFaixaSla(ticket.criadoEm, ticket.slaEm);
+    if (ticket.encerradoEm.getTime() <= ticket.slaEm.getTime()) {
+      dentroPorFaixa.set(faixa, (dentroPorFaixa.get(faixa) ?? 0) + 1);
+      totalDentroDoSla++;
+    } else {
+      atrasadoPorFaixa.set(faixa, (atrasadoPorFaixa.get(faixa) ?? 0) + 1);
+      totalAtrasado++;
     }
   }
 
   const itens: ItemSlaEstimadoVsReal[] = ORDEM_SLA_DASHBOARD.map((sla) => ({
     sla,
     label: ROTULO_SLA_DASHBOARD[sla],
-    estimado: estimadoPorFaixa.get(sla) ?? 0,
-    real: realPorFaixa.get(sla) ?? 0,
+    dentroDoSla: dentroPorFaixa.get(sla) ?? 0,
+    atrasado: atrasadoPorFaixa.get(sla) ?? 0,
   }));
 
   return {
-    totalEstimado: tickets.length,
-    totalReal,
+    totalDentroDoSla,
+    totalAtrasado,
     itens,
   };
 }

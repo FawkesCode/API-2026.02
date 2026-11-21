@@ -386,10 +386,11 @@ Documentação de referência técnica (para humanos e agentes de código) das f
     filtros?: FiltrosDashboard,
   ): Promise<AgregacaoSlaEstimadoVsRealDashboard>
   ```
-- **Alimenta:** Gráfico de barras agrupadas *"Chamados: SLA Estimado vs. Duração Real"* (`4 horas`, `8 horas`, `1 dia`, `2 dias`, `3 dias`, `7 dias`).
+- **Alimenta:** Gráfico de barras agrupadas *"Tickets encerrados: Dentro do SLA vs. Fora do SLA"* (`4 horas`, `8 horas`, `1 dia`, `2 dias`, `3 dias`, `7 dias`).
 - **Regras:**
-  - `estimado`: quantidade de tickets cuja duração prevista (`slaEm - criadoEm`) cai em cada faixa.
-  - `real`: quantidade de tickets encerrados (`status = ENCERRADO` e `encerradoEm != null`) cuja duração real (`encerradoEm - criadoEm`) cai em cada faixa.
+  - Considera apenas tickets encerrados (`status = ENCERRADO` e `encerradoEm != null`), classificados pela faixa de SLA estimado (`classificarFaixaSla(criadoEm, slaEm)`).
+  - `dentroDoSla` (legenda *"SLA Estimado"*): encerrados dentro do prazo (`encerradoEm <= slaEm`).
+  - `atrasado` (legenda *"SLA Atrasado"*): encerrados após o prazo (`encerradoEm > slaEm`).
 
 ---
 
@@ -459,15 +460,15 @@ Documentação de referência técnica (para humanos e agentes de código) das f
       "proximoDoSla": 3
     },
     "slaEstimadoVsReal": {
-      "totalEstimado": 28,
-      "totalReal": 8,
+      "totalDentroDoSla": 6,
+      "totalAtrasado": 2,
       "itens": [
-        { "sla": "4h", "label": "4 horas", "estimado": 6, "real": 2 },
-        { "sla": "8h", "label": "8 horas", "estimado": 5, "real": 1 },
-        { "sla": "1d", "label": "1 dia", "estimado": 7, "real": 2 },
-        { "sla": "2d", "label": "2 dias", "estimado": 4, "real": 1 },
-        { "sla": "3d", "label": "3 dias", "estimado": 3, "real": 1 },
-        { "sla": "7d", "label": "7 dias", "estimado": 3, "real": 1 }
+        { "sla": "4h", "label": "4 horas", "dentroDoSla": 2, "atrasado": 1 },
+        { "sla": "8h", "label": "8 horas", "dentroDoSla": 1, "atrasado": 0 },
+        { "sla": "1d", "label": "1 dia", "dentroDoSla": 1, "atrasado": 1 },
+        { "sla": "2d", "label": "2 dias", "dentroDoSla": 1, "atrasado": 0 },
+        { "sla": "3d", "label": "3 dias", "dentroDoSla": 0, "atrasado": 0 },
+        { "sla": "7d", "label": "7 dias", "dentroDoSla": 1, "atrasado": 0 }
       ]
     }
   }

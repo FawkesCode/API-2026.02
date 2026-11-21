@@ -50,7 +50,7 @@ describe("lib/data/dashboard", () => {
       .mockResolvedValue({ foraDoSla: 1, proximoDoSla: 2 });
     const s9 = vi
       .spyOn(servicoDashboard, "agruparSlaEstimadoVsReal")
-      .mockResolvedValue({ totalEstimado: 0, totalReal: 0, itens: [] });
+      .mockResolvedValue({ totalDentroDoSla: 0, totalAtrasado: 0, itens: [] });
 
     await getAgregacoesDashboard(filtros);
     expect(await getChamadosCriados(filtros)).toBe(10);

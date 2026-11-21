@@ -100,17 +100,17 @@ describe("dashboard.mapper", () => {
     ]);
   });
 
-  it("mapeia SLA estimado vs tempo real para o formato do gráfico EstimatedReal", () => {
+  it("mapeia tickets encerrados dentro do SLA vs atrasados para o formato do gráfico EstimatedReal", () => {
     const resultado = mapSlaEstimadoVsRealParaGrafico({
-      totalEstimado: 10,
-      totalReal: 4,
+      totalDentroDoSla: 10,
+      totalAtrasado: 4,
       itens: [
-        { sla: FAIXA_SLA_DASHBOARD.SLA_4H, label: "4 horas", estimado: 2, real: 1 },
-        { sla: FAIXA_SLA_DASHBOARD.SLA_8H, label: "8 horas", estimado: 1, real: 0 },
-        { sla: FAIXA_SLA_DASHBOARD.SLA_1D, label: "1 dia", estimado: 3, real: 2 },
-        { sla: FAIXA_SLA_DASHBOARD.SLA_2D, label: "2 dias", estimado: 2, real: 1 },
-        { sla: FAIXA_SLA_DASHBOARD.SLA_3D, label: "3 dias", estimado: 1, real: 0 },
-        { sla: FAIXA_SLA_DASHBOARD.SLA_7D, label: "7 dias", estimado: 1, real: 0 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_4H, label: "4 horas", dentroDoSla: 2, atrasado: 1 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_8H, label: "8 horas", dentroDoSla: 1, atrasado: 0 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_1D, label: "1 dia", dentroDoSla: 3, atrasado: 2 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_2D, label: "2 dias", dentroDoSla: 2, atrasado: 1 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_3D, label: "3 dias", dentroDoSla: 1, atrasado: 0 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_7D, label: "7 dias", dentroDoSla: 1, atrasado: 0 },
       ],
     });
 

@@ -130,13 +130,13 @@ export interface ResumoSlaDashboard {
 export interface ItemSlaEstimadoVsReal {
   sla: FaixaSlaDashboard;
   label: string;
-  estimado: number;
-  real: number;
+  dentroDoSla: number;
+  atrasado: number;
 }
 
 export interface AgregacaoSlaEstimadoVsRealDashboard {
-  totalEstimado: number;
-  totalReal: number;
+  totalDentroDoSla: number;
+  totalAtrasado: number;
   itens: ItemSlaEstimadoVsReal[];
 }
 

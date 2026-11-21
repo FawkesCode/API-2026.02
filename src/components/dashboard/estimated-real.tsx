@@ -25,11 +25,11 @@ const chartData: EstimatedRealData[] = [
 
 const chartConfig = {
   estimated: {
-    label: "Chamados (SLA estimado)",
+    label: "SLA Estimado",
     color: "var(--chart-0)",
   },
   real: {
-    label: "Chamados (duração real)",
+    label: "SLA Atrasado",
     color: "var(--chart-2)",
   },
 } satisfies ChartConfig;

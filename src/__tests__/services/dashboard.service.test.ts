@@ -479,7 +479,7 @@ describe("ServicoDashboard", () => {
     });
   });
 
-  it("agrupa SLA estimado versus tempo real de encerramento por faixa", async () => {
+  it("agrupa tickets encerrados dentro do SLA versus atrasados por faixa de SLA", async () => {
     const base = new Date("2026-11-10T10:00:00.000Z");
     const adicionarHoras = (horas: number) =>
       new Date(base.getTime() + horas * 60 * 60 * 1000);
@@ -499,6 +499,12 @@ describe("ServicoDashboard", () => {
         encerradoEm: adicionarHoras(20),
       },
       {
+        status: StatusTicket.ENCERRADO,
+        criadoEm: base,
+        slaEm: adicionarHoras(4),
+        encerradoEm: adicionarHoras(4),
+      },
+      {
         status: StatusTicket.EM_ANDAMENTO,
         criadoEm: base,
         slaEm: adicionarHoras(48),
@@ -512,44 +518,44 @@ describe("ServicoDashboard", () => {
     });
 
     expect(resultado).toEqual({
-      totalEstimado: 3,
-      totalReal: 2,
+      totalDentroDoSla: 2,
+      totalAtrasado: 1,
       itens: [
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_4H,
           label: "4 horas",
-          estimado: 1,
-          real: 0,
+          dentroDoSla: 1,
+          atrasado: 1,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_8H,
           label: "8 horas",
-          estimado: 0,
-          real: 1,
+          dentroDoSla: 0,
+          atrasado: 0,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_1D,
           label: "1 dia",
-          estimado: 1,
-          real: 1,
+          dentroDoSla: 1,
+          atrasado: 0,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_2D,
           label: "2 dias",
-          estimado: 1,
-          real: 0,
+          dentroDoSla: 0,
+          atrasado: 0,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_3D,
           label: "3 dias",
-          estimado: 0,
-          real: 0,
+          dentroDoSla: 0,
+          atrasado: 0,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_7D,
           label: "7 dias",
-          estimado: 0,
-          real: 0,
+          dentroDoSla: 0,
+          atrasado: 0,
         },
       ],
     });
@@ -656,44 +662,44 @@ describe("ServicoDashboard", () => {
       proximoDoSla: 0,
     });
     expect(resumo.slaEstimadoVsReal).toEqual({
-      totalEstimado: 3,
-      totalReal: 1,
+      totalDentroDoSla: 1,
+      totalAtrasado: 0,
       itens: [
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_4H,
           label: "4 horas",
-          estimado: 1,
-          real: 0,
+          dentroDoSla: 0,
+          atrasado: 0,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_8H,
           label: "8 horas",
-          estimado: 0,
-          real: 0,
+          dentroDoSla: 0,
+          atrasado: 0,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_1D,
           label: "1 dia",
-          estimado: 0,
-          real: 1,
+          dentroDoSla: 0,
+          atrasado: 0,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_2D,
           label: "2 dias",
-          estimado: 1,
-          real: 0,
+          dentroDoSla: 0,
+          atrasado: 0,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_3D,
           label: "3 dias",
-          estimado: 0,
-          real: 0,
+          dentroDoSla: 0,
+          atrasado: 0,
         },
         {
           sla: FAIXA_SLA_DASHBOARD.SLA_7D,
           label: "7 dias",
-          estimado: 1,
-          real: 0,
+          dentroDoSla: 1,
+          atrasado: 0,
         },
       ],
     });
@@ -723,8 +729,8 @@ describe("ServicoDashboard", () => {
     expect(vazio.porUrgencia.itens).toHaveLength(4);
     expect(vazio.porSla.itens).toHaveLength(6);
     expect(vazio.resumoSla).toEqual({ foraDoSla: 0, proximoDoSla: 0 });
-    expect(vazio.slaEstimadoVsReal.totalEstimado).toBe(0);
-    expect(vazio.slaEstimadoVsReal.totalReal).toBe(0);
+    expect(vazio.slaEstimadoVsReal.totalDentroDoSla).toBe(0);
+    expect(vazio.slaEstimadoVsReal.totalAtrasado).toBe(0);
 
     banco.ticket.findMany.mockResolvedValueOnce([
       {
