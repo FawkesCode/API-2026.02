@@ -278,7 +278,10 @@ function TicketLogs({
 
       {mostrarAreaDeEnvio && autor && (
         <section className="shrink-0 rounded-b-md border border-gray-200 bg-white p-6">
-          {(podeIniciar || podeSolicitarEncerramento || podeDecidirAgora) && (
+          {(podeIniciar ||
+            podeSolicitarEncerramento ||
+            podeDecidirAgora ||
+            podeMencionarEquipe) && (
             <div className="flex flex-wrap gap-2 pb-4">
               {podeIniciar && (
                 <LogSuggestion
@@ -306,6 +309,13 @@ function TicketLogs({
                 >
                   Enviar &quot;Solicito encerramento do ticket&quot;
                 </LogSuggestion>
+              )}
+
+              {podeMencionarEquipe && (
+                <MencionarEquipeTicket
+                  ticketId={ticketId}
+                  equipesAssociadas={equipesAssociadas}
+                />
               )}
 
               {podeDecidirAgora && (
@@ -387,9 +397,6 @@ function TicketLogs({
             </p>
           )}
 
-          {podeMencionarEquipe && (
-            <MencionarEquipeTicket ticketId={ticketId} equipesAssociadas={equipesAssociadas} />
-          )}
           <LogEditor onEnviar={enviarLogManual} />
         </section>
       )}
