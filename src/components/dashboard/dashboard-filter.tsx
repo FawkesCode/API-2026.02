@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { format, isValid } from "date-fns";
+import { endOfMonth, format, isValid, startOfMonth } from "date-fns";
 import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import DateRangePicker, { type IntervaloData } from "../date-range-picker";
 import { Field } from "../ui/field";
@@ -10,6 +10,8 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useProjetosDisponiveis } from "@/hooks/use-available-projects";
 import { useEquipes } from "@/hooks/use-equipes";
+import { useClientes } from "@/hooks/use-clientes";
+import { useUsuarios } from "@/hooks/use-usuarios";
 import {
   Collapsible,
   CollapsibleContent,
@@ -29,15 +31,20 @@ export default function DashboardFilter() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const variantResolvida = pathname.startsWith("/dashboard");
 
   const { projetos } = useProjetosDisponiveis();
   const { equipes, indisponivel: equipesIndisponivel } = useEquipes();
+  const { clientes, indisponivel: clientesIndisponivel } = useClientes();
+  const { usuarios, indisponivel: usuariosIndisponivel } = useUsuarios();
 
   // --- Data: um dia específico (?data=) ou um período (?dataInicio=&dataFim=) ---
   const dataParam = searchParams.get("data");
   const inicioParam = searchParams.get("dataInicio");
   const fimParam = searchParams.get("dataFim");
+
+  // Mesmo com parâmetros de data inválidos na URL (ex.: só dataFim), o botão
+  // de limpar precisa aparecer para o usuário conseguir remover o filtro.
+  const temDataNaUrl = !!(dataParam || inicioParam || fimParam);
 
   // Parâmetros da URL podem vir inválidos (link antigo, edição manual):
   // datas inválidas são ignoradas para não quebrar a renderização.
@@ -48,14 +55,24 @@ export default function DashboardFilter() {
     return isValid(data) ? data : undefined;
   };
 
-  const intervalo: IntervaloData = inicioParam
-    ? { inicio: paraData(inicioParam), fim: paraData(fimParam) }
-    : { inicio: paraData(dataParam) };
+  // Sem data na URL, a página filtra o mês vigente; o picker mostra isso.
+  const hoje = new Date();
+  const intervaloPadrao: IntervaloData = {
+    inicio: startOfMonth(hoje),
+    fim: endOfMonth(hoje),
+  };
 
-  // --- Filtros exclusivos da tela de tickets ---
+  const intervalo: IntervaloData = !temDataNaUrl
+    ? intervaloPadrao
+    : inicioParam
+      ? { inicio: paraData(inicioParam), fim: paraData(fimParam) }
+      : { inicio: paraData(dataParam) };
+
+  // --- Demais filtros ---
   const projetoId = searchParams.get("projetoId") ?? "";
-
   const equipeId = searchParams.get("equipeId") ?? "";
+  const clienteId = searchParams.get("clienteId") ?? "";
+  const usuarioId = searchParams.get("usuarioId") ?? "";
 
   // Atualiza vários parâmetros de uma vez (chamar updateParam em sequência
   // perderia a primeira alteração, pois ambas partem do mesmo searchParams).
@@ -91,6 +108,7 @@ export default function DashboardFilter() {
     });
   }
 
+  // Limpar a data volta ao padrão (mês vigente).
   function limparData() {
     updateParams({
       data: undefined,
@@ -104,11 +122,11 @@ export default function DashboardFilter() {
   }
 
   const algumFiltroAtivo = !!(
-    dataParam ||
-    inicioParam ||
-    fimParam ||
+    temDataNaUrl ||
     projetoId ||
-    equipeId
+    equipeId ||
+    clienteId ||
+    usuarioId
   );
 
   const equipeItems: SelectItemsOptions[] = equipes.map((equipe) => ({
@@ -116,11 +134,17 @@ export default function DashboardFilter() {
     value: equipe.id,
   }));
 
-  // Mesmo com parâmetros de data inválidos na URL (ex.: só dataFim), o botão
-  // de limpar precisa aparecer para o usuário conseguir remover o filtro.
-  const temDataNaUrl = !!(dataParam || inicioParam || fimParam);
+  const clienteItems: SelectItemsOptions[] = clientes.map((cliente) => ({
+    label: cliente.nome,
+    value: cliente.id,
+  }));
 
-  // Campo de data (dia específico ou período), usado nos dois layouts.
+  const usuarioItems: SelectItemsOptions[] = usuarios.map((usuario) => ({
+    label: usuario.nome,
+    value: usuario.id,
+  }));
+
+  // Campo de data (dia específico ou período).
   const filtroData = (
     <Field className="relative min-w-[10rem] flex-1">
       <DateRangePicker value={intervalo} onChange={aplicarIntervalo} />
@@ -156,26 +180,32 @@ export default function DashboardFilter() {
       <CardContent className="flex flex-col gap-5">
         <Collapsible open={aberto} onOpenChange={setAberto}>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-5">
-            <FilterInput
-              title="Cliente"
-              id="clientes"
-              type="select"
-              onValueChange={(valor) =>
-                updateParam("status", valor || undefined)
-              }
-              onClear={() => updateParam("status", undefined)}
-              selectOptions="Clientes"
-            />
-            <FilterInput
-              title="Usuário"
-              id="usuario"
-              type="select"
-              onValueChange={(valor) =>
-                updateParam("status", valor || undefined)
-              }
-              onClear={() => updateParam("status", undefined)}
-              selectOptions="Usuários"
-            />
+            {!clientesIndisponivel && (
+              <FilterInput
+                title="Cliente"
+                id="cliente"
+                type="select"
+                value={clienteId}
+                onValueChange={(valor) =>
+                  updateParam("clienteId", valor || undefined)
+                }
+                onClear={() => updateParam("clienteId", undefined)}
+                items={clienteItems}
+              />
+            )}
+            {!usuariosIndisponivel && (
+              <FilterInput
+                title="Usuário"
+                id="usuario"
+                type="select"
+                value={usuarioId}
+                onValueChange={(valor) =>
+                  updateParam("usuarioId", valor || undefined)
+                }
+                onClear={() => updateParam("usuarioId", undefined)}
+                items={usuarioItems}
+              />
+            )}
 
             <CollapsibleTrigger className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-input px-4 text-sm transition-colors hover:bg-muted">
               <SlidersHorizontal className="size-4" />

@@ -8,24 +8,37 @@ import TicketsPerTeam from "./tickets-per-team";
 import TicketsPerSla from "./tickets-per-sla";
 import TicketsPerStatus from "./tickets-per-status";
 import EstimatedReal from "./estimated-real";
+import {
+  mapEquipesParaGrafico,
+  mapStatusParaGrafico,
+  mapUrgenciaParaGrafico,
+} from "@/lib/mappers/dashboard.mapper";
+import type { AgregacoesVolumeStatusUrgenciaDashboard } from "@/types/dashboard";
 
-function DashboardView() {
+interface DashboardViewProps {
+  dados: AgregacoesVolumeStatusUrgenciaDashboard;
+}
+
+function DashboardView({ dados }: DashboardViewProps) {
+  const { volume, porStatus, abertosPorEquipe, porUrgencia } = dados;
+
   return (
     <div className="flex flex-col gap-6">
       <section className="flex gap-4 ">
         <div className="grid grid-cols-2 gap-3 shrink-0 min-w-[60%]">
-          <KpiCard title="Total de Tickets" qtd={10} icon={Ticket} />
+          <KpiCard title="Total de Tickets" qtd={volume.criados} icon={Ticket} />
           <KpiCard
             title="Encerramento Solicitado"
-            qtd={20}
+            qtd={volume.encerramentoSolicitado}
             icon={Hourglass}
             url="?status=SOLICITACAO_ENCERRAMENTO"
           />
           {/* Acredito que para esses dois, precisa-se de um novo filtro na página de tickets. (Assim como é feito acima, o clique de "ver todos" é feito utilizando os próprios filtros de url da aba ticket) */}
+          {/* SLA: valores ainda mockados, falta agregação no back */}
           <KpiCard title="Fora do SLA" qtd={30} icon={TriangleAlert} />
           <KpiCard title="Próximo do SLA" qtd={50} icon={Clock8} />
         </div>
-        <TicketsPerUrgency />
+        <TicketsPerUrgency data={mapUrgenciaParaGrafico(porUrgencia)} />
       </section>
 
       <section className="flex gap-4">
@@ -34,14 +47,17 @@ function DashboardView() {
           className="min-w-120 w-120 flex-1"
         >
           <div className="flex items-center gap-2">
-            <h2 className="text-6xl text-primary font-bold">45</h2>
+            <h2 className="text-6xl text-primary font-bold">
+              {abertosPorEquipe.totalAbertos}
+            </h2>
             <span className="text-muted-foreground w-[30%]">
-              Tickets abertos no mês
+              Tickets abertos
             </span>
           </div>
-          <TicketsPerTeam />
+          <TicketsPerTeam data={mapEquipesParaGrafico(abertosPorEquipe)} />
         </ChartsCardContainer>
 
+        {/* SLA: ainda mockado */}
         <ChartsCardContainer
           title="Tickets por SLA"
           className=" justify-between"
@@ -50,11 +66,15 @@ function DashboardView() {
         </ChartsCardContainer>
 
         <ChartsCardContainer title="Tickets por Status">
-          <TicketsPerStatus />
+          <TicketsPerStatus
+            data={mapStatusParaGrafico(porStatus)}
+            total={porStatus.total}
+          />
         </ChartsCardContainer>
       </section>
 
       <section className="pb-8">
+        {/* SLA: ainda mockado */}
         <ChartsCardContainer
           title="SLA Estimado vs. Tempo Real"
           className="w-[50%]"

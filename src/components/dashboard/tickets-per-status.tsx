@@ -53,11 +53,11 @@ const chartConfig = {
 
 function TicketsPerStatus({
   data = chartData,
+  total = 45,
 }: {
   data?: TicketsPerStatusData[];
+  total?: number;
 }) {
-  const totaltickets = 45;
-
   return (
     <ChartContainer
       config={chartConfig}
@@ -90,7 +90,7 @@ function TicketsPerStatus({
                       y={viewBox.cy}
                       className="fill-foreground text-3xl font-bold"
                     >
-                      {totaltickets.toLocaleString()}
+                      {total.toLocaleString()}
                     </tspan>
                     <tspan
                       x={viewBox.cx}
