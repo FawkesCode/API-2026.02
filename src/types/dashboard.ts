@@ -40,6 +40,35 @@ export const ROTULO_URGENCIA_DASHBOARD: Record<Prioridade, string> = {
   [Prioridade.BAIXA]: "Baixa",
 };
 
+export const FAIXA_SLA_DASHBOARD = {
+  SLA_4H: "4h",
+  SLA_8H: "8h",
+  SLA_1D: "1d",
+  SLA_2D: "2d",
+  SLA_3D: "3d",
+  SLA_7D: "7d",
+} as const;
+export type FaixaSlaDashboard =
+  (typeof FAIXA_SLA_DASHBOARD)[keyof typeof FAIXA_SLA_DASHBOARD];
+
+export const ORDEM_SLA_DASHBOARD: readonly FaixaSlaDashboard[] = [
+  FAIXA_SLA_DASHBOARD.SLA_4H,
+  FAIXA_SLA_DASHBOARD.SLA_8H,
+  FAIXA_SLA_DASHBOARD.SLA_1D,
+  FAIXA_SLA_DASHBOARD.SLA_2D,
+  FAIXA_SLA_DASHBOARD.SLA_3D,
+  FAIXA_SLA_DASHBOARD.SLA_7D,
+] as const;
+
+export const ROTULO_SLA_DASHBOARD: Record<FaixaSlaDashboard, string> = {
+  [FAIXA_SLA_DASHBOARD.SLA_4H]: "4 horas",
+  [FAIXA_SLA_DASHBOARD.SLA_8H]: "8 horas",
+  [FAIXA_SLA_DASHBOARD.SLA_1D]: "1 dia",
+  [FAIXA_SLA_DASHBOARD.SLA_2D]: "2 dias",
+  [FAIXA_SLA_DASHBOARD.SLA_3D]: "3 dias",
+  [FAIXA_SLA_DASHBOARD.SLA_7D]: "7 dias",
+};
+
 export interface ResumoVolumeDashboard {
   criados: number;
   fechados: number;
@@ -82,9 +111,41 @@ export interface AgregacaoUrgenciaDashboard {
   itens: ItemAgregacaoUrgencia[];
 }
 
+export interface ItemAgregacaoSla {
+  sla: FaixaSlaDashboard;
+  label: string;
+  quantidade: number;
+}
+
+export interface AgregacaoSlaDashboard {
+  total: number;
+  itens: ItemAgregacaoSla[];
+}
+
+export interface ResumoSlaDashboard {
+  foraDoSla: number;
+  proximoDoSla: number;
+}
+
+export interface ItemSlaEstimadoVsReal {
+  sla: FaixaSlaDashboard;
+  label: string;
+  estimado: number;
+  real: number;
+}
+
+export interface AgregacaoSlaEstimadoVsRealDashboard {
+  totalEstimado: number;
+  totalReal: number;
+  itens: ItemSlaEstimadoVsReal[];
+}
+
 export interface AgregacoesVolumeStatusUrgenciaDashboard {
   volume: ResumoVolumeDashboard;
   porStatus: AgregacaoStatusDashboard;
   abertosPorEquipe: AgregacaoAbertosPorEquipeDashboard;
   porUrgencia: AgregacaoUrgenciaDashboard;
+  porSla: AgregacaoSlaDashboard;
+  resumoSla: ResumoSlaDashboard;
+  slaEstimadoVsReal: AgregacaoSlaEstimadoVsRealDashboard;
 }

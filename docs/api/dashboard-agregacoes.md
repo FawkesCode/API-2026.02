@@ -34,7 +34,7 @@ Documentação de referência técnica (para humanos e agentes de código) das f
 ### Invariantes importantes
 
 1. **Criados vs. Fechados com filtro de data:**
-   - `contarChamadosCriados`, `agruparPorStatus`, `agruparAbertosPorEquipe` e `agruparPorUrgencia` aplicam o filtro de data sobre `criadoEm`.
+   - `contarChamadosCriados`, `agruparPorStatus`, `agruparAbertosPorEquipe`, `agruparPorUrgencia` e `agruparPorSla` aplicam o filtro de data sobre `criadoEm`.
    - `contarChamadosFechados` aplica `status = ENCERRADO` e, quando há filtro de data, filtra por `encerradoEm` (refletindo quantos chamados foram encerrados no período).
    - Para saber quantos tickets *criados no período* já estão encerrados, consulte o item `ENCERRADO` dentro de `porStatus.itens`.
 2. **Sem dupla contagem em tickets multi-equipe:**
@@ -44,6 +44,7 @@ Documentação de referência técnica (para humanos e agentes de código) das f
 4. **Preenchimento de zeros e ordem estável:**
    - `agruparPorStatus` retorna sempre os 5 status em ordem fixa.
    - `agruparPorUrgencia` retorna sempre os 4 níveis (`Crítica → Alta → Média → Baixa`).
+   - `agruparPorSla` retorna sempre as 6 faixas (`4 horas → 8 horas → 1 dia → 2 dias → 3 dias → 7 dias`).
    - `agruparAbertosPorEquipe` inclui equipes ativas mesmo com `quantidade: 0`, ordenadas alfabeticamente por `nome`.
 
 ---
@@ -313,18 +314,98 @@ Documentação de referência técnica (para humanos e agentes de código) das f
 
 ---
 
-### `servicoDashboard.obterAgregacoesVolumeStatusUrgencia(filtros?)`
+### `classificarFaixaSla(criadoEm, slaEm)`
+
+- **Assinatura:**
+  ```ts
+  export function classificarFaixaSla(
+    criadoEm: Date,
+    slaEm: Date,
+  ): FaixaSlaDashboard
+  ```
+- **Import:** `import { classificarFaixaSla } from "@/services/dashboard.service";`
+- **Objetivo:** Classificar o prazo estimado do ticket (`slaEm - criadoEm`) em uma das 6 faixas do gráfico *"Tickets por SLA"*: `"4h"`, `"8h"`, `"1d"`, `"2d"`, `"3d"` ou `"7d"`.
+- **Regras e tolerância:**
+  - Aplica tolerância de cadastro de **5 minutos** (alinhada a `src/lib/sla-alert-window.ts`) para compensar a diferença entre o cálculo de `slaEm` no cliente e o registro de `criadoEm` no MySQL.
+  - Faixas: `<= 4h` → `"4h"`; `<= 8h` → `"8h"`; `<= 1 dia` → `"1d"`; `<= 2 dias` → `"2d"`; `<= 3 dias` → `"3d"`; acima de `3 dias` → `"7d"`.
+
+---
+
+### `servicoDashboard.agruparPorSla(filtros?)`
+
+- **Assinatura:**
+  ```ts
+  async agruparPorSla(
+    filtros?: FiltrosDashboard,
+  ): Promise<AgregacaoSlaDashboard>
+  ```
+- **Alimenta:** Gráfico de pizza *"Tickets por SLA"* (`4 horas`, `8 horas`, `1 dia`, `2 dias`, `3 dias`, `7 dias`).
+- **Consulta executada:** `prisma.ticket.findMany({ where, select: { criadoEm: true, slaEm: true } })` com `campoData: "criadoEm"`.
+- **Regras e edge cases:**
+  - Sempre retorna as 6 faixas na ordem `4h`, `8h`, `1d`, `2d`, `3d`, `7d`.
+  - Faixas sem chamados no recorte retornam `quantidade: 0`.
+  - `total` corresponde à soma de todas as faixas (todos os tickets do recorte filtrado).
+- **Exemplo de retorno:**
+  ```json
+  {
+    "total": 6,
+    "itens": [
+      { "sla": "4h", "label": "4 horas", "quantidade": 2 },
+      { "sla": "8h", "label": "8 horas", "quantidade": 1 },
+      { "sla": "1d", "label": "1 dia", "quantidade": 1 },
+      { "sla": "2d", "label": "2 dias", "quantidade": 0 },
+      { "sla": "3d", "label": "3 dias", "quantidade": 1 },
+      { "sla": "7d", "label": "7 dias", "quantidade": 1 }
+    ]
+  }
+  ```
+
+---
+
+### `servicoDashboard.contarResumoSla(filtros?, agora?)`
+
+- **Assinatura:**
+  ```ts
+  async contarResumoSla(
+    filtros?: FiltrosDashboard,
+    agora?: Date,
+  ): Promise<ResumoSlaDashboard>
+  ```
+- **Alimenta:** Cards KPI *"Fora do SLA"* e *"Próximo do SLA"*.
+- **Regras:**
+  - `foraDoSla`: tickets abertos com `slaEm <= agora` ou tickets encerrados com `encerradoEm > slaEm`.
+  - `proximoDoSla`: tickets abertos ainda dentro do prazo (`slaEm > agora`) cujo tempo restante é menor ou igual à janela de alerta de `janelaAlertaSlaMs(criadoEm, slaEm)` (`src/lib/sla-alert-window.ts`).
+
+---
+
+### `servicoDashboard.agruparSlaEstimadoVsReal(filtros?)`
+
+- **Assinatura:**
+  ```ts
+  async agruparSlaEstimadoVsReal(
+    filtros?: FiltrosDashboard,
+  ): Promise<AgregacaoSlaEstimadoVsRealDashboard>
+  ```
+- **Alimenta:** Gráfico de barras empilhadas *"SLA Estimado vs. Tempo Real"* (`4 horas`, `8 horas`, `1 dia`, `2 dias`, `3 dias`, `7 dias`).
+- **Regras:**
+  - `estimado`: quantidade de tickets cuja duração prevista (`slaEm - criadoEm`) cai em cada faixa.
+  - `real`: quantidade de tickets encerrados (`status = ENCERRADO` e `encerradoEm != null`) cuja duração real (`encerradoEm - criadoEm`) cai em cada faixa.
+
+---
+
+### `servicoDashboard.obterAgregacoesVolumeStatusUrgencia(filtros?, agora?)`
 
 - **Assinatura:**
   ```ts
   async obterAgregacoesVolumeStatusUrgencia(
     filtros?: FiltrosDashboard,
+    agora?: Date,
   ): Promise<AgregacoesVolumeStatusUrgenciaDashboard>
   ```
-- **Alimenta:** Endpoint principal do dashboard (todas as agregações desta entrega em uma única chamada).
+- **Alimenta:** Página do dashboard e endpoint principal (todas as agregações em uma única chamada).
 - **Otimização interna:**
-  - Executa em paralelo (`Promise.all`): `agruparPorStatus`, `contarChamadosFechados`, agrupamento de equipes abertas e `agruparPorUrgencia`.
-  - Deriva `volume.criados`, `volume.abertos`, `volume.encerramentoSolicitado` e `abertosPorEquipe.totalAbertos` diretamente do `groupBy` de status, evitando 2 chamadas extras a `ticket.count`.
+  - Executa em paralelo (`Promise.all`): `agruparPorStatus`, `contarChamadosFechados`, agrupamento de equipes abertas, `agruparPorUrgencia` e uma única leitura `ticket.findMany` (`status`, `criadoEm`, `slaEm`, `encerradoEm`) da qual deriva `porSla`, `resumoSla` e `slaEstimadoVsReal`.
+  - Deriva `volume.criados`, `volume.abertos`, `volume.encerramentoSolicitado` e `abertosPorEquipe.totalAbertos` diretamente do `groupBy` de status, evitando chamadas extras a `ticket.count`.
 - **Estrutura de retorno (`AgregacoesVolumeStatusUrgenciaDashboard`):**
   ```json
   {
@@ -361,6 +442,33 @@ Documentação de referência técnica (para humanos e agentes de código) das f
         { "prioridade": "MEDIA", "label": "Média", "quantidade": 10 },
         { "prioridade": "BAIXA", "label": "Baixa", "quantidade": 5 }
       ]
+    },
+    "porSla": {
+      "total": 28,
+      "itens": [
+        { "sla": "4h", "label": "4 horas", "quantidade": 6 },
+        { "sla": "8h", "label": "8 horas", "quantidade": 5 },
+        { "sla": "1d", "label": "1 dia", "quantidade": 7 },
+        { "sla": "2d", "label": "2 dias", "quantidade": 4 },
+        { "sla": "3d", "label": "3 dias", "quantidade": 3 },
+        { "sla": "7d", "label": "7 dias", "quantidade": 3 }
+      ]
+    },
+    "resumoSla": {
+      "foraDoSla": 4,
+      "proximoDoSla": 3
+    },
+    "slaEstimadoVsReal": {
+      "totalEstimado": 28,
+      "totalReal": 8,
+      "itens": [
+        { "sla": "4h", "label": "4 horas", "estimado": 6, "real": 2 },
+        { "sla": "8h", "label": "8 horas", "estimado": 5, "real": 1 },
+        { "sla": "1d", "label": "1 dia", "estimado": 7, "real": 2 },
+        { "sla": "2d", "label": "2 dias", "estimado": 4, "real": 1 },
+        { "sla": "3d", "label": "3 dias", "estimado": 3, "real": 1 },
+        { "sla": "7d", "label": "7 dias", "estimado": 3, "real": 1 }
+      ]
     }
   }
   ```
@@ -379,6 +487,9 @@ Wrappers server-side para Server Components (`app/(app-content)/.../page.tsx`), 
 | `getTicketsPorStatus(filtros?)` | `servicoDashboard.agruparPorStatus` | `Promise<AgregacaoStatusDashboard>` | `"Não foi possível carregar os chamados por status."` |
 | `getTicketsAbertosPorEquipe(filtros?)` | `servicoDashboard.agruparAbertosPorEquipe` | `Promise<AgregacaoAbertosPorEquipeDashboard>` | `"Não foi possível carregar os chamados abertos por equipe."` |
 | `getTicketsPorUrgencia(filtros?)` | `servicoDashboard.agruparPorUrgencia` | `Promise<AgregacaoUrgenciaDashboard>` | `"Não foi possível carregar os chamados por urgência."` |
+| `getTicketsPorSla(filtros?)` | `servicoDashboard.agruparPorSla` | `Promise<AgregacaoSlaDashboard>` | `"Não foi possível carregar os chamados por SLA."` |
+| `getResumoSla(filtros?)` | `servicoDashboard.contarResumoSla` | `Promise<ResumoSlaDashboard>` | `"Não foi possível carregar o resumo de SLA."` |
+| `getSlaEstimadoVsReal(filtros?)` | `servicoDashboard.agruparSlaEstimadoVsReal` | `Promise<AgregacaoSlaEstimadoVsRealDashboard>` | `"Não foi possível carregar o comparativo de SLA estimado vs tempo real."` |
 
 - **Import:** `import { getAgregacoesDashboard } from "@/lib/data/dashboard";`
 

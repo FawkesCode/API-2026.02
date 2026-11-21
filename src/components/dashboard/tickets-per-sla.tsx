@@ -61,7 +61,15 @@ function TicketsPerSla({ data = chartData }: { data?: TicketsPerSlaData[] }) {
     >
       <PieChart>
         <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-        <Pie data={data} dataKey="tickets" label nameKey="sla" />
+        <Pie
+          data={data}
+          dataKey="tickets"
+          label={({ value }: { value?: number }) =>
+            value && value > 0 ? String(value) : ""
+          }
+          labelLine={false}
+          nameKey="sla"
+        />
         <ChartLegend
           content={<ChartLegendContent nameKey="sla" />}
           wrapperStyle={{ paddingTop: "20px" }}

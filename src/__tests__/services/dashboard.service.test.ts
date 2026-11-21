@@ -1,7 +1,9 @@
 import { endOfDay, parseISO, startOfDay } from "date-fns";
 import { describe, expect, it, vi } from "vitest";
 import { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
+import { FAIXA_SLA_DASHBOARD } from "@/types/dashboard";
 import {
+  classificarFaixaSla,
   montarWhereDashboard,
   resolverIntervaloDatasDashboard,
   ServicoDashboard,
@@ -21,6 +23,7 @@ function criarBancoMock() {
     ticket: {
       count: vi.fn(),
       groupBy: vi.fn(),
+      findMany: vi.fn(),
     },
     ticketEquipe: {
       groupBy: vi.fn(),
@@ -350,7 +353,214 @@ describe("ServicoDashboard", () => {
     });
   });
 
-  it("consolida volume, status, abertos por equipe e urgência sem consultas redundantes", async () => {
+  it("classifica corretamente as faixas de SLA incluindo tolerância de cadastro", () => {
+    const base = new Date("2026-11-10T10:00:00.000Z");
+    const adicionarHoras = (horas: number, minutosExtras = 0) =>
+      new Date(base.getTime() + horas * 60 * 60 * 1000 + minutosExtras * 60 * 1000);
+
+    expect(classificarFaixaSla(base, adicionarHoras(4, -1))).toBe(
+      FAIXA_SLA_DASHBOARD.SLA_4H,
+    );
+    expect(classificarFaixaSla(base, adicionarHoras(4, 3))).toBe(
+      FAIXA_SLA_DASHBOARD.SLA_4H,
+    );
+    expect(classificarFaixaSla(base, adicionarHoras(8))).toBe(
+      FAIXA_SLA_DASHBOARD.SLA_8H,
+    );
+    expect(classificarFaixaSla(base, adicionarHoras(24))).toBe(
+      FAIXA_SLA_DASHBOARD.SLA_1D,
+    );
+    expect(classificarFaixaSla(base, adicionarHoras(48))).toBe(
+      FAIXA_SLA_DASHBOARD.SLA_2D,
+    );
+    expect(classificarFaixaSla(base, adicionarHoras(72))).toBe(
+      FAIXA_SLA_DASHBOARD.SLA_3D,
+    );
+    expect(classificarFaixaSla(base, adicionarHoras(168))).toBe(
+      FAIXA_SLA_DASHBOARD.SLA_7D,
+    );
+    expect(classificarFaixaSla(base, adicionarHoras(216))).toBe(
+      FAIXA_SLA_DASHBOARD.SLA_7D,
+    );
+  });
+
+  it("agrupa chamados por SLA em 4 horas, 8 horas, 1 dia, 2 dias, 3 dias e 7 dias preenchendo zeros", async () => {
+    const base = new Date("2026-11-10T10:00:00.000Z");
+    const adicionarHoras = (horas: number) =>
+      new Date(base.getTime() + horas * 60 * 60 * 1000);
+
+    const banco = criarBancoMock();
+    banco.ticket.findMany.mockResolvedValue([
+      { criadoEm: base, slaEm: adicionarHoras(4) },
+      { criadoEm: base, slaEm: adicionarHoras(4) },
+      { criadoEm: base, slaEm: adicionarHoras(8) },
+      { criadoEm: base, slaEm: adicionarHoras(24) },
+      { criadoEm: base, slaEm: adicionarHoras(72) },
+      { criadoEm: base, slaEm: adicionarHoras(168) },
+    ]);
+    const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
+
+    const resultado = await servico.agruparPorSla({ projetoId: PROJETO_ID });
+
+    expect(banco.ticket.findMany).toHaveBeenCalledWith({
+      where: { projetoId: PROJETO_ID },
+      select: { criadoEm: true, slaEm: true },
+    });
+    expect(resultado).toEqual({
+      total: 6,
+      itens: [
+        { sla: FAIXA_SLA_DASHBOARD.SLA_4H, label: "4 horas", quantidade: 2 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_8H, label: "8 horas", quantidade: 1 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_1D, label: "1 dia", quantidade: 1 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_2D, label: "2 dias", quantidade: 0 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_3D, label: "3 dias", quantidade: 1 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_7D, label: "7 dias", quantidade: 1 },
+      ],
+    });
+  });
+
+  it("conta tickets fora do SLA e próximos do SLA respeitando a janela de alerta", async () => {
+    const agora = new Date("2026-11-10T12:00:00.000Z");
+    const adicionarHoras = (origem: Date, horas: number) =>
+      new Date(origem.getTime() + horas * 60 * 60 * 1000);
+
+    const banco = criarBancoMock();
+    banco.ticket.findMany.mockResolvedValue([
+      {
+        status: StatusTicket.EM_ANDAMENTO,
+        criadoEm: new Date("2026-11-10T06:00:00.000Z"),
+        slaEm: new Date("2026-11-10T10:00:00.000Z"),
+        encerradoEm: null,
+      },
+      {
+        status: StatusTicket.ENCERRADO,
+        criadoEm: new Date("2026-11-09T10:00:00.000Z"),
+        slaEm: new Date("2026-11-10T10:00:00.000Z"),
+        encerradoEm: new Date("2026-11-10T11:00:00.000Z"),
+      },
+      {
+        status: StatusTicket.ENCERRADO,
+        criadoEm: new Date("2026-11-09T10:00:00.000Z"),
+        slaEm: new Date("2026-11-10T10:00:00.000Z"),
+        encerradoEm: new Date("2026-11-10T09:00:00.000Z"),
+      },
+      {
+        status: StatusTicket.EM_ANDAMENTO,
+        criadoEm: new Date("2026-11-10T08:30:00.000Z"),
+        slaEm: new Date("2026-11-10T12:30:00.000Z"),
+        encerradoEm: null,
+      },
+      {
+        status: StatusTicket.NAO_INICIADO,
+        criadoEm: new Date("2026-11-10T00:00:00.000Z"),
+        slaEm: adicionarHoras(agora, 36),
+        encerradoEm: null,
+      },
+    ]);
+    const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
+
+    const resultado = await servico.contarResumoSla(
+      { equipeId: EQUIPE_A_ID },
+      agora,
+    );
+
+    expect(banco.ticket.findMany).toHaveBeenCalledWith({
+      where: { equipesAlocadas: { some: { equipeId: EQUIPE_A_ID } } },
+      select: {
+        status: true,
+        criadoEm: true,
+        slaEm: true,
+        encerradoEm: true,
+      },
+    });
+    expect(resultado).toEqual({
+      foraDoSla: 2,
+      proximoDoSla: 1,
+    });
+  });
+
+  it("agrupa SLA estimado versus tempo real de encerramento por faixa", async () => {
+    const base = new Date("2026-11-10T10:00:00.000Z");
+    const adicionarHoras = (horas: number) =>
+      new Date(base.getTime() + horas * 60 * 60 * 1000);
+
+    const banco = criarBancoMock();
+    banco.ticket.findMany.mockResolvedValue([
+      {
+        status: StatusTicket.ENCERRADO,
+        criadoEm: base,
+        slaEm: adicionarHoras(4),
+        encerradoEm: adicionarHoras(6),
+      },
+      {
+        status: StatusTicket.ENCERRADO,
+        criadoEm: base,
+        slaEm: adicionarHoras(24),
+        encerradoEm: adicionarHoras(20),
+      },
+      {
+        status: StatusTicket.EM_ANDAMENTO,
+        criadoEm: base,
+        slaEm: adicionarHoras(48),
+        encerradoEm: null,
+      },
+    ]);
+    const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
+
+    const resultado = await servico.agruparSlaEstimadoVsReal({
+      clienteId: CLIENTE_ID,
+    });
+
+    expect(resultado).toEqual({
+      totalEstimado: 3,
+      totalReal: 2,
+      itens: [
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_4H,
+          label: "4 horas",
+          estimado: 1,
+          real: 0,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_8H,
+          label: "8 horas",
+          estimado: 0,
+          real: 1,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_1D,
+          label: "1 dia",
+          estimado: 1,
+          real: 1,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_2D,
+          label: "2 dias",
+          estimado: 1,
+          real: 0,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_3D,
+          label: "3 dias",
+          estimado: 0,
+          real: 0,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_7D,
+          label: "7 dias",
+          estimado: 0,
+          real: 0,
+        },
+      ],
+    });
+  });
+
+  it("consolida volume, status, abertos por equipe, urgência e métricas de SLA sem consultas redundantes", async () => {
+    const base = new Date("2026-11-10T10:00:00.000Z");
+    const agora = new Date("2026-11-10T15:00:00.000Z");
+    const adicionarHoras = (horas: number) =>
+      new Date(base.getTime() + horas * 60 * 60 * 1000);
+
     const banco = criarBancoMock();
     banco.ticket.groupBy
       .mockResolvedValueOnce([
@@ -367,6 +577,26 @@ describe("ServicoDashboard", () => {
         { prioridade: Prioridade.BAIXA, _count: { _all: 5 } },
       ]);
     banco.ticket.count.mockResolvedValue(11);
+    banco.ticket.findMany.mockResolvedValue([
+      {
+        status: StatusTicket.EM_ANDAMENTO,
+        criadoEm: base,
+        slaEm: adicionarHoras(4),
+        encerradoEm: null,
+      },
+      {
+        status: StatusTicket.EM_ANDAMENTO,
+        criadoEm: base,
+        slaEm: adicionarHoras(48),
+        encerradoEm: null,
+      },
+      {
+        status: StatusTicket.ENCERRADO,
+        criadoEm: base,
+        slaEm: adicionarHoras(168),
+        encerradoEm: adicionarHoras(24),
+      },
+    ]);
     banco.ticketEquipe.groupBy.mockResolvedValue([
       { equipeId: EQUIPE_A_ID, _count: { _all: 12 } },
       { equipeId: EQUIPE_B_ID, _count: { _all: 8 } },
@@ -377,12 +607,16 @@ describe("ServicoDashboard", () => {
     ]);
 
     const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
-    const resumo = await servico.obterAgregacoesVolumeStatusUrgencia({
-      dataInicio: "2026-11-01",
-      dataFim: "2026-11-30",
-    });
+    const resumo = await servico.obterAgregacoesVolumeStatusUrgencia(
+      {
+        dataInicio: "2026-11-01",
+        dataFim: "2026-11-30",
+      },
+      agora,
+    );
 
     expect(banco.ticket.count).toHaveBeenCalledTimes(1);
+    expect(banco.ticket.findMany).toHaveBeenCalledTimes(1);
     expect(resumo.volume).toEqual({
       criados: 28,
       fechados: 11,
@@ -406,5 +640,121 @@ describe("ServicoDashboard", () => {
         { prioridade: Prioridade.BAIXA, label: "Baixa", quantidade: 5 },
       ],
     });
+    expect(resumo.porSla).toEqual({
+      total: 3,
+      itens: [
+        { sla: FAIXA_SLA_DASHBOARD.SLA_4H, label: "4 horas", quantidade: 1 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_8H, label: "8 horas", quantidade: 0 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_1D, label: "1 dia", quantidade: 0 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_2D, label: "2 dias", quantidade: 1 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_3D, label: "3 dias", quantidade: 0 },
+        { sla: FAIXA_SLA_DASHBOARD.SLA_7D, label: "7 dias", quantidade: 1 },
+      ],
+    });
+    expect(resumo.resumoSla).toEqual({
+      foraDoSla: 1,
+      proximoDoSla: 0,
+    });
+    expect(resumo.slaEstimadoVsReal).toEqual({
+      totalEstimado: 3,
+      totalReal: 1,
+      itens: [
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_4H,
+          label: "4 horas",
+          estimado: 1,
+          real: 0,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_8H,
+          label: "8 horas",
+          estimado: 0,
+          real: 0,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_1D,
+          label: "1 dia",
+          estimado: 0,
+          real: 1,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_2D,
+          label: "2 dias",
+          estimado: 1,
+          real: 0,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_3D,
+          label: "3 dias",
+          estimado: 0,
+          real: 0,
+        },
+        {
+          sla: FAIXA_SLA_DASHBOARD.SLA_7D,
+          label: "7 dias",
+          estimado: 1,
+          real: 0,
+        },
+      ],
+    });
+  });
+
+  it("trata corretamente base vazia e casos de borda de SLA", async () => {
+    const agora = new Date("2026-11-10T12:00:00.000Z");
+    const banco = criarBancoMock();
+    banco.ticket.groupBy
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    banco.ticket.count.mockResolvedValue(0);
+    banco.ticket.findMany.mockResolvedValue([]);
+    banco.ticketEquipe.groupBy.mockResolvedValue([]);
+    banco.equipe.findMany.mockResolvedValue([]);
+
+    const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
+    const vazio = await servico.obterAgregacoesVolumeStatusUrgencia({}, agora);
+
+    expect(vazio.volume).toEqual({
+      criados: 0,
+      fechados: 0,
+      abertos: 0,
+      encerramentoSolicitado: 0,
+    });
+    expect(vazio.porStatus.itens).toHaveLength(5);
+    expect(vazio.porUrgencia.itens).toHaveLength(4);
+    expect(vazio.porSla.itens).toHaveLength(6);
+    expect(vazio.resumoSla).toEqual({ foraDoSla: 0, proximoDoSla: 0 });
+    expect(vazio.slaEstimadoVsReal.totalEstimado).toBe(0);
+    expect(vazio.slaEstimadoVsReal.totalReal).toBe(0);
+
+    banco.ticket.findMany.mockResolvedValueOnce([
+      {
+        status: StatusTicket.EM_ANDAMENTO,
+        criadoEm: new Date("2026-11-10T08:00:00.000Z"),
+        slaEm: agora,
+        encerradoEm: null,
+      },
+      {
+        status: StatusTicket.ENCERRADO,
+        criadoEm: new Date("2026-11-10T08:00:00.000Z"),
+        slaEm: agora,
+        encerradoEm: agora,
+      },
+      {
+        status: StatusTicket.ENCERRADO,
+        criadoEm: new Date("2026-11-10T08:00:00.000Z"),
+        slaEm: new Date("2026-11-10T10:00:00.000Z"),
+        encerradoEm: null,
+      },
+    ]);
+
+    const bordas = await servico.contarResumoSla({}, agora);
+    expect(bordas).toEqual({ foraDoSla: 1, proximoDoSla: 0 });
+
+    expect(
+      classificarFaixaSla(
+        new Date("2026-11-10T12:00:00.000Z"),
+        new Date("2026-11-10T11:00:00.000Z"),
+      ),
+    ).toBe(FAIXA_SLA_DASHBOARD.SLA_4H);
   });
 });

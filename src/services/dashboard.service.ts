@@ -1,5 +1,6 @@
 import { endOfDay, isValid, parseISO, startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
+import { janelaAlertaSlaMs } from "@/lib/sla-alert-window";
 import {
   Prioridade,
   Prisma,
@@ -7,19 +8,33 @@ import {
   StatusTicket,
 } from "@/lib/generated/prisma/client";
 import {
+  FAIXA_SLA_DASHBOARD,
+  ORDEM_SLA_DASHBOARD,
   ORDEM_STATUS_DASHBOARD,
   ORDEM_URGENCIA_DASHBOARD,
+  ROTULO_SLA_DASHBOARD,
   ROTULO_STATUS_DASHBOARD,
   ROTULO_URGENCIA_DASHBOARD,
   type AgregacaoAbertosPorEquipeDashboard,
+  type AgregacaoSlaDashboard,
+  type AgregacaoSlaEstimadoVsRealDashboard,
   type AgregacaoStatusDashboard,
   type AgregacaoUrgenciaDashboard,
   type AgregacoesVolumeStatusUrgenciaDashboard,
+  type FaixaSlaDashboard,
   type FiltrosDashboard,
   type ItemAbertosPorEquipe,
+  type ItemAgregacaoSla,
   type ItemAgregacaoStatus,
   type ItemAgregacaoUrgencia,
+  type ItemSlaEstimadoVsReal,
+  type ResumoSlaDashboard,
 } from "@/types/dashboard";
+
+const MINUTO_MS = 60 * 1000;
+const HORA_MS = 60 * MINUTO_MS;
+const DIA_MS = 24 * HORA_MS;
+const TOLERANCIA_SLA_MS = 5 * MINUTO_MS;
 
 export type CampoDataDashboard = "criadoEm" | "encerradoEm";
 
@@ -170,6 +185,124 @@ function montarAgregacaoUrgencia(
   };
 }
 
+export function classificarFaixaSla(
+  criadoEm: Date,
+  slaEm: Date,
+): FaixaSlaDashboard {
+  const duracaoMs = slaEm.getTime() - criadoEm.getTime();
+
+  if (duracaoMs <= 4 * HORA_MS + TOLERANCIA_SLA_MS) {
+    return FAIXA_SLA_DASHBOARD.SLA_4H;
+  }
+  if (duracaoMs <= 8 * HORA_MS + TOLERANCIA_SLA_MS) {
+    return FAIXA_SLA_DASHBOARD.SLA_8H;
+  }
+  if (duracaoMs <= 1 * DIA_MS + TOLERANCIA_SLA_MS) {
+    return FAIXA_SLA_DASHBOARD.SLA_1D;
+  }
+  if (duracaoMs <= 2 * DIA_MS + TOLERANCIA_SLA_MS) {
+    return FAIXA_SLA_DASHBOARD.SLA_2D;
+  }
+  if (duracaoMs <= 3 * DIA_MS + TOLERANCIA_SLA_MS) {
+    return FAIXA_SLA_DASHBOARD.SLA_3D;
+  }
+  return FAIXA_SLA_DASHBOARD.SLA_7D;
+}
+
+function montarAgregacaoSla(
+  tickets: Array<{ criadoEm: Date; slaEm: Date }>,
+): AgregacaoSlaDashboard {
+  const contagemPorFaixa = new Map<FaixaSlaDashboard, number>();
+
+  for (const ticket of tickets) {
+    const faixa = classificarFaixaSla(ticket.criadoEm, ticket.slaEm);
+    contagemPorFaixa.set(faixa, (contagemPorFaixa.get(faixa) ?? 0) + 1);
+  }
+
+  const itens: ItemAgregacaoSla[] = ORDEM_SLA_DASHBOARD.map((sla) => ({
+    sla,
+    label: ROTULO_SLA_DASHBOARD[sla],
+    quantidade: contagemPorFaixa.get(sla) ?? 0,
+  }));
+
+  return {
+    total: tickets.length,
+    itens,
+  };
+}
+
+interface TicketDadosSla {
+  status: StatusTicket;
+  criadoEm: Date;
+  slaEm: Date;
+  encerradoEm: Date | null;
+}
+
+function montarResumoSla(
+  tickets: TicketDadosSla[],
+  agora: Date,
+): ResumoSlaDashboard {
+  const agoraMs = agora.getTime();
+  let foraDoSla = 0;
+  let proximoDoSla = 0;
+
+  for (const ticket of tickets) {
+    if (ticket.status === StatusTicket.ENCERRADO) {
+      if (ticket.encerradoEm && ticket.encerradoEm.getTime() > ticket.slaEm.getTime()) {
+        foraDoSla++;
+      }
+      continue;
+    }
+
+    const tempoRestanteMs = ticket.slaEm.getTime() - agoraMs;
+    if (tempoRestanteMs <= 0) {
+      foraDoSla++;
+    } else if (tempoRestanteMs <= janelaAlertaSlaMs(ticket.criadoEm, ticket.slaEm)) {
+      proximoDoSla++;
+    }
+  }
+
+  return {
+    foraDoSla,
+    proximoDoSla,
+  };
+}
+
+function montarSlaEstimadoVsReal(
+  tickets: TicketDadosSla[],
+): AgregacaoSlaEstimadoVsRealDashboard {
+  const estimadoPorFaixa = new Map<FaixaSlaDashboard, number>();
+  const realPorFaixa = new Map<FaixaSlaDashboard, number>();
+  let totalReal = 0;
+
+  for (const ticket of tickets) {
+    const faixaEstimada = classificarFaixaSla(ticket.criadoEm, ticket.slaEm);
+    estimadoPorFaixa.set(
+      faixaEstimada,
+      (estimadoPorFaixa.get(faixaEstimada) ?? 0) + 1,
+    );
+
+    if (ticket.status === StatusTicket.ENCERRADO && ticket.encerradoEm) {
+      const faixaReal = classificarFaixaSla(ticket.criadoEm, ticket.encerradoEm);
+      realPorFaixa.set(faixaReal, (realPorFaixa.get(faixaReal) ?? 0) + 1);
+      totalReal++;
+    }
+  }
+
+  const itens: ItemSlaEstimadoVsReal[] = ORDEM_SLA_DASHBOARD.map((sla) => ({
+    sla,
+    label: ROTULO_SLA_DASHBOARD[sla],
+    estimado: estimadoPorFaixa.get(sla) ?? 0,
+    real: realPorFaixa.get(sla) ?? 0,
+  }));
+
+  return {
+    totalEstimado: tickets.length,
+    totalReal,
+    itens,
+  };
+}
+
 export class ServicoDashboard {
   constructor(private readonly db: PrismaClient = prisma) {}
 
@@ -231,21 +364,88 @@ export class ServicoDashboard {
     return montarAgregacaoUrgencia(grupos);
   }
 
+  async agruparPorSla(
+    filtros?: FiltrosDashboard,
+  ): Promise<AgregacaoSlaDashboard> {
+    const where = montarWhereDashboard(filtros, { campoData: "criadoEm" });
+    const tickets = await this.db.ticket.findMany({
+      where,
+      select: {
+        criadoEm: true,
+        slaEm: true,
+      },
+    });
+
+    return montarAgregacaoSla(tickets);
+  }
+
+  async contarResumoSla(
+    filtros?: FiltrosDashboard,
+    agora: Date = new Date(),
+  ): Promise<ResumoSlaDashboard> {
+    const where = montarWhereDashboard(filtros, { campoData: "criadoEm" });
+    const tickets = await this.db.ticket.findMany({
+      where,
+      select: {
+        status: true,
+        criadoEm: true,
+        slaEm: true,
+        encerradoEm: true,
+      },
+    });
+
+    return montarResumoSla(tickets, agora);
+  }
+
+  async agruparSlaEstimadoVsReal(
+    filtros?: FiltrosDashboard,
+  ): Promise<AgregacaoSlaEstimadoVsRealDashboard> {
+    const where = montarWhereDashboard(filtros, { campoData: "criadoEm" });
+    const tickets = await this.db.ticket.findMany({
+      where,
+      select: {
+        status: true,
+        criadoEm: true,
+        slaEm: true,
+        encerradoEm: true,
+      },
+    });
+
+    return montarSlaEstimadoVsReal(tickets);
+  }
+
   async obterAgregacoesVolumeStatusUrgencia(
     filtros?: FiltrosDashboard,
+    agora: Date = new Date(),
   ): Promise<AgregacoesVolumeStatusUrgenciaDashboard> {
+    const whereCriados = montarWhereDashboard(filtros, {
+      campoData: "criadoEm",
+    });
     const whereTicketAberto = montarWhereDashboard(filtros, {
       campoData: "criadoEm",
       base: { status: { not: StatusTicket.ENCERRADO } },
     });
 
-    const [porStatus, fechados, equipesAbertas, porUrgencia] =
+    const [porStatus, fechados, equipesAbertas, porUrgencia, ticketsSla] =
       await Promise.all([
         this.agruparPorStatus(filtros),
         this.contarChamadosFechados(filtros),
         this.buscarEquipesAbertas(filtros, whereTicketAberto),
         this.agruparPorUrgencia(filtros),
+        this.db.ticket.findMany({
+          where: whereCriados,
+          select: {
+            status: true,
+            criadoEm: true,
+            slaEm: true,
+            encerradoEm: true,
+          },
+        }),
       ]);
+
+    const porSla = montarAgregacaoSla(ticketsSla);
+    const resumoSla = montarResumoSla(ticketsSla, agora);
+    const slaEstimadoVsReal = montarSlaEstimadoVsReal(ticketsSla);
 
     return {
       volume: {
@@ -260,6 +460,9 @@ export class ServicoDashboard {
         equipes: equipesAbertas,
       },
       porUrgencia,
+      porSla,
+      resumoSla,
+      slaEstimadoVsReal,
     };
   }
 
