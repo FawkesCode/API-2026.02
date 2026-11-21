@@ -386,7 +386,7 @@ Documentação de referência técnica (para humanos e agentes de código) das f
     filtros?: FiltrosDashboard,
   ): Promise<AgregacaoSlaEstimadoVsRealDashboard>
   ```
-- **Alimenta:** Gráfico de barras empilhadas *"SLA Estimado vs. Tempo Real"* (`4 horas`, `8 horas`, `1 dia`, `2 dias`, `3 dias`, `7 dias`).
+- **Alimenta:** Gráfico de barras agrupadas *"Chamados: SLA Estimado vs. Duração Real"* (`4 horas`, `8 horas`, `1 dia`, `2 dias`, `3 dias`, `7 dias`).
 - **Regras:**
   - `estimado`: quantidade de tickets cuja duração prevista (`slaEm - criadoEm`) cai em cada faixa.
   - `real`: quantidade de tickets encerrados (`status = ENCERRADO` e `encerradoEm != null`) cuja duração real (`encerradoEm - criadoEm`) cai em cada faixa.
