@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
 import { LogEditor } from "@/components/tickets/log-editor";
+import { MencionarEquipeTicket } from "@/components/tickets/mencionar-equipe-ticket";
 import { LogState } from "@/components/tickets/log-states";
 import { LogSuggestion } from "@/components/tickets/log-suggestions";
 import UserMessages from "@/components/tickets/user-messages";
@@ -77,6 +78,8 @@ interface TicketLogsProps {
   status: string;
   podeRegistrar: boolean;
   podeDecidir: boolean;
+  podeMencionarEquipe: boolean;
+  equipesAssociadas: string[];
   /** Se a equipe do usuário já enviou "começou a trabalhar" neste ticket. */
   equipeIniciou: boolean;
   className?: string;
@@ -90,6 +93,8 @@ function TicketLogs({
   status,
   podeRegistrar,
   podeDecidir,
+  podeMencionarEquipe,
+  equipesAssociadas,
   equipeIniciou,
 }: TicketLogsProps) {
   const router = useRouter();
@@ -273,7 +278,10 @@ function TicketLogs({
 
       {mostrarAreaDeEnvio && autor && (
         <section className="shrink-0 rounded-b-md border border-gray-200 bg-white p-6">
-          {(podeIniciar || podeSolicitarEncerramento || podeDecidirAgora) && (
+          {(podeIniciar ||
+            podeSolicitarEncerramento ||
+            podeDecidirAgora ||
+            podeMencionarEquipe) && (
             <div className="flex flex-wrap gap-2 pb-4">
               {podeIniciar && (
                 <LogSuggestion
@@ -301,6 +309,13 @@ function TicketLogs({
                 >
                   Enviar &quot;Solicito encerramento do ticket&quot;
                 </LogSuggestion>
+              )}
+
+              {podeMencionarEquipe && (
+                <MencionarEquipeTicket
+                  ticketId={ticketId}
+                  equipesAssociadas={equipesAssociadas}
+                />
               )}
 
               {podeDecidirAgora && (
