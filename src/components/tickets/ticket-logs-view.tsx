@@ -26,14 +26,20 @@ export default async function TicketsLogsView({ id }: { id: string }) {
     getUsuarioLogado(),
   ]);
   const equipeDoUsuarioId = usuarioLogado?.equipeId ?? null;
-  const daEquipe = !!equipeDoUsuarioId && ticket.teams.some((team) => team.id === equipeDoUsuarioId);
-  const podeAlterarPrioridade = daEquipe && usuarioLogado?.cargo === Cargo.GESTOR;
+  const daEquipe =
+    !!equipeDoUsuarioId &&
+    ticket.teams.some((team) => team.id === equipeDoUsuarioId);
+  const podeAlterarPrioridade =
+    daEquipe && usuarioLogado?.cargo === Cargo.GESTOR;
   // Ticket encerrado fica só para leitura: sem trocar prioridade nem equipes.
-  const podeEditarTicket = podeAlterarPrioridade && ticket.status !== "Encerrado";
+  const podeEditarTicket =
+    podeAlterarPrioridade && ticket.status !== "Encerrado";
   // Sai dos logs já carregados, sem consulta extra.
   const equipeIniciou =
     daEquipe &&
-    logs.some((log) => log.tipo === "aviso" && log.inicioEquipeId === equipeDoUsuarioId);
+    logs.some(
+      (log) => log.tipo === "aviso" && log.inicioEquipeId === equipeDoUsuarioId,
+    );
 
   return (
     <>
@@ -57,7 +63,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
                 )}
               </div>
             </div>
-            <div className="flex items-start gap-2">
+            <div className="flex items-center gap-2 mt-3 ">
               {ticket.teams.length !== 0 ? (
                 ticket.teams.map((team) => (
                   <Badge
@@ -83,11 +89,15 @@ export default async function TicketsLogsView({ id }: { id: string }) {
         ) : null}
       </section>
 
-
-
-      <TicketLogs ticketId={id} logsIniciais={logs} autor={usuarioLogado ? toAutor(usuarioLogado) : null}
-        status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade}
-        equipeIniciou={equipeIniciou} />
+      <TicketLogs
+        ticketId={id}
+        logsIniciais={logs}
+        autor={usuarioLogado ? toAutor(usuarioLogado) : null}
+        status={ticket.status}
+        podeRegistrar={daEquipe}
+        podeDecidir={podeAlterarPrioridade}
+        equipeIniciou={equipeIniciou}
+      />
     </>
   );
 }

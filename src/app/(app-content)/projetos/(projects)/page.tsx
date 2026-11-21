@@ -5,7 +5,7 @@ import { getClients, getUsers } from "@/lib/data/dropdown";
 import { getUsuarioAtual } from "@/lib/data/sessao";
 import { podeCriarProjeto } from "@/lib/access-control";
 
-async function getProjects(page?: number, itensPerPage?: number) {
+export async function getProjects(page?: number, itensPerPage?: number) {
   let itens, total, pagina, totalPaginas, itensPorPagina;
 
   try {
@@ -60,15 +60,17 @@ export default async function Projects({ searchParams }: PageProps) {
     : [[], []];
 
   return (
-    <ProjectsView
-      projects={itens}
-      clients={clients}
-      supervisors={supervisors}
-      podeCriar={podeCriar}
-      page={paginaAtual}
-      totalPages={totalPaginas}
-      total={total}
-      itensPerPage={tamanho}
-    />
+    <>
+      <ProjectsView
+        projects={itens}
+        clients={clients}
+        supervisors={supervisors}
+        podeCriar={podeCriar}
+        page={paginaAtual}
+        totalPages={totalPaginas}
+        total={total}
+        itensPerPage={tamanho}
+      />
+    </>
   );
 }

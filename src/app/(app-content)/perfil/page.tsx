@@ -1,5 +1,6 @@
 import PageHeader from "@/components/page-header";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import UserLog from "@/components/usuarios/user-log";
 import { getUsuarioLogado } from "@/lib/data/sessao";
 import { buscarPerfilComAtividades } from "@/services/atividade-conta.service";
@@ -28,6 +29,7 @@ async function page() {
   return (
     <>
       <PageHeader>Meu Perfil</PageHeader>
+
       <Card>
         <CardTitle className="flex gap-3 pr-8 pl-8">
           <div className="bg-muted rounded-full border border-[#BBC0E1] aspect-square flex items-center justify-center">
