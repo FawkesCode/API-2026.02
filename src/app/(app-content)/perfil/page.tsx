@@ -1,6 +1,10 @@
 import PageHeader from "@/components/page-header";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardTitle,
+} from "@/components/ui/card";
 import UserLog from "@/components/usuarios/user-log";
 import { getUsuarioLogado } from "@/lib/data/sessao";
 import { buscarPerfilComAtividades } from "@/services/atividade-conta.service";
@@ -27,10 +31,10 @@ async function page() {
   }
 
   return (
-    <>
+    <div className="flex flex-col">
       <PageHeader>Meu Perfil</PageHeader>
 
-      <Card>
+      <Card className="mb-8! overflow-visible">
         <CardTitle className="flex gap-3 pr-8 pl-8">
           <div className="bg-muted rounded-full border border-[#BBC0E1] aspect-square flex items-center justify-center">
             <UserRound
@@ -67,7 +71,7 @@ async function page() {
           </div>
         </CardTitle>
         <div className="border-b border-muted"></div>
-        <CardDescription className="pr-8 pl-8 flex gap-4 flex-col">
+        <CardContent className="pr-8 pl-8 flex gap-4 flex-col ">
           <h2 className="text-card-foreground font-medium">
             Histórico de atividade recente
           </h2>
@@ -85,9 +89,9 @@ async function page() {
               <p>Nenhuma atividade registrada ainda.</p>
             )}
           </div>
-        </CardDescription>
+        </CardContent>
       </Card>
-    </>
+    </div>
   );
 }
 
