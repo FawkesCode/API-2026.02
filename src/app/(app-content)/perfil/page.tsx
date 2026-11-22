@@ -1,10 +1,5 @@
 import PageHeader from "@/components/page-header";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import UserLog from "@/components/usuarios/user-log";
 import { getUsuarioLogado } from "@/lib/data/sessao";
 import { buscarPerfilComAtividades } from "@/services/atividade-conta.service";
@@ -35,16 +30,16 @@ async function page() {
       <PageHeader>Meu Perfil</PageHeader>
 
       <Card className="mb-8! overflow-visible">
-        <CardTitle className="flex gap-3 pr-8 pl-8">
-          <div className="bg-muted rounded-full border border-[#BBC0E1] aspect-square flex items-center justify-center">
+        <CardTitle className="flex gap-3 pr-8 pl-8 flex-col lg:flex-row items-center lg:items-stretch">
+          <div className="bg-muted rounded-full border border-[#BBC0E1] aspect-square flex items-center justify-center size-25 lg:size-auto">
             <UserRound
               size={45}
               color="bg-muted-foreground"
               fill="#BBC0E1"
             ></UserRound>
           </div>
-          <div>
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col items-center w-full  lg:items-start ">
+            <div className="flex items-center gap-3 flex-col-reverse lg:flex-row ">
               <h2 className="text-xl font-bold">
                 {user?.nome ? user.nome : "Nome do usuário"}
               </h2>
@@ -72,7 +67,7 @@ async function page() {
         </CardTitle>
         <div className="border-b border-muted"></div>
         <CardContent className="pr-8 pl-8 flex gap-4 flex-col ">
-          <h2 className="text-card-foreground font-medium">
+          <h2 className="text-card-foreground font-medium text-center lg:text-left">
             Histórico de atividade recente
           </h2>
           <div className="flex flex-col gap-2">

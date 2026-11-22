@@ -382,7 +382,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
                 selectOptions="Não iniciado,NAO_INICIADO|Em andamento,EM_ANDAMENTO|Solicitação de encerramento,SOLICITACAO_ENCERRAMENTO|Em revisão,EM_REVISAO|Encerrado,ENCERRADO"
               />
 
-              <CollapsibleTrigger className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-input px-4 text-sm transition-colors hover:bg-muted">
+              <CollapsibleTrigger className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-xl border border-input px-4 text-sm transition-colors hover:bg-muted justify-center lg:justify-start w-full lg:w-auto">
                 <SlidersHorizontal className="size-4" />
                 {aberto ? "Menos Filtros" : "Mais Filtros"}
                 {filtrosEscondidosAtivos > 0 && (

@@ -24,9 +24,13 @@ function DashboardView({ dados }: DashboardViewProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex gap-4 ">
-        <div className="grid grid-cols-2 gap-3 shrink-0 min-w-[60%]">
-          <KpiCard title="Total de Tickets" qtd={volume.criados} icon={Ticket} />
+      <section className="flex gap-4 flex-col 2xl:flex-row">
+        <div className="flex flex-col w-full lg:grid lg:grid-cols-2 gap-3 shrink-0 2xl:w-auto 2xl:min-w-[60%]">
+          <KpiCard
+            title="Total de Tickets"
+            qtd={volume.criados}
+            icon={Ticket}
+          />
           <KpiCard
             title="Encerramento Solicitado"
             qtd={volume.encerramentoSolicitado}
@@ -41,10 +45,10 @@ function DashboardView({ dados }: DashboardViewProps) {
         <TicketsPerUrgency data={mapUrgenciaParaGrafico(porUrgencia)} />
       </section>
 
-      <section className="flex gap-4">
+      <section className="flex gap-4 flex-col lg:flex-wrap lg:flex-row 2xl:flex-row">
         <ChartsCardContainer
           title="Tickets abertos por equipe"
-          className="min-w-120 w-120 flex-1"
+          className=" w-full lg:min-w-120 lg:w-120 flex-1"
         >
           <div className="flex items-center gap-2">
             <h2 className="text-6xl text-primary font-bold">
@@ -60,12 +64,15 @@ function DashboardView({ dados }: DashboardViewProps) {
         {/* SLA: ainda mockado */}
         <ChartsCardContainer
           title="Tickets por SLA"
-          className=" justify-between"
+          className=" justify-between lg:w-[50%] lg:ml-2 2xl:w-auto"
         >
           <TicketsPerSla />
         </ChartsCardContainer>
 
-        <ChartsCardContainer title="Tickets por Status">
+        <ChartsCardContainer
+          title="Tickets por Status"
+          className="lg:w-[45%] 2xl:w-auto"
+        >
           <TicketsPerStatus
             data={mapStatusParaGrafico(porStatus)}
             total={porStatus.total}
@@ -77,7 +84,7 @@ function DashboardView({ dados }: DashboardViewProps) {
         {/* SLA: ainda mockado */}
         <ChartsCardContainer
           title="SLA Estimado vs. Tempo Real"
-          className="w-[50%]"
+          className="w-full 2xl:w-[50%]"
         >
           <EstimatedReal />
         </ChartsCardContainer>
