@@ -53,6 +53,7 @@ export function MensagensLogView() {
     try {
       const criada = await cadastrarMensagemLog(mensagem);
       setMensagens((atuais) => [criada, ...atuais]);
+      setErroLista(null);
       reset();
       toast.add({
         type: "success",
@@ -104,7 +105,7 @@ export function MensagensLogView() {
         <CardContent>
           {carregando ? (
             <p className="text-sm text-muted-foreground">Carregando mensagens...</p>
-          ) : erroLista ? (
+          ) : erroLista && mensagens.length === 0 ? (
             <p role="alert" className="text-sm text-destructive">
               {erroLista}
             </p>
