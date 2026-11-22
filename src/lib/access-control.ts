@@ -25,6 +25,11 @@ export function podeCriarProjeto(cargo: Cargo | undefined | null): boolean {
   return cargo === Cargo.COMERCIAL;
 }
 
+/** Mesmo cargo que a API exige para gerenciar clientes. */
+export function podeGerenciarClientes(cargo: Cargo | undefined | null): boolean {
+  return cargo === Cargo.COMERCIAL;
+}
+
 export function podeEditarEquipe(cargo: Cargo | undefined | null): boolean {
   return cargo === CARGO_GESTOR;
 }
