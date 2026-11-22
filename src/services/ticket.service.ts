@@ -226,20 +226,27 @@ const includeListagem = {
   },
 } satisfies Prisma.TicketInclude;
 
-async function exigirGestorDoTicket(
+async function exigirMembroDoTicket(
   tx: Prisma.TransactionClient,
   equipesDoTicket: { equipeId: string }[],
   usuarioId: string,
+  acao: "atribuir" | "desatribuir",
 ) {
-  const gestor = await tx.usuario.findUnique({ where: { id: usuarioId } });
+  const usuario = await tx.usuario.findUnique({ where: { id: usuarioId } });
   if (
-    !gestor?.ativo ||
-    gestor.cargo !== Cargo.GESTOR ||
-    !gestor.equipeId ||
-    !equipesDoTicket.some((e) => e.equipeId === gestor.equipeId)
+    !usuario?.ativo ||
+    (usuario.cargo !== Cargo.GESTOR &&
+      !(acao === "atribuir" && usuario.cargo === Cargo.TECNICO)) ||
+    !usuario.equipeId ||
+    !equipesDoTicket.some((e) => e.equipeId === usuario.equipeId)
   ) {
-    throw new ErroNaoAutorizadoParaGerenciarEquipes();
+    throw new ErroNaoAutorizadoParaGerenciarEquipes(
+      acao === "atribuir"
+        ? "Apenas técnicos ou gestores de uma equipe do ticket podem atribuir equipes."
+        : "Apenas o gestor de uma equipe do ticket pode desatribuir equipes.",
+    );
   }
+  return usuario;
 }
 
 export class ServicoTicket {
@@ -571,11 +578,12 @@ export class ServicoTicket {
         });
         if (!ticket) return null;
 
-        await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+        const autor = await exigirMembroDoTicket(tx, ticket.equipesAlocadas, usuarioId, "atribuir");
         if (ticket.status === StatusTicket.ENCERRADO)
           throw new ErroTicketEncerrado();
 
-        const relatorioEfetivo = relatorio?.trim() || ticket.descricao?.trim();
+        const relatorioEfetivo = relatorio?.trim() ||
+          (autor.cargo === Cargo.GESTOR ? ticket.descricao?.trim() : undefined);
         if (!relatorioEfetivo) throw new ErroRelatorioEquipeInvalido();
 
         const equipe = await tx.equipe.findUnique({
@@ -706,7 +714,7 @@ export class ServicoTicket {
       });
       if (!ticket) return null;
 
-      await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+      await exigirMembroDoTicket(tx, ticket.equipesAlocadas, usuarioId, "desatribuir");
       if (ticket.status === StatusTicket.ENCERRADO)
         throw new ErroTicketEncerrado();
 
@@ -741,9 +749,7 @@ export class ServicoTicket {
 }
 
 export class ErroNaoAutorizadoParaGerenciarEquipes extends Error {
-  constructor(
-    message = "Apenas o gestor de uma equipe do ticket pode atribuir ou desatribuir equipes.",
-  ) {
+  constructor(message: string) {
     super(message);
     this.name = "ErroNaoAutorizadoParaGerenciarEquipes";
   }

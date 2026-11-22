@@ -2,6 +2,7 @@ import { endOfDay, parseISO, startOfDay } from "date-fns";
 import { describe, expect, it, vi } from "vitest";
 import { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 import {
+  applyDefaultDashboardFilters,
   montarWhereDashboard,
   resolverIntervaloDatasDashboard,
   ServicoDashboard,
@@ -69,6 +70,54 @@ describe("resolverIntervaloDatasDashboard", () => {
     expect(resolverIntervaloDatasDashboard({ dataFim: "2026-11-30" })).toEqual({
       lte: endOfDay(parseISO("2026-11-30")),
     });
+  });
+});
+
+describe("applyDefaultDashboardFilters", () => {
+  const referenceDate = new Date(2026, 1, 15, 10, 30);
+
+  it("aplica o mês vigente e todas as equipes quando nenhum filtro é informado", () => {
+    expect(applyDefaultDashboardFilters(undefined, referenceDate)).toEqual({
+      dataInicio: "2026-02-01",
+      dataFim: "2026-02-28",
+    });
+    expect(applyDefaultDashboardFilters({}, referenceDate)).toEqual({
+      dataInicio: "2026-02-01",
+      dataFim: "2026-02-28",
+    });
+  });
+
+  it("mantém os demais filtros ao aplicar o mês vigente", () => {
+    expect(
+      applyDefaultDashboardFilters(
+        {
+          equipeId: EQUIPE_A_ID,
+          usuarioId: USUARIO_ID,
+          projetoId: PROJETO_ID,
+          clienteId: CLIENTE_ID,
+        },
+        referenceDate,
+      ),
+    ).toEqual({
+      equipeId: EQUIPE_A_ID,
+      usuarioId: USUARIO_ID,
+      projetoId: PROJETO_ID,
+      clienteId: CLIENTE_ID,
+      dataInicio: "2026-02-01",
+      dataFim: "2026-02-28",
+    });
+  });
+
+  it("não aplica o mês vigente quando algum filtro de data é informado", () => {
+    expect(
+      applyDefaultDashboardFilters({ data: "2026-01-10" }, referenceDate),
+    ).toEqual({ data: "2026-01-10" });
+    expect(
+      applyDefaultDashboardFilters({ dataInicio: "2026-01-01" }, referenceDate),
+    ).toEqual({ dataInicio: "2026-01-01" });
+    expect(
+      applyDefaultDashboardFilters({ dataFim: "2026-01-31" }, referenceDate),
+    ).toEqual({ dataFim: "2026-01-31" });
   });
 });
 
@@ -405,6 +454,29 @@ describe("ServicoDashboard", () => {
         { prioridade: Prioridade.MEDIA, label: "Média", quantidade: 10 },
         { prioridade: Prioridade.BAIXA, label: "Baixa", quantidade: 5 },
       ],
+    });
+  });
+
+  it("usa o mês vigente nas agregações do endpoint quando o período é omitido", async () => {
+    const banco = criarBancoMock();
+    const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
+    const obterAgregacoes = vi
+      .spyOn(servico, "obterAgregacoesVolumeStatusUrgencia")
+      .mockResolvedValue(
+        {} as Awaited<
+          ReturnType<ServicoDashboard["obterAgregacoesVolumeStatusUrgencia"]>
+        >,
+      );
+
+    await servico.getDashboardAggregations(
+      { projetoId: PROJETO_ID },
+      new Date(2026, 10, 19),
+    );
+
+    expect(obterAgregacoes).toHaveBeenCalledWith({
+      projetoId: PROJETO_ID,
+      dataInicio: "2026-11-01",
+      dataFim: "2026-11-30",
     });
   });
 });
