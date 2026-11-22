@@ -29,6 +29,8 @@ interface LogEditorProps {
     conteudo: string;
   }) => Promise<void> | void;
   className?: string;
+  /** Mostra o atalho de mensagens padrão (só para cargos aceitos pela API). */
+  mostrarMensagensPadrao?: boolean;
 }
 
 interface ErrosLog {
@@ -54,7 +56,11 @@ function validarLog(titulo: string, editor: Editor): ErrosLog {
   return erros;
 }
 
-function LogEditor({ onEnviar, className }: LogEditorProps) {
+function LogEditor({
+  onEnviar,
+  className,
+  mostrarMensagensPadrao = false,
+}: LogEditorProps) {
   const [titulo, setTitulo] = useState("");
   const [erros, setErros] = useState<ErrosLog>({});
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
@@ -175,10 +181,12 @@ function LogEditor({ onEnviar, className }: LogEditorProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-3 z-10">
-        <MensagensPadraoLog
-          onInserir={inserirMensagemPadrao}
-          disabled={!editor || enviando}
-        />
+        {mostrarMensagensPadrao && (
+          <MensagensPadraoLog
+            onInserir={inserirMensagemPadrao}
+            disabled={!editor || enviando}
+          />
+        )}
         <div className="ml-auto flex items-center gap-3">
           {erroEnvio && (
             <p

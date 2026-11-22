@@ -21,10 +21,17 @@ interface MensagensPadraoLogProps {
 
 export function MensagensPadraoLog({ onInserir, disabled }: MensagensPadraoLogProps) {
   const [aberto, setAberto] = useState(false);
-  const { mensagens, carregando, erro, recarregar } = useMensagensPadraoLog();
+  // A lista só é buscada na primeira abertura, não ao montar o editor.
+  const [jaAbriu, setJaAbriu] = useState(false);
+  const { mensagens, carregando, erro, recarregar } =
+    useMensagensPadraoLog(jaAbriu);
 
   function aoMudarAbertura(proximo: boolean) {
     setAberto(proximo);
+    if (proximo && !jaAbriu) {
+      setJaAbriu(true);
+      return;
+    }
     // Reabrir depois de uma falha tenta carregar de novo.
     if (proximo && erro) recarregar();
   }

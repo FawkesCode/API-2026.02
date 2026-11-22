@@ -7,13 +7,15 @@ import {
   type MensagemPadraoLog,
 } from "@/lib/mensagens-padrao-log-client";
 
-export function useMensagensPadraoLog() {
+/** Só busca quando `habilitado` (ex.: na primeira abertura da lista). */
+export function useMensagensPadraoLog(habilitado = true) {
   const [mensagens, setMensagens] = useState<MensagemPadraoLog[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
+    if (!habilitado) return;
     const controle = new AbortController();
 
     listarMensagensPadraoLog(controle.signal)
@@ -33,7 +35,7 @@ export function useMensagensPadraoLog() {
       });
 
     return () => controle.abort();
-  }, [tentativa]);
+  }, [habilitado, tentativa]);
 
   const recarregar = useCallback(() => {
     setCarregando(true);
