@@ -15,19 +15,21 @@ Essa é a pergunta mais comum em apresentações de banco de dados. Tenha a comp
 | **Parâmetros** | Somente entrada (`IN` implícito) | Suporta **`IN`**, **`OUT`** e **`INOUT`** |
 | **Uso no projeto** | Chamada **para cada equipe** dentro de um `SELECT` em `equipes` | Chamada **uma vez** para calcular o total filtrado e gravar em `@total_chamados_fechados` |
 | **Onde está a migration** | `src/prisma/migrations/20261122114000_fn_contar_abertos_equipe/migration.sql` | `src/prisma/migrations/20261122115500_sp_contar_chamados_fechados/migration.sql` |
-| **Onde é chamada no código** | `ServicoDashboard.buscarEquipesAbertas` (`src/services/dashboard.service.ts`) | `ServicoDashboard.contarChamadosFechados` (`src/services/dashboard.service.ts`) |
+| **Onde é chamada no código** | `ServicoDashboardSql.buscarAbertosPorEquipeComFunction` (`src/services/dashboard-sql.service.ts`) | `ServicoDashboardSql.contarChamadosFechadosComProcedure` (`src/services/dashboard-sql.service.ts`) |
 
 ---
 
-## 2. Fluxo Geral no Sistema
+## 2. Arquitetura Isolada no Projeto
+
+As duas rotinas ficam **isoladas** em um serviço próprio (`src/services/dashboard-sql.service.ts`), sem alterar o fluxo principal do sistema (`src/services/dashboard.service.ts`):
 
 ```
-Página Dashboard (Next.js Server Component)
-  └─> getAgregacoesDashboard(filtros)         [src/lib/data/dashboard.ts]
-        └─> ServicoDashboard                  [src/services/dashboard.service.ts]
-              ├─> buscarEquipesAbertas()      ── $queryRaw ──> fn_contar_abertos_equipe(...)
-              └─> contarChamadosFechados()    ── $transaction ($executeRaw + $queryRaw) ──> CALL sp_contar_chamados_fechados(..., @total)
+src/services/dashboard-sql.service.ts (Serviço isolado das rotinas SQL)
+  ├─> buscarAbertosPorEquipeComFunction(filtros)   ── $queryRaw ──> fn_contar_abertos_equipe(...)
+  └─> contarChamadosFechadosComProcedure(filtros)  ── $transaction ($executeRaw + $queryRaw) ──> CALL sp_contar_chamados_fechados(..., @total)
 ```
+
+> **Por que isolado?** Mantém o dashboard em produção rodando com o Prisma ORM sem risco de regressão, enquanto as migrations e o serviço dedicado `ServicoDashboardSql` permitem demonstrar, testar e apresentar tanto a Function quanto a Stored Procedure com os mesmos 6 filtros do dashboard.
 
 Ambas as rotinas respeitam **todos os 6 filtros do dashboard**:
 1. Equipe (`equipeId`, ou todas as equipes quando `NULL`)
@@ -100,9 +102,9 @@ RETURN (
    - Um ticket pode ter 10 registros de log feitos pelo mesmo usuário. Um `LEFT JOIN historico_ticket` multiplicaria o ticket por 10 no `COUNT(*)`.
    - Com `EXISTS (SELECT 1 FROM historico_ticket ...)`, o banco só verifica se o usuário atuou ao menos uma vez naquele ticket — **sem duplicar a contagem**.
 
-### Como o backend chama a Function (`buscarEquipesAbertas`)
+### Como o serviço isolado chama a Function (`buscarAbertosPorEquipeComFunction`)
 
-Em `src/services/dashboard.service.ts`:
+Em `src/services/dashboard-sql.service.ts`:
 
 ```ts
 const linhas = await this.db.$queryRaw<
@@ -221,9 +223,9 @@ WHERE t.status = 'ENCERRADO'
 3. **Por que `EXISTS` em `ticket_equipes` aqui?**
    - Na contagem total de chamados fechados, um ticket alocado a 2 equipes deve ser contado **apenas 1 vez** (se fizéssemos `JOIN ticket_equipes` direto sem `DISTINCT`, ele contaria em dobro). O `EXISTS` garante contagem exata de tickets distintos.
 
-### Como o backend chama a Procedure (`contarChamadosFechados`)
+### Como o serviço isolado chama a Procedure (`contarChamadosFechadosComProcedure`)
 
-Em `src/services/dashboard.service.ts`:
+Em `src/services/dashboard-sql.service.ts`:
 
 ```ts
 return this.db.$transaction(async (tx) => {
@@ -289,19 +291,19 @@ SELECT @total AS chamados_fechados_novembro;
 ## 6. Sugestão de Roteiro para Apresentação em Dupla (~5 minutos)
 
 ### Pessoa 1 — Contextualização + Stored Function (`fn_contar_abertos_equipe`)
-1. **Contexto (30s):** mostrar o Dashboard rodando e apontar os dois pontos que usam rotinas SQL (o gráfico *"Tickets abertos por equipe"* e o indicador de chamados fechados).
+1. **Contexto (30s):** explicar que as duas rotinas ficam em um serviço dedicado (`dashboard-sql.service.ts`) e migrations próprias para manter o código principal do sistema isolado.
 2. **O que é uma Stored Function (30s):** retorna um valor escalar e pode ser usada dentro de `SELECT`.
 3. **Explicar `fn_contar_abertos_equipe` (1m30s):**
    - Mostrar o arquivo `migration.sql`: `RETURNS INT`, `READS SQL DATA`, `INNER JOIN` na tabela associativa `ticket_equipes` + `tickets` + `projetos`, filtros opcionais com `IS NULL`, e `EXISTS` em `historico_ticket` para não duplicar contagem.
-   - Mostrar `buscarEquipesAbertas` em `dashboard.service.ts`: como a subconsulta chama a função para cada equipe, mantém equipes ativas zeradas e converte `BigInt` com `Number(...)`.
+   - Mostrar `buscarAbertosPorEquipeComFunction` em `dashboard-sql.service.ts`: como a subconsulta chama a função para cada equipe, mantém equipes ativas zeradas e converte `BigInt` com `Number(...)`.
 
 ### Pessoa 2 — Stored Procedure (`sp_contar_chamados_fechados`) + Diferenças + Testes
 1. **O que é uma Stored Procedure (30s):** chamada via `CALL`, aceita parâmetros `IN` e `OUT`.
 2. **Explicar `sp_contar_chamados_fechados` (1m30s):**
    - Mostrar o arquivo `migration.sql`: 6 parâmetros `IN` + `OUT p_total INT`, filtro por `status = 'ENCERRADO'` e `encerrado_em`, `EXISTS` na junction `ticket_equipes` para não duplicar tickets multi-equipe.
-   - Mostrar `contarChamadosFechados` em `dashboard.service.ts`: explicar o uso de `$transaction` (mesma conexão para a variável `@total_chamados_fechados`) e a compatibilidade com o `@prisma/adapter-mariadb`.
+   - Mostrar `contarChamadosFechadosComProcedure` em `dashboard-sql.service.ts`: explicar o uso de `$transaction` (mesma conexão para a variável `@total_chamados_fechados`) e a compatibilidade com o `@prisma/adapter-mariadb`.
 3. **Fechamento (30s):**
-   - Citar os cuidados de engenharia: migrations sem `DELIMITER`, proteção contra SQL Injection (`$queryRaw` / `$executeRaw` parametrizados) e testes unitários em `dashboard.service.test.ts` (`40/40` passando).
+   - Citar os cuidados de engenharia: isolamento do serviço principal, migrations sem `DELIMITER`, proteção contra SQL Injection (`$queryRaw` / `$executeRaw` parametrizados) e testes unitários em `dashboard-sql.service.test.ts`.
 
 ---
 
@@ -331,8 +333,8 @@ docker compose up -d
 # 2. Aplicar todas as migrations (incluindo a Function e a Procedure)
 npx prisma migrate deploy --config prisma7.config.ts
 
-# 3. Rodar os testes automatizados do dashboard
-npx vitest run __tests__/schemas/dashboard.schema.test.ts __tests__/services/dashboard.service.test.ts __tests__/lib/dashboard.mapper.test.ts __tests__/data/dashboard.test.ts __tests__/lib/sla-alert-window.test.ts
+# 3. Rodar os testes automatizados (serviço isolado + dashboard)
+npx vitest run __tests__/services/dashboard-sql.service.test.ts __tests__/services/dashboard.service.test.ts __tests__/schemas/dashboard.schema.test.ts __tests__/lib/dashboard.mapper.test.ts __tests__/data/dashboard.test.ts __tests__/lib/sla-alert-window.test.ts
 
 # 4. Conferir se as duas rotinas existem no MySQL
 # SHOW FUNCTION STATUS WHERE Db = DATABASE();
