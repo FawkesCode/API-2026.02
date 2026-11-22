@@ -344,7 +344,7 @@ export class ServicoDashboard {
 
     const [totalAbertos, equipes] = await Promise.all([
       this.db.ticket.count({ where: whereTicketAberto }),
-      this.buscarEquipesAbertas(filtros, whereTicketAberto),
+      this.buscarEquipesAbertas(filtros),
     ]);
 
     return {
@@ -423,16 +423,12 @@ export class ServicoDashboard {
     const whereCriados = montarWhereDashboard(filtros, {
       campoData: "criadoEm",
     });
-    const whereTicketAberto = montarWhereDashboard(filtros, {
-      campoData: "criadoEm",
-      base: { status: { not: StatusTicket.ENCERRADO } },
-    });
 
     const [porStatus, fechados, equipesAbertas, porUrgencia, ticketsSla] =
       await Promise.all([
         this.agruparPorStatus(filtros),
         this.contarChamadosFechados(filtros),
-        this.buscarEquipesAbertas(filtros, whereTicketAberto),
+        this.buscarEquipesAbertas(filtros),
         this.agruparPorUrgencia(filtros),
         this.db.ticket.findMany({
           where: whereCriados,
@@ -470,36 +466,49 @@ export class ServicoDashboard {
 
   private async buscarEquipesAbertas(
     filtros: FiltrosDashboard | undefined,
-    whereTicketAberto: Prisma.TicketWhereInput,
   ): Promise<ItemAbertosPorEquipe[]> {
-    const grupos = await this.db.ticketEquipe.groupBy({
-      by: ["equipeId"],
-      where: {
-        ticket: whereTicketAberto,
-        ...(filtros?.equipeId ? { equipeId: filtros.equipeId } : {}),
-      },
-      _count: { _all: true },
-    });
+    const intervalo = resolverIntervaloDatasDashboard(filtros);
+    const usuarioId = filtros?.usuarioId ?? null;
+    const projetoId = filtros?.projetoId ?? null;
+    const clienteId = filtros?.clienteId ?? null;
+    const dataInicio = intervalo?.gte instanceof Date ? intervalo.gte : null;
+    const dataFim = intervalo?.lte instanceof Date ? intervalo.lte : null;
 
-    const contagemPorEquipe = new Map<string, number>(
-      grupos.map((grupo) => [grupo.equipeId, grupo._count._all]),
-    );
-    const idsComTickets = grupos.map((grupo) => grupo.equipeId);
+    const filtroEquipe = filtros?.equipeId
+      ? Prisma.sql`WHERE e.id = ${filtros.equipeId}`
+      : Prisma.empty;
+    const filtroVisibilidade = filtros?.equipeId
+      ? Prisma.empty
+      : Prisma.sql`WHERE ativo = TRUE OR quantidade > 0`;
 
-    const equipes = await this.db.equipe.findMany({
-      where: filtros?.equipeId
-        ? { id: filtros.equipeId }
-        : idsComTickets.length > 0
-          ? { OR: [{ ativo: true }, { id: { in: idsComTickets } }] }
-          : { ativo: true },
-      select: { id: true, nome: true },
-      orderBy: { nome: "asc" },
-    });
+    const linhas = await this.db.$queryRaw<
+      Array<{ equipeId: string; nome: string; quantidade: bigint | number }>
+    >`
+      SELECT equipeId, nome, quantidade
+      FROM (
+        SELECT
+          e.id AS equipeId,
+          e.nome AS nome,
+          e.ativo AS ativo,
+          fn_contar_abertos_equipe(
+            e.id,
+            ${usuarioId},
+            ${projetoId},
+            ${clienteId},
+            ${dataInicio},
+            ${dataFim}
+          ) AS quantidade
+        FROM equipes e
+        ${filtroEquipe}
+      ) AS resumo_equipes
+      ${filtroVisibilidade}
+      ORDER BY nome ASC
+    `;
 
-    return equipes.map((equipe) => ({
-      equipeId: equipe.id,
-      nome: equipe.nome,
-      quantidade: contagemPorEquipe.get(equipe.id) ?? 0,
+    return linhas.map((linha) => ({
+      equipeId: linha.equipeId,
+      nome: linha.nome,
+      quantidade: Number(linha.quantidade),
     }));
   }
 }
