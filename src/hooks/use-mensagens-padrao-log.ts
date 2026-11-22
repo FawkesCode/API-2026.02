@@ -18,6 +18,7 @@ export function useMensagensPadraoLog() {
 
     listarMensagensPadraoLog(controle.signal)
       .then((lista) => {
+        if (controle.signal.aborted) return;
         setMensagens(lista);
         setErro(null);
       })
