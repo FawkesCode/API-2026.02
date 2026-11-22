@@ -46,7 +46,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
       <section className="shrink-0 rounded-t-xl border -mt-6 border-gray-200 bg-white p-6">
         {ticket ? (
           <>
-            <div className="flex justify-between">
+            <div className="flex flex-col lg:flex-row gap-1 lg:gap-0 justify-between">
               <h2 className="text-lg font-bold text-card-foreground">
                 {ticket.title} {ticket.type !== "" && "|"} {ticket.type}
               </h2>
@@ -63,7 +63,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-3 ">
+            <div className="flex items-start lg:items-center gap-2 mt-3  flex-col lg:flex-row ">
               {ticket.teams.length !== 0 ? (
                 ticket.teams.map((team) => (
                   <Badge

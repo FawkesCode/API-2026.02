@@ -6,7 +6,7 @@ import Image from "next/image";
 type LogStatus = "iniciado" | "solicitado" | "aprovado" | "recusado";
 
 const logStateVariants = cva(
-  "flex items-center gap-4 rounded-[6.7px] border-l-4 bg-white p-5 mb-3",
+  "flex flex-col lg:flex-row items-center gap-4 rounded-[6.7px] border-l-4 bg-white p-5 mb-3",
   {
     variants: {
       status: {
@@ -19,7 +19,7 @@ const logStateVariants = cva(
     defaultVariants: {
       status: "iniciado",
     },
-  }
+  },
 );
 
 const logStateTitleVariants = cva("text-lg font-semibold", {
@@ -44,7 +44,8 @@ const STATUS_ICON_SRC = {
 } as const satisfies Record<LogStatus, string>;
 
 interface LogStateProps
-  extends Omit<React.ComponentProps<"div">, "title">,
+  extends
+    Omit<React.ComponentProps<"div">, "title">,
     VariantProps<typeof logStateVariants> {
   titulo: React.ReactNode;
   descricao?: React.ReactNode;
@@ -72,7 +73,7 @@ function LogState({
         height={56}
         className="shrink-0"
       />
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 ">
         <p className={cn(logStateTitleVariants({ status }))}>{titulo}</p>
         {descricao ? (
           <p className="text-sm text-muted-foreground">{descricao}</p>

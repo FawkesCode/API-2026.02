@@ -132,7 +132,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
                   </TeamAddButton>
                 ) : null}
               </div>
-              <div className="flex justify-center sm:justify-between md:justify-center lg:justify-between  items-center gap-2">
+              <div className="flex justify-start mt-4 sm:justify-between md:justify-start lg:justify-between  items-center gap-2">
                 <span className="underline text-muted-foreground text-xs">
                   {curTicket.status}
                 </span>

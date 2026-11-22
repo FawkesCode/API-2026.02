@@ -142,11 +142,7 @@ function TicketLogs({
 
     const primeiraRenderizacao = !jaRenderizou.current;
 
-    if (
-      primeiraRenderizacao ||
-      forcarRolagem.current ||
-      pertoDoFim.current
-    ) {
+    if (primeiraRenderizacao || forcarRolagem.current || pertoDoFim.current) {
       rolagemDoCodigo.current = true;
       pertoDoFim.current = true;
       lista.scrollTo({
@@ -222,18 +218,16 @@ function TicketLogs({
   }
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
+    <div className={cn("flex min-h-0 flex-1 flex-col ", className)}>
       <section
         ref={listaRef}
         onScroll={aoRolar}
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-none border-x border-gray-200 bg-slate-100 p-6",
+          "flex lg:min-h-0 flex-1 flex-col gap-4 overflow-y-auto min-h-96! scrollbar-none border-x border-gray-200 bg-slate-100 p-6",
           !mostrarAreaDeEnvio && "rounded-b-md border-b",
         )}
       >
-        <h3 className="font-bold text-card-foreground">
-          LOGS DE ATIVIDADE
-        </h3>
+        <h3 className="font-bold text-card-foreground">LOGS DE ATIVIDADE</h3>
 
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground">
