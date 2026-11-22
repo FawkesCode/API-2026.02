@@ -8,6 +8,7 @@ import { TicketView } from "@/types/ticket";
 import { getTicketLogs } from "@/lib/data/ticket-logs";
 import { getUsuarioLogado } from "@/lib/data/sessao";
 import { toAutor } from "@/lib/mappers/historico.mapper";
+import { podeCadastrarMensagensLog } from "@/lib/access-control";
 import { Cargo } from "@/lib/generated/prisma/client";
 type PriorityLevel = "critical" | "high" | "medium" | "low";
 
@@ -96,6 +97,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
         status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade}
         equipeIniciou={equipeIniciou}
         podeMencionarEquipe={podeMencionarEquipe}
+        podeUsarMensagensPadrao={podeCadastrarMensagensLog(usuarioLogado?.cargo)}
         equipesAssociadas={ticket.teams.map((equipe) => equipe.id)} />
     </>
   );

@@ -79,6 +79,8 @@ interface TicketLogsProps {
   podeRegistrar: boolean;
   podeDecidir: boolean;
   podeMencionarEquipe: boolean;
+  /** Cargo aceito por /api/mensagens-log; sem ele o botão nem aparece. */
+  podeUsarMensagensPadrao: boolean;
   equipesAssociadas: string[];
   /** Se a equipe do usuário já enviou "começou a trabalhar" neste ticket. */
   equipeIniciou: boolean;
@@ -94,6 +96,7 @@ function TicketLogs({
   podeRegistrar,
   podeDecidir,
   podeMencionarEquipe,
+  podeUsarMensagensPadrao,
   equipesAssociadas,
   equipeIniciou,
 }: TicketLogsProps) {
@@ -391,7 +394,10 @@ function TicketLogs({
             </p>
           )}
 
-          <LogEditor onEnviar={enviarLogManual} />
+          <LogEditor
+            onEnviar={enviarLogManual}
+            mostrarMensagensPadrao={podeUsarMensagensPadrao}
+          />
         </section>
       )}
     </div>
