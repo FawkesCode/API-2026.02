@@ -17,6 +17,7 @@ import {
   House,
   LogOut,
   LucideIcon,
+  MessageSquareText,
   Ticket,
   UserCog,
   UserRound,
@@ -29,7 +30,11 @@ import LogoSidebar from "./logo-sidebar";
 import { cn } from "cn";
 import LogoFawkes from "./logo-fawkes";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { podeVerMinhaEquipe, podeVerUsuarios } from "@/lib/access-control";
+import {
+  podeCadastrarMensagensLog,
+  podeVerMinhaEquipe,
+  podeVerUsuarios,
+} from "@/lib/access-control";
 import { useState } from "react";
 
 interface NavItem {
@@ -55,6 +60,15 @@ export function AppSidebar() {
       : []),
     ...(podeVerUsuarios(loggedUser?.cargo)
       ? [{ title: "Usuários", url: "/usuarios", icon: UserCog }]
+      : []),
+    ...(podeCadastrarMensagensLog(loggedUser?.cargo)
+      ? [
+          {
+            title: "Mensagens de Log",
+            url: "/mensagens-log",
+            icon: MessageSquareText,
+          },
+        ]
       : []),
     { title: "Perfil", url: "/perfil", icon: UserRound },
   ];
