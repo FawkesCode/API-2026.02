@@ -24,5 +24,6 @@ export const config = {
     "/equipe/:path*",
     "/usuarios/:path*",
     "/perfil/:path*",
+    "/mensagens-log/:path*",
   ],
 };
