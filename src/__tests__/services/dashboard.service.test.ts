@@ -19,17 +19,7 @@ const PROJETO_ID = "550e8400-e29b-41d4-a716-446655440020";
 const CLIENTE_ID = "550e8400-e29b-41d4-a716-446655440030";
 
 function criarBancoMock() {
-  const tx = {
-    $executeRaw: vi.fn().mockResolvedValue(0),
-    $queryRaw: vi.fn(),
-  };
-
   return {
-    $queryRaw: vi.fn(),
-    $transaction: vi.fn(async (callback: (transacao: typeof tx) => unknown) =>
-      callback(tx),
-    ),
-    tx,
     ticket: {
       count: vi.fn(),
       groupBy: vi.fn(),
@@ -172,9 +162,9 @@ describe("ServicoDashboard", () => {
     });
   });
 
-  it("conta chamados fechados usando sp_contar_chamados_fechados com parâmetro OUT na mesma transação", async () => {
+  it("conta chamados fechados filtrando status ENCERRADO e encerradoEm no período", async () => {
     const banco = criarBancoMock();
-    banco.tx.$queryRaw.mockResolvedValue([{ total: BigInt(6) }]);
+    banco.ticket.count.mockResolvedValue(6);
     const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
 
     const fechados = await servico.contarChamadosFechados({
@@ -184,30 +174,16 @@ describe("ServicoDashboard", () => {
     });
 
     expect(fechados).toBe(6);
-    expect(banco.$transaction).toHaveBeenCalledTimes(1);
-    expect(banco.tx.$executeRaw).toHaveBeenCalledTimes(1);
-    const [
-      callStrings,
-      equipeId,
-      usuarioId,
-      projetoId,
-      clienteId,
-      dataInicio,
-      dataFim,
-    ] = banco.tx.$executeRaw.mock.calls[0];
-    expect((callStrings as string[]).join("")).toContain(
-      "CALL sp_contar_chamados_fechados(",
-    );
-    expect(equipeId).toBe(EQUIPE_A_ID);
-    expect(usuarioId).toBeNull();
-    expect(projetoId).toBeNull();
-    expect(clienteId).toBeNull();
-    expect(dataInicio).toEqual(startOfDay(parseISO("2026-11-01")));
-    expect(dataFim).toEqual(endOfDay(parseISO("2026-11-30")));
-    const [selectStrings] = banco.tx.$queryRaw.mock.calls[0];
-    expect((selectStrings as string[]).join("")).toContain(
-      "SELECT @total_chamados_fechados AS total",
-    );
+    expect(banco.ticket.count).toHaveBeenCalledWith({
+      where: {
+        status: StatusTicket.ENCERRADO,
+        equipesAlocadas: { some: { equipeId: EQUIPE_A_ID } },
+        encerradoEm: {
+          gte: startOfDay(parseISO("2026-11-01")),
+          lte: endOfDay(parseISO("2026-11-30")),
+        },
+      },
+    });
   });
 
   it("agrupa por status preenchendo com zero os status ausentes e derivando totais", async () => {
@@ -260,17 +236,17 @@ describe("ServicoDashboard", () => {
     });
   });
 
-  it("agrupa chamados abertos por equipe usando fn_contar_abertos_equipe e convertendo BigInt", async () => {
+  it("agrupa chamados abertos por equipe sem duplicar totalAbertos e mantendo equipes ativas zeradas", async () => {
     const banco = criarBancoMock();
     banco.ticket.count.mockResolvedValue(7);
-    banco.$queryRaw.mockResolvedValue([
-      { equipeId: EQUIPE_A_ID, nome: "Equipe A", quantidade: BigInt(5) },
-      { equipeId: EQUIPE_B_ID, nome: "Equipe B", quantidade: BigInt(0) },
-      {
-        equipeId: EQUIPE_INATIVA_ID,
-        nome: "Equipe Legada",
-        quantidade: BigInt(3),
-      },
+    banco.ticketEquipe.groupBy.mockResolvedValue([
+      { equipeId: EQUIPE_A_ID, _count: { _all: 5 } },
+      { equipeId: EQUIPE_INATIVA_ID, _count: { _all: 3 } },
+    ]);
+    banco.equipe.findMany.mockResolvedValue([
+      { id: EQUIPE_A_ID, nome: "Equipe A" },
+      { id: EQUIPE_B_ID, nome: "Equipe B" },
+      { id: EQUIPE_INATIVA_ID, nome: "Equipe Legada" },
     ]);
     const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
 
@@ -279,19 +255,23 @@ describe("ServicoDashboard", () => {
     expect(banco.ticket.count).toHaveBeenCalledWith({
       where: { status: { not: StatusTicket.ENCERRADO } },
     });
-    expect(banco.$queryRaw).toHaveBeenCalledTimes(1);
-    const [sqlStrings, usuarioId, projetoId, clienteId, dataInicio, dataFim] =
-      banco.$queryRaw.mock.calls[0];
-    expect((sqlStrings as string[]).join("")).toContain(
-      "fn_contar_abertos_equipe(",
-    );
-    expect([usuarioId, projetoId, clienteId, dataInicio, dataFim]).toEqual([
-      null,
-      null,
-      null,
-      null,
-      null,
-    ]);
+    expect(banco.ticketEquipe.groupBy).toHaveBeenCalledWith({
+      by: ["equipeId"],
+      where: {
+        ticket: { status: { not: StatusTicket.ENCERRADO } },
+      },
+      _count: { _all: true },
+    });
+    expect(banco.equipe.findMany).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { ativo: true },
+          { id: { in: [EQUIPE_A_ID, EQUIPE_INATIVA_ID] } },
+        ],
+      },
+      select: { id: true, nome: true },
+      orderBy: { nome: "asc" },
+    });
     expect(resultado).toEqual({
       totalAbertos: 7,
       equipes: [
@@ -302,39 +282,37 @@ describe("ServicoDashboard", () => {
     });
   });
 
-  it("isola somente a equipe selecionada e encaminha todos os filtros para fn_contar_abertos_equipe", async () => {
+  it("isola somente a equipe selecionada em abertosPorEquipe quando equipeId é informado", async () => {
     const banco = criarBancoMock();
     banco.ticket.count.mockResolvedValue(3);
-    banco.$queryRaw.mockResolvedValue([
-      { equipeId: EQUIPE_A_ID, nome: "Equipe A", quantidade: 3 },
+    banco.ticketEquipe.groupBy.mockResolvedValue([
+      { equipeId: EQUIPE_A_ID, _count: { _all: 3 } },
+    ]);
+    banco.equipe.findMany.mockResolvedValue([
+      { id: EQUIPE_A_ID, nome: "Equipe A" },
     ]);
     const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
 
     const resultado = await servico.agruparAbertosPorEquipe({
       equipeId: EQUIPE_A_ID,
-      usuarioId: USUARIO_ID,
-      projetoId: PROJETO_ID,
-      clienteId: CLIENTE_ID,
-      dataInicio: "2026-11-01",
-      dataFim: "2026-11-30",
     });
 
-    expect(banco.$queryRaw).toHaveBeenCalledTimes(1);
-    const [
-      ,
-      usuarioId,
-      projetoId,
-      clienteId,
-      dataInicio,
-      dataFim,
-      filtroEquipe,
-    ] = banco.$queryRaw.mock.calls[0];
-    expect(usuarioId).toBe(USUARIO_ID);
-    expect(projetoId).toBe(PROJETO_ID);
-    expect(clienteId).toBe(CLIENTE_ID);
-    expect(dataInicio).toEqual(startOfDay(parseISO("2026-11-01")));
-    expect(dataFim).toEqual(endOfDay(parseISO("2026-11-30")));
-    expect(filtroEquipe.values).toEqual([EQUIPE_A_ID]);
+    expect(banco.ticketEquipe.groupBy).toHaveBeenCalledWith({
+      by: ["equipeId"],
+      where: {
+        equipeId: EQUIPE_A_ID,
+        ticket: {
+          status: { not: StatusTicket.ENCERRADO },
+          equipesAlocadas: { some: { equipeId: EQUIPE_A_ID } },
+        },
+      },
+      _count: { _all: true },
+    });
+    expect(banco.equipe.findMany).toHaveBeenCalledWith({
+      where: { id: EQUIPE_A_ID },
+      select: { id: true, nome: true },
+      orderBy: { nome: "asc" },
+    });
     expect(resultado).toEqual({
       totalAbertos: 3,
       equipes: [{ equipeId: EQUIPE_A_ID, nome: "Equipe A", quantidade: 3 }],
@@ -604,7 +582,7 @@ describe("ServicoDashboard", () => {
         { prioridade: Prioridade.MEDIA, _count: { _all: 10 } },
         { prioridade: Prioridade.BAIXA, _count: { _all: 5 } },
       ]);
-    banco.tx.$queryRaw.mockResolvedValue([{ total: BigInt(11) }]);
+    banco.ticket.count.mockResolvedValue(11);
     banco.ticket.findMany.mockResolvedValue([
       {
         status: StatusTicket.EM_ANDAMENTO,
@@ -625,9 +603,13 @@ describe("ServicoDashboard", () => {
         encerradoEm: adicionarHoras(24),
       },
     ]);
-    banco.$queryRaw.mockResolvedValue([
-      { equipeId: EQUIPE_A_ID, nome: "Equipe A", quantidade: BigInt(12) },
-      { equipeId: EQUIPE_B_ID, nome: "Equipe B", quantidade: BigInt(8) },
+    banco.ticketEquipe.groupBy.mockResolvedValue([
+      { equipeId: EQUIPE_A_ID, _count: { _all: 12 } },
+      { equipeId: EQUIPE_B_ID, _count: { _all: 8 } },
+    ]);
+    banco.equipe.findMany.mockResolvedValue([
+      { id: EQUIPE_A_ID, nome: "Equipe A" },
+      { id: EQUIPE_B_ID, nome: "Equipe B" },
     ]);
 
     const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
@@ -639,8 +621,7 @@ describe("ServicoDashboard", () => {
       agora,
     );
 
-    expect(banco.ticket.count).not.toHaveBeenCalled();
-    expect(banco.tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(banco.ticket.count).toHaveBeenCalledTimes(1);
     expect(banco.ticket.findMany).toHaveBeenCalledTimes(1);
     expect(resumo.volume).toEqual({
       criados: 28,
@@ -730,9 +711,10 @@ describe("ServicoDashboard", () => {
     banco.ticket.groupBy
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
-    banco.tx.$queryRaw.mockResolvedValue([{ total: BigInt(0) }]);
+    banco.ticket.count.mockResolvedValue(0);
     banco.ticket.findMany.mockResolvedValue([]);
-    banco.$queryRaw.mockResolvedValue([]);
+    banco.ticketEquipe.groupBy.mockResolvedValue([]);
+    banco.equipe.findMany.mockResolvedValue([]);
 
     const servico = new ServicoDashboard(banco as unknown as BancoDashboard);
     const vazio = await servico.obterAgregacoesVolumeStatusUrgencia({}, agora);

@@ -207,7 +207,7 @@ Documentação de referência técnica (para humanos e agentes de código) das f
   async contarChamadosFechados(filtros?: FiltrosDashboard): Promise<number>
   ```
 - **Alimenta:** Indicador *"Quantidade de chamados fechados"*.
-- **Consulta executada:** `prisma.$transaction` executando `CALL sp_contar_chamados_fechados(equipeId, usuarioId, projetoId, clienteId, dataInicio, dataFim, @total_chamados_fechados)` (Stored Procedure criada na migration `20261122115500_sp_contar_chamados_fechados`) seguido de `SELECT @total_chamados_fechados AS total` na mesma conexão.
+- **Consulta executada:** `prisma.ticket.count({ where })` com `base: { status: StatusTicket.ENCERRADO }` e `campoData: "encerradoEm"`.
 - **Regras e edge cases:**
   - Com filtro de data: conta apenas tickets encerrados dentro do período (`encerradoEm` no intervalo).
   - Sem filtro de data: não restringe `encerradoEm`, contando todos os tickets com `status = ENCERRADO` que atendem aos demais filtros.
@@ -266,7 +266,8 @@ Documentação de referência técnica (para humanos e agentes de código) das f
 - **Alimenta:** Gráfico de barras *"Tickets abertos por equipe"* (número principal + barra por equipe).
 - **Consultas executadas:**
   1. `prisma.ticket.count({ where: whereTicketAberto })` — calcula `totalAbertos` (tickets distintos com `status != ENCERRADO`).
-  2. `prisma.$queryRaw` utilizando a Stored Function MySQL **`fn_contar_abertos_equipe(e.id, usuarioId, projetoId, clienteId, dataInicio, dataFim)`** (criada na migration `20261122114000_fn_contar_abertos_equipe`), que faz `INNER JOIN` entre `ticket_equipes`, `tickets` e `projetos` (e `EXISTS` em `historico_ticket` quando `usuarioId` é informado) para contar chamados abertos por equipe.
+  2. `prisma.ticketEquipe.groupBy({ by: ["equipeId"], where: { ticket: whereTicketAberto, ...(equipeId ? { equipeId } : {}) }, _count: { _all: true } })` — conta tickets abertos alocados por equipe.
+  3. `prisma.equipe.findMany(...)` — busca `id` e `nome` ordenados alfabeticamente (`nome: "asc"`).
 - **Regras e edge cases:**
   - **Todas as equipes (`equipeId` ausente):** inclui todas as equipes ativas (mesmo com `quantidade: 0`) e também equipes inativas que ainda possuam tickets abertos no recorte.
   - **Equipe específica (`equipeId` informado):** filtra `ticketEquipe` também por `equipeId`, evitando exibir outras equipes que compartilhem o mesmo ticket alocado. Se o `equipeId` não existir no banco, `equipes` retorna `[]`.
