@@ -58,4 +58,6 @@ export interface TicketView {
   description: string;
   recentLogs: TeamLogView[] | null;
   projectId?: string;
+  /** Indicador de SLA da fn_situacao_sla (só com o banco bdr_api). */
+  situacaoSla?: "NO_PRAZO" | "EM_ALERTA" | "VENCIDO" | "CUMPRIDO" | "VIOLADO" | null;
 }

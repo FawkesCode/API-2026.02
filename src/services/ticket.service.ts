@@ -14,6 +14,11 @@ import type {
   AtualizarPrioridadeComAutor,
 } from "@/schemas/ticket.schema";
 import { ordenarTicketsPorPrioridade } from "@/services/ticket-order";
+import {
+  abrirTicketPelaProcedure,
+  comSituacaoSla,
+  rotinasBdrAtivas,
+} from "@/services/bdr-rotinas";
 
 export class ErroConflitoPrioridade extends Error {
   constructor(message: string) {
@@ -228,6 +233,7 @@ export class ServicoTicket {
 
   async criar(dados: CriarTicketSchema) {
     const equipeIds = [...new Set(dados.equipeIds ?? [])];
+    if (rotinasBdrAtivas()) return this.criarPelaProcedure(dados, equipeIds);
     return this.db.$transaction(async (tx) => {
       const ticket = await tx.ticket.create({
         data: {
@@ -263,6 +269,24 @@ export class ServicoTicket {
         include: RELACOES_TICKET,
       });
     });
+  }
+
+  // Banco bdr_api: a procedure grava ticket, equipe do projeto, histórico e
+  // atividade da conta; aqui só se acrescentam as equipes extras do formulário.
+  private async criarPelaProcedure(dados: CriarTicketSchema, equipeIds: string[]) {
+    const ticketId = await abrirTicketPelaProcedure(this.db, dados);
+    if (equipeIds.length) {
+      await this.db.ticketEquipe.createMany({
+        data: equipeIds.map((equipeId) => ({ ticketId, equipeId })),
+        skipDuplicates: true,
+      });
+    }
+    const ticket = await this.db.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
+      include: RELACOES_TICKET,
+    });
+    const [comSla] = await comSituacaoSla(this.db, [ticket]);
+    return comSla;
   }
 
   async buscarTicketsDaEquipeDoUsuario(usuarioId: string) {
@@ -377,22 +401,26 @@ export class ServicoTicket {
   }
 
   async listarTodos(filtros?: FiltrosTicket) {
-    return this.db.ticket.findMany({
+    const tickets = await this.db.ticket.findMany({
       where: montarWhere(filtros),
       orderBy: {
         criadoEm: "desc",
       },
       include: includeListagem,
     });
+    return comSituacaoSla(this.db, tickets);
   }
 
   async buscarDetalhePorId(ticketId: string) {
-    return this.db.ticket.findUnique({
+    const ticket = await this.db.ticket.findUnique({
       where: {
         id: ticketId,
       },
       include: RELACOES_TICKET,
     });
+    if (!ticket) return null;
+    const [comSla] = await comSituacaoSla(this.db, [ticket]);
+    return comSla;
   }
 
   async listarPorProjeto(projetoId: string) {

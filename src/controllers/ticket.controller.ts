@@ -14,6 +14,7 @@ import {
   servicoTicket,
 } from "@/services/ticket.service";
 import { servicoProjeto } from "@/services/projeto.service";
+import { ErroRegraDoBanco } from "@/services/bdr-rotinas";
 import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
 import {
   atualizarPrioridadeTicketSchema,
@@ -68,6 +69,11 @@ function tratarErroInesperado(erro: unknown) {
 
   if (erro instanceof ErroConflitoPrioridade) {
     return NextResponse.json({ erro: erro.message }, { status: 409 });
+  }
+
+  // Regra de negócio recusada pela sp_abrir_ticket (banco bdr_api).
+  if (erro instanceof ErroRegraDoBanco) {
+    return NextResponse.json({ erro: erro.message }, { status: 422 });
   }
 
   if (erro instanceof ProjetoNaoEncontradoError) {

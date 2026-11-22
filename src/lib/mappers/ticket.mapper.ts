@@ -8,6 +8,7 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toLogItem } from "./historico.mapper";
+import type { SituacaoSla } from "@/services/bdr-rotinas";
 
 // Ticket "puro" (sem include)
 type TicketSemProjeto = Prisma.TicketGetPayload<Record<string, never>>;
@@ -69,7 +70,10 @@ type TicketComRelacoes = Prisma.TicketGetPayload<{
   };
 }>;
 
-export type TicketRes = TicketSemProjeto | TicketComProjeto | TicketComRelacoes;
+// `situacaoSla` só vem preenchido com o banco bdr_api (fn_situacao_sla).
+export type TicketRes = (TicketSemProjeto | TicketComProjeto | TicketComRelacoes) & {
+  situacaoSla?: SituacaoSla | null;
+};
 
 function extrairProjectId(info: TicketRes): string | undefined {
   if ("projeto" in info && info.projeto) {
@@ -134,5 +138,6 @@ export function toTicketDTO(info: TicketRes): TicketView {
         }))
       : [],
     projectId: extrairProjectId(info),
+    ...(info.situacaoSla !== undefined && { situacaoSla: info.situacaoSla }),
   };
 }
