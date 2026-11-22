@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cadastrarMensagemLog, listarMensagensLog } from "@/lib/mensagens-log-client";
+import {
+  cadastrarMensagemLog,
+  listarMensagensLog,
+  mesclarMensagensLog,
+} from "@/lib/mensagens-log-client";
 
 const exemplo = {
   id: "550e8400-e29b-41d4-a716-446655440010",
@@ -64,5 +68,22 @@ describe("listarMensagensLog", () => {
       vi.fn().mockResolvedValue(Response.json({ erro: "Sessão expirada." }, { status: 401 })),
     );
     await expect(listarMensagensLog()).rejects.toThrow("Sessão expirada.");
+  });
+});
+
+describe("mesclarMensagensLog", () => {
+  const antiga = {
+    id: "550e8400-e29b-41d4-a716-446655440001",
+    mensagem: "Mensagem antiga.",
+    criadoEm: "2026-11-18T10:00:00.000Z",
+    atualizadoEm: "2026-11-18T10:00:00.000Z",
+  };
+
+  it("preserva no topo mensagens criadas antes da listagem inicial resolver", () => {
+    expect(mesclarMensagensLog([exemplo], [antiga])).toEqual([exemplo, antiga]);
+  });
+
+  it("não duplica mensagem quando já veio na listagem da API", () => {
+    expect(mesclarMensagensLog([exemplo], [exemplo, antiga])).toEqual([exemplo, antiga]);
   });
 });

@@ -46,3 +46,17 @@ export async function cadastrarMensagemLog(mensagem: string): Promise<MensagemPa
   if (!resposta.ok) throw await erroDaResposta(resposta, falha);
   return resposta.json();
 }
+
+/**
+ * Mescla mensagens já presentes na tela com a lista carregada da API,
+ * preservando no topo cadastros feitos antes da listagem inicial terminar
+ * e evitando duplicatas pelo `id`.
+ */
+export function mesclarMensagensLog(
+  atuais: MensagemPadraoLog[],
+  carregadas: MensagemPadraoLog[],
+): MensagemPadraoLog[] {
+  const idsCarregados = new Set(carregadas.map((m) => m.id));
+  const locais = atuais.filter((m) => !idsCarregados.has(m.id));
+  return [...locais, ...carregadas];
+}

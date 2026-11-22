@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/toast";
 import {
   cadastrarMensagemLog,
   listarMensagensLog,
+  mesclarMensagensLog,
   type MensagemPadraoLog,
 } from "@/lib/mensagens-log-client";
 import {
@@ -41,7 +42,10 @@ export function MensagensLogView() {
   useEffect(() => {
     let ativo = true;
     listarMensagensLog()
-      .then((lista) => ativo && setMensagens(lista))
+      .then((lista) => {
+        if (!ativo) return;
+        setMensagens((atuais) => mesclarMensagensLog(atuais, lista));
+      })
       .catch((erro: Error) => ativo && setErroLista(erro.message))
       .finally(() => ativo && setCarregando(false));
     return () => {
@@ -52,7 +56,7 @@ export function MensagensLogView() {
   const onSubmit: SubmitHandler<CriarMensagemPadraoLogSchema> = async ({ mensagem }) => {
     try {
       const criada = await cadastrarMensagemLog(mensagem);
-      setMensagens((atuais) => [criada, ...atuais]);
+      setMensagens((atuais) => mesclarMensagensLog([criada], atuais));
       setErroLista(null);
       reset();
       toast.add({
