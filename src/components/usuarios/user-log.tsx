@@ -15,8 +15,8 @@ async function UserLog({
   }
 
   return (
-    <div className="flex p-3 bg-[#EFF3F8] justify-between rounded-xl">
-      <div className="flex gap-2">
+    <div className="flex p-3 bg-[#EFF3F8] justify-between rounded-xl flex-col items-center lg:items-start lg:flex-row">
+      <div className="flex gap-2 flex-col lg:flex-row items-center lg:items-start">
         <span className="font-bold text-primary">[{type}]</span>
         <p className="text-foreground">{desc}</p>
       </div>

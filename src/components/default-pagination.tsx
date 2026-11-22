@@ -79,7 +79,7 @@ export default function DefaultPagination({
   const currentPage = page;
 
   return (
-    <div className="flex w-full justify-between items-center text-xs font-medium   p-3 pl-6 pr-6 rounded-xl">
+    <div className="flex w-full flex-col gap-3 xl:gap-0 xl:flex-row justify-between items-center text-xs font-medium   p-3 pl-6 pr-6 rounded-xl">
       <div className="flex gap-1 items-center">
         <p>
           Mostrando página{" "}

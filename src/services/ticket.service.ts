@@ -291,7 +291,15 @@ export class ServicoTicket {
     });
   }
 
-  async buscarTicketsDaEquipeDoUsuario(usuarioId: string) {
+  async buscarTicketsDaEquipeDoUsuario(
+    usuarioId: string,
+    filtros?: Pick<FiltrosTicket, "pagina" | "itensPorPagina">,
+  ) {
+    const { pagina: paginaPedida, itensPorPagina } = normalizedPagination(
+      filtros?.pagina,
+      filtros?.itensPorPagina,
+    );
+
     const usuario = await this.db.usuario.findUnique({
       where: { id: usuarioId },
       select: {
@@ -307,30 +315,51 @@ export class ServicoTicket {
     });
 
     if (!usuario?.ativo || !usuario.equipe?.ativo) {
-      return { equipe: null, tickets: [] };
+      return {
+        equipe: null,
+        itens: [],
+        total: 0,
+        pagina: 1,
+        totalPaginas: 1,
+        itensPorPagina,
+      };
     }
 
-    const tickets = await this.db.ticket.findMany({
-      // Um ticket pode estar alocado a equipes diferentes da equipe do projeto.
-      // A listagem deve considerar a alocação do ticket, não a equipe do projeto.
-      where: {
-        equipesAlocadas: {
-          some: { equipeId: usuario.equipe.id },
+    const where: Prisma.TicketWhereInput = {
+      equipesAlocadas: {
+        some: {
+          equipeId: usuario.equipe.id,
         },
       },
-      orderBy: { criadoEm: "desc" },
-      include: RELACOES_TICKET,
+    };
+
+    const total = await this.db.ticket.count({ where });
+
+    const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
+
+    const pagina = Math.min(paginaPedida, totalPaginas);
+
+    const itens = await this.db.ticket.findMany({
+      where,
+      include: includeListagem,
+      orderBy: [{ criadoEm: "desc" }],
+      skip: (pagina - 1) * itensPorPagina,
+      take: Number(itensPorPagina),
     });
 
     return {
       equipe: usuario.equipe,
-      tickets: ordenarTicketsPorPrioridade(tickets),
+      itens,
+      total,
+      pagina,
+      totalPaginas,
+      itensPorPagina,
     };
   }
 
   async listarPorEquipeDoUsuario(usuarioId: string) {
-    const { tickets } = await this.buscarTicketsDaEquipeDoUsuario(usuarioId);
-    return tickets;
+    const { itens } = await this.buscarTicketsDaEquipeDoUsuario(usuarioId);
+    return itens;
   }
 
   async atualizarPrioridade(

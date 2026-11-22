@@ -3,11 +3,12 @@ import PageHeader from "@/components/page-header";
 import TicketCard from "@/components/tickets/ticket-card";
 import TicketFilter from "@/components/tickets/ticket-filter";
 import { getProjectById, getProjectTickets } from "@/lib/data/project-ticket";
-import { TicketView } from "@/types/ticket";
 import type { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 import DefaultPagination from "@/components/default-pagination";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface PageProps {
+export interface PageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{
     prioridade?: string;
@@ -43,6 +44,7 @@ async function page({ params, searchParams }: PageProps) {
           <Suspense fallback={null}>
             <TicketFilter />
           </Suspense>
+
           {itens.length !== 0 ? (
             itens.map((ticket) => (
               <TicketCard

@@ -15,18 +15,20 @@ async function page({ params }: { params: Promise<{ id: string }> }) {
   const ticket: TicketView = await getTicket(id);
 
   return (
-    <div className="flex h-full min-h-0 flex-col pb-6">
-      <div className="shrink-0">
-        <PageHeader>
-          <Link href={`/equipe`} className="hover:underline">
-            Minha Equipe
-          </Link>
-          {` > Ticket ${!ticket ? "Sem título" : ticket.title + " : " + ticket.type}`}
-        </PageHeader>
-      </div>
+    <>
+      <div className="flex h-full min-h-0 flex-col pb-6">
+        <div className="shrink-0">
+          <PageHeader>
+            <Link href={`/equipe`} className="hover:underline">
+              Minha Equipe
+            </Link>
+            {` > Ticket ${!ticket ? "Sem título" : ticket.title + " : " + ticket.type}`}
+          </PageHeader>
+        </div>
 
-      <TicketsLogsView id={id} />
-    </div>
+        <TicketsLogsView id={id} />
+      </div>
+    </>
   );
 }
 
