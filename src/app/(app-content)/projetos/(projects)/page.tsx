@@ -1,7 +1,7 @@
 import { servicoProjeto } from "@/services/projeto.service";
 import ProjectsView from "@/components/projects/projects-view";
 import { notFound } from "next/navigation";
-import { getClients, getUsers } from "@/lib/data/dropdown";
+import { getUsers } from "@/lib/data/dropdown";
 import { getUsuarioAtual } from "@/lib/data/sessao";
 import { podeCriarProjeto } from "@/lib/access-control";
 
@@ -55,15 +55,12 @@ export default async function Projects({ searchParams }: PageProps) {
   } = await getProjects(Number(pagina), Number(itensPorPagina));
   const usuario = await getUsuarioAtual();
   const podeCriar = podeCriarProjeto(usuario?.cargo);
-  const [clients, supervisors] = podeCriar
-    ? await Promise.all([getClients(), getUsers()])
-    : [[], []];
+  const supervisors = podeCriar ? await getUsers() : [];
 
   return (
     <>
       <ProjectsView
         projects={itens}
-        clients={clients}
         supervisors={supervisors}
         podeCriar={podeCriar}
         page={paginaAtual}

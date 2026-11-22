@@ -22,6 +22,7 @@ import {
   UserCog,
   UserRound,
   Users,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ import LogoFawkes from "./logo-fawkes";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   podeCadastrarMensagensLog,
+  podeGerenciarClientes,
   podeVerMinhaEquipe,
   podeVerUsuarios,
 } from "@/lib/access-control";
@@ -54,6 +56,9 @@ export function AppSidebar() {
   const items: NavItem[] = [
     { title: "Dashboard", url: "/dashboard", icon: House },
     { title: "Projetos", url: "/projetos", icon: ClipboardList },
+    ...(podeGerenciarClientes(loggedUser?.cargo)
+      ? [{ title: "Clientes", url: "/clientes", icon: Building2 }]
+      : []),
     { title: "Tickets", url: "/tickets", icon: Ticket },
     ...(podeVerMinhaEquipe(loggedUser?.cargo)
       ? [{ title: "Minha Equipe", url: "/equipe", icon: Users }]
