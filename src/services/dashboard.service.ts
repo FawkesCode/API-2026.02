@@ -314,11 +314,33 @@ export class ServicoDashboard {
   }
 
   async contarChamadosFechados(filtros?: FiltrosDashboard): Promise<number> {
-    const where = montarWhereDashboard(filtros, {
-      campoData: "encerradoEm",
-      base: { status: StatusTicket.ENCERRADO },
+    const intervalo = resolverIntervaloDatasDashboard(filtros);
+    const equipeId = filtros?.equipeId ?? null;
+    const usuarioId = filtros?.usuarioId ?? null;
+    const projetoId = filtros?.projetoId ?? null;
+    const clienteId = filtros?.clienteId ?? null;
+    const dataInicio = intervalo?.gte instanceof Date ? intervalo.gte : null;
+    const dataFim = intervalo?.lte instanceof Date ? intervalo.lte : null;
+
+    return this.db.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        CALL sp_contar_chamados_fechados(
+          ${equipeId},
+          ${usuarioId},
+          ${projetoId},
+          ${clienteId},
+          ${dataInicio},
+          ${dataFim},
+          @total_chamados_fechados
+        )
+      `;
+
+      const [linha] = await tx.$queryRaw<Array<{ total: bigint | number }>>`
+        SELECT @total_chamados_fechados AS total
+      `;
+
+      return Number(linha?.total ?? 0);
     });
-    return this.db.ticket.count({ where });
   }
 
   async agruparPorStatus(

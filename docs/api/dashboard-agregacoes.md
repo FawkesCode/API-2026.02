@@ -207,7 +207,7 @@ Documentação de referência técnica (para humanos e agentes de código) das f
   async contarChamadosFechados(filtros?: FiltrosDashboard): Promise<number>
   ```
 - **Alimenta:** Indicador *"Quantidade de chamados fechados"*.
-- **Consulta executada:** `prisma.ticket.count({ where })` com `base: { status: StatusTicket.ENCERRADO }` e `campoData: "encerradoEm"`.
+- **Consulta executada:** `prisma.$transaction` executando `CALL sp_contar_chamados_fechados(equipeId, usuarioId, projetoId, clienteId, dataInicio, dataFim, @total_chamados_fechados)` (Stored Procedure criada na migration `20261122115500_sp_contar_chamados_fechados`) seguido de `SELECT @total_chamados_fechados AS total` na mesma conexão.
 - **Regras e edge cases:**
   - Com filtro de data: conta apenas tickets encerrados dentro do período (`encerradoEm` no intervalo).
   - Sem filtro de data: não restringe `encerradoEm`, contando todos os tickets com `status = ENCERRADO` que atendem aos demais filtros.
