@@ -19,7 +19,12 @@ export const FALHA_LISTAR_MENSAGENS_PADRAO =
 export async function listarMensagensPadraoLog(
   sinal?: AbortSignal,
 ): Promise<MensagemPadraoLog[]> {
-  const resposta = await fetch("/api/mensagens-log", { signal: sinal });
+  const resposta = await fetch("/api/mensagens-log", { signal: sinal }).catch(
+    (falha) => {
+      if (sinal?.aborted) throw falha;
+      throw new Error(FALHA_LISTAR_MENSAGENS_PADRAO);
+    },
+  );
 
   if (!resposta.ok) {
     const corpo = await resposta.json().catch(() => null);

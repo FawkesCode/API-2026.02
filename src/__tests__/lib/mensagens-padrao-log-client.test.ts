@@ -46,6 +46,24 @@ describe("listarMensagensPadraoLog", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
     await expect(listarMensagensPadraoLog()).rejects.toThrow(FALHA_LISTAR_MENSAGENS_PADRAO);
   });
+
+  it("usa mensagem genérica em falha de rede sem vazar TypeError do navegador", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    await expect(listarMensagensPadraoLog()).rejects.toThrow(FALHA_LISTAR_MENSAGENS_PADRAO);
+  });
+
+  it("preserva o erro quando a requisição é abortada pelo AbortSignal", async () => {
+    const controle = new AbortController();
+    const erroAbort = new DOMException("Aborted", "AbortError");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => {
+        controle.abort();
+        return Promise.reject(erroAbort);
+      }),
+    );
+    await expect(listarMensagensPadraoLog(controle.signal)).rejects.toBe(erroAbort);
+  });
 });
 
 describe("textoParaParagrafos", () => {
