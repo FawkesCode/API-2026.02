@@ -98,6 +98,9 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
               <span className="text-accent">
                 Tempo restante: {curTicket.timeRemaining}
               </span>
+              {curTicket.situacaoSla && (
+                <SlaBadge situacao={curTicket.situacaoSla} />
+              )}
 
               <p className="text-foreground font-normal">
                 Aberto em {curTicket.openedAt} por
@@ -183,6 +186,31 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
 }
 
 export default TicketCard;
+
+// Indicador de SLA calculado no banco (fn_situacao_sla) — só com o bdr_api.
+const SLA_BADGE: Record<
+  NonNullable<TicketView["situacaoSla"]>,
+  { rotulo: string; classe: string }
+> = {
+  NO_PRAZO: { rotulo: "No prazo", classe: "bg-green-100 text-green-800" },
+  EM_ALERTA: { rotulo: "SLA em alerta", classe: "bg-yellow-100 text-yellow-800" },
+  VENCIDO: { rotulo: "SLA vencido", classe: "bg-red-100 text-red-800" },
+  CUMPRIDO: { rotulo: "SLA cumprido", classe: "bg-green-100 text-green-800" },
+  VIOLADO: { rotulo: "SLA violado", classe: "bg-red-100 text-red-800" },
+};
+
+function SlaBadge({
+  situacao,
+}: {
+  situacao: NonNullable<TicketView["situacaoSla"]>;
+}) {
+  const { rotulo, classe } = SLA_BADGE[situacao];
+  return (
+    <Badge variant="default" className={cn("text-xs p-3", classe)}>
+      {rotulo}
+    </Badge>
+  );
+}
 
 function TeamsBadge({ children }: { children: ReactNode }) {
   return (
