@@ -64,7 +64,7 @@ export function AppSidebar() {
     ...(podeCadastrarMensagensLog(loggedUser?.cargo)
       ? [
           {
-            title: "Mensagens de Log",
+            title: "Mensagens Padrão",
             url: "/mensagens-log",
             icon: MessageSquareText,
           },

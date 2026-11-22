@@ -14,7 +14,7 @@ export default async function MensagensLogPage() {
 
   return (
     <>
-      <PageHeader>Mensagens de Log</PageHeader>
+      <PageHeader>Mensagens Padrão</PageHeader>
       <MensagensLogView />
     </>
   );
