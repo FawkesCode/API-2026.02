@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { endOfDay, parseISO, startOfDay } from "date-fns";
 import { Cargo, Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -15,6 +16,8 @@ type BancoTicket = ConstructorParameters<typeof ServicoTicket>[0];
 const ticketId = "550e8400-e29b-41d4-a716-446655440010";
 const gestorId = "550e8400-e29b-41d4-a716-446655440002";
 const equipeId = "550e8400-e29b-41d4-a716-446655440003";
+
+afterEach(() => vi.restoreAllMocks());
 
 function criarBanco(gestor: unknown) {
   const transacao = {
@@ -294,9 +297,9 @@ describe("ServicoTicket equipes", () => {
     const banco = {
       ...transaction,
       $transaction: vi.fn((operacao: (tx: typeof transaction) => unknown) => operacao(transaction)),
-      usuario: { findFirst: vi.fn().mockResolvedValue(null) },
     };
     const servico = new ServicoTicket(banco as unknown as BancoTicket);
+    vi.spyOn(servico, "notificarGestorDaEquipe").mockResolvedValue("SEM_GESTOR");
 
     await servico.alocarEquipe(ticketId, equipeId);
 
@@ -361,17 +364,18 @@ describe("ordenação das listas de tickets", () => {
     const resultado = await servico.listarTodos();
 
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
-      orderBy: [{ criadoEm: "desc" }],
+      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
       skip: 0,
       take: 5,
     }));
     expect(resultado.itens.map((ticket) => ticket.id)).toEqual(
       tickets.map((ticket) => ticket.id),
     );
-    vi.restoreAllMocks();
   });
 
   it("ordena a lista da equipe pela mesma regra", async () => {
+    const findMany = vi.fn().mockResolvedValue(tickets);
+    const count = vi.fn().mockResolvedValue(tickets.length);
     const servico = new ServicoTicket({
       usuario: {
         findUnique: vi.fn().mockResolvedValue({
@@ -379,18 +383,68 @@ describe("ordenação das listas de tickets", () => {
           equipe: { id: equipeId, nome: "Suporte", ativo: true },
         }),
       },
-      ticket: { findMany: vi.fn().mockResolvedValue(tickets) },
+      ticket: { count, findMany },
     } as unknown as BancoTicket);
 
     const resultado = await servico.listarPorEquipeDoUsuario(gestorId);
 
-    expect(resultado.map((ticket) => ticket.id)).toEqual([
-      "critica-nova",
-      "critica-antiga",
-      "alta",
-      "media",
-      "baixa",
-    ]);
+    const where = { equipesAlocadas: { some: { equipeId } } };
+    expect(count).toHaveBeenCalledWith({ where });
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where,
+      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
+      skip: 0,
+      take: 5,
+    }));
+    expect(resultado).toEqual(tickets);
+  });
+});
+
+describe("filtro de data da lista geral de tickets", () => {
+  it("usa as duas datas inclusivas na contagem e na segunda página", async () => {
+    const count = vi.fn().mockResolvedValue(6);
+    const findMany = vi.fn().mockResolvedValue([]);
+    const servico = new ServicoTicket({ ticket: { count, findMany } } as unknown as BancoTicket);
+    const filtros = {
+      dataInicio: "2026-09-24",
+      dataFim: "2026-09-25",
+      // Em caso de URL antiga com os dois formatos, o período tem prioridade.
+      data: "2026-11-16",
+      pagina: 2,
+      itensPorPagina: 5,
+    };
+    const whereIntervalo = {
+      criadoEm: {
+        gte: startOfDay(parseISO("2026-09-24")),
+        lte: endOfDay(parseISO("2026-09-25")),
+      },
+    };
+    const escopo = { status: StatusTicket.EM_ANDAMENTO };
+    await servico.listarTodos(filtros, escopo);
+
+    const where = { AND: [whereIntervalo, escopo] };
+    expect(count).toHaveBeenCalledWith({ where });
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where,
+      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
+      skip: 5,
+      take: 5,
+    }));
+  });
+
+  it("mantém o filtro por dia único e ignora datas inválidas sem quebrar a lista", async () => {
+    const count = vi.fn().mockResolvedValue(0);
+    const servico = new ServicoTicket({
+      ticket: { count, findMany: vi.fn().mockResolvedValue([]) },
+    } as unknown as BancoTicket);
+    const data = "2026-09-25";
+    await servico.listarTodos({ data, pagina: 1, itensPorPagina: 5 });
+    await servico.listarTodos({ data: "2026-02-30", pagina: 1, itensPorPagina: 5 });
+
+    expect(count).toHaveBeenNthCalledWith(1, {
+      where: { criadoEm: { gte: startOfDay(parseISO(data)), lte: endOfDay(parseISO(data)) } },
+    });
+    expect(count).toHaveBeenNthCalledWith(2, { where: {} });
   });
 });
 

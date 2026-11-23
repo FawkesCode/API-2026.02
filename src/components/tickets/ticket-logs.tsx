@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
 import { LogEditor } from "@/components/tickets/log-editor";
@@ -15,6 +15,7 @@ import {
   type LogItem,
 } from "@/lib/mappers/historico.mapper";
 import { logRespostaSchema } from "@/schemas/historico.schema";
+import { reconciliarLogs } from "@/lib/ticket-ui";
 
 interface NovoLog {
   evento: string;
@@ -102,7 +103,15 @@ function TicketLogs({
 }: TicketLogsProps) {
   const router = useRouter();
 
-  const [logs, setLogs] = useState(logsIniciais);
+  const [logsEnviados, setLogsEnviados] = useState<LogItem[]>([]);
+  const { logs, pendentes } = useMemo(
+    () => reconciliarLogs(logsIniciais, logsEnviados),
+    [logsIniciais, logsEnviados],
+  );
+  if (pendentes.length !== logsEnviados.length) {
+    // Uma vez recebido do servidor, o log não deve voltar da fila local em outro refresh.
+    setLogsEnviados(pendentes);
+  }
   const [enviandoAviso, setEnviandoAviso] = useState(false);
   const [erroAviso, setErroAviso] = useState<string | null>(null);
   const [recusando, setRecusando] = useState(false);
@@ -191,7 +200,11 @@ function TicketLogs({
 
     // Log novo vai para o final da lista (ordem cronológica, como em um chat).
     forcarRolagem.current = true;
-    setLogs((anteriores) => [...anteriores, log]);
+    setLogsEnviados((anteriores) =>
+      anteriores.some((anterior) => anterior.id === log.id)
+        ? anteriores
+        : [...anteriores, log],
+    );
 
     router.refresh();
   }

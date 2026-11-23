@@ -66,12 +66,13 @@ export class EmailController {
         { message: "Email sent successfully!", messageId: result?.messageId },
         { status: 200 },
       );
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error sending email:", error);
 
       if (
-        error.message === "Perfil inativo ou não encontrado." ||
-        error.message === "Ticket não encontrado."
+        error instanceof Error &&
+        (error.message === "Perfil inativo ou não encontrado." ||
+          error.message === "Ticket não encontrado.")
       ) {
         return NextResponse.json({ error: error.message }, { status: 404 });
       }

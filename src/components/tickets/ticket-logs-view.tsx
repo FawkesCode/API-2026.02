@@ -93,7 +93,7 @@ export default async function TicketsLogsView({ id }: { id: string }) {
 
 
 
-      <TicketLogs ticketId={id} logsIniciais={logs} autor={usuarioLogado ? toAutor(usuarioLogado) : null}
+      <TicketLogs key={id} ticketId={id} logsIniciais={logs} autor={usuarioLogado ? toAutor(usuarioLogado) : null}
         status={ticket.status} podeRegistrar={daEquipe} podeDecidir={podeAlterarPrioridade}
         equipeIniciou={equipeIniciou}
         podeMencionarEquipe={podeMencionarEquipe}

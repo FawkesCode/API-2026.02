@@ -15,13 +15,15 @@ import {
   mapStatusParaGrafico,
   mapUrgenciaParaGrafico,
 } from "@/lib/mappers/dashboard.mapper";
-import type { AgregacoesVolumeStatusUrgenciaDashboard } from "@/types/dashboard";
+import { hrefTicketsDashboard } from "@/lib/dashboard-ticket-link";
+import type { AgregacoesVolumeStatusUrgenciaDashboard, FiltrosDashboard } from "@/types/dashboard";
 
 interface DashboardViewProps {
   dados: AgregacoesVolumeStatusUrgenciaDashboard;
+  filtros: FiltrosDashboard;
 }
 
-function DashboardView({ dados }: DashboardViewProps) {
+function DashboardView({ dados, filtros }: DashboardViewProps) {
   const {
     volume,
     porStatus,
@@ -40,22 +42,25 @@ function DashboardView({ dados }: DashboardViewProps) {
             title="Total de Tickets"
             qtd={volume.criados}
             icon={Ticket}
+            href={hrefTicketsDashboard(filtros, "total")}
           />
           <KpiCard
             title="Encerramento Solicitado"
             qtd={volume.encerramentoSolicitado}
             icon={Hourglass}
-            url="?status=SOLICITACAO_ENCERRAMENTO"
+            href={hrefTicketsDashboard(filtros, "encerramento")}
           />
           <KpiCard
             title="Fora do SLA"
             qtd={resumoSla.foraDoSla}
             icon={TriangleAlert}
+            href={hrefTicketsDashboard(filtros, "foraDoSla")}
           />
           <KpiCard
             title="Próximo do SLA"
             qtd={resumoSla.proximoDoSla}
             icon={Clock8}
+            href={hrefTicketsDashboard(filtros, "proximoDoSla")}
           />
         </div>
         <TicketsPerUrgency data={mapUrgenciaParaGrafico(porUrgencia)} />

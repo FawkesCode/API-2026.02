@@ -7,10 +7,10 @@ interface KpiCardProps {
   title: string;
   qtd: number;
   icon: LucideIcon;
-  url?: string;
+  href: string;
 }
 
-function KpiCard({ title, qtd, icon: Icon, url = "" }: KpiCardProps) {
+function KpiCard({ title, qtd, icon: Icon, href }: KpiCardProps) {
   return (
     <Card className="relative col-span-1  after:content-[''] shrink-0 after:absolute after:inset-0 after:h-1 after:w-full after:bg-accent  py-5">
       <CardContent className="flex-row justify-between">
@@ -22,8 +22,8 @@ function KpiCard({ title, qtd, icon: Icon, url = "" }: KpiCardProps) {
             <h4 className="text-[18px] font-bold text-primary ">{title}</h4>
 
             <Link
-              href={!url ? `/tickets` : `/tickets${url}`}
-              className="underline text-muted-foreground hover:px-2 hover:text-foreground font-medium transition-all"
+              href={href}
+              className="underline text-muted-foreground hover:text-foreground font-medium transition-colors"
             >
               Ver todos &gt;&gt;
             </Link>

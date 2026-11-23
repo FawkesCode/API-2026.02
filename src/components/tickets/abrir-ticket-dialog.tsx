@@ -32,6 +32,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import { FormInput, FormTextarea } from "@/components/form/form-field";
 import { FormLabel } from "@/components/form/form-label";
 import { PrioritySelectField } from "@/components/tickets/priority-select-field";
@@ -40,6 +41,7 @@ import { useProjetosDisponiveis } from "@/hooks/use-available-projects";
 import { useEquipes } from "@/hooks/use-equipes";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { SLA_OPTIONS, calcularSlaEm } from "@/lib/sla-options";
+import { voltarParaPrimeiraPaginaDosTickets } from "@/lib/ticket-ui";
 import { ticketFormSchema } from "@/schemas/ticket-form.schema";
 import { Categoria, Prioridade } from "@/types/ticket-enums";
 import { useState } from "react";
@@ -97,29 +99,17 @@ export function AbrirTicketDialog({
     string[]
   >([]);
 
-  // Reseta o formulário sempre que o diálogo é reaberto — mantém os
-  // campos preenchidos apenas durante uma mesma tentativa de envio.
-  React.useEffect(() => {
-    if (open) {
-      setCampos({ ...CAMPOS_VAZIOS, projetoId: projetoInicialId ?? "" });
-      setErros({});
-      setErroSubmissao(null);
-      setEquipesSelecionadas([]);
-    }
-  }, [open, projetoInicialId]);
-
+  // O fluxo desmonta este formulário ao fechar o diálogo. Quando os projetos
+  // chegam (ou a seleção muda), pré-marque a equipe uma única vez.
   const projetoSelecionado = projetos.find((p) => p.id === campos.projetoId);
-
-  // Pré-marca a equipe do projeto assim que ele é selecionado/trocado.
-  React.useEffect(() => {
-    if (projetoSelecionado) {
-      setEquipesSelecionadas((atual) =>
-        atual.includes(projetoSelecionado.equipeId)
-          ? atual
-          : [...atual, projetoSelecionado.equipeId],
-      );
+  const equipeDoProjeto = projetoSelecionado?.equipeId;
+  const [equipePreMarcada, setEquipePreMarcada] = useState<string>();
+  if (equipeDoProjeto !== equipePreMarcada) {
+    setEquipePreMarcada(equipeDoProjeto);
+    if (equipeDoProjeto && !equipesSelecionadas.includes(equipeDoProjeto)) {
+      setEquipesSelecionadas([...equipesSelecionadas, equipeDoProjeto]);
     }
-  }, [projetoSelecionado]);
+  }
 
   const opcoesDeEquipe = equipesIndisponivel
     ? projetoSelecionado
@@ -170,6 +160,7 @@ export function AbrirTicketDialog({
       return;
     }
 
+    const caminhoDoFormulario = window.location.pathname;
     setEnviando(true);
     try {
       // Payload no formato que criarTicketSchema (backend) espera.
@@ -198,13 +189,17 @@ export function AbrirTicketDialog({
         return;
       }
 
-      const ticketCriado = await resposta.json();
       onOpenChange(false);
-      // Reaproveita a tela de tickets do projeto, com foco visual no
-      // ticket recém-criado via query param `ticketCriado`.
-      router.push(
-        `/projetos/${resultado.data.projetoId}?ticketCriado=${ticketCriado.id}`,
-      );
+      const paginaAtual = new URL(window.location.href);
+      if (paginaAtual.pathname !== caminhoDoFormulario) return;
+      toast.add({ type: "success", description: "Ticket aberto com sucesso." });
+
+      const primeiraPagina = voltarParaPrimeiraPaginaDosTickets(paginaAtual);
+      if (primeiraPagina) {
+        router.replace(primeiraPagina, { scroll: false });
+      } else {
+        router.refresh();
+      }
     } catch {
       setErroSubmissao(
         "Falha de conexão ao salvar o ticket. Verifique sua internet e tente novamente.",
