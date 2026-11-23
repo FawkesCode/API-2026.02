@@ -54,6 +54,7 @@ model Usuario {
   relatorios          Relatorio[]
   eventosHistorico    HistoricoTicket[]
   atividadesConta     AtividadeConta[]
+  mensagensPadraoLog   MensagemPadraoLog[]
 
   criadoPorId String?   @map("criado_por_id") @db.Char(36)
   criadoPor   Usuario?  @relation("UsuarioCriadoPor", fields: [criadoPorId], references: [id])
@@ -83,6 +84,8 @@ model Equipe {
 model Cliente {
   id           String   @id @default(uuid()) @db.Char(36)
   nome         String   @unique(map: "uq_clientes_nome") @db.VarChar(150)
+  cnpj         String   @unique(map: "uq_clientes_cnpj") @db.Char(14)
+  localizacao  String   @db.VarChar(255)
   ativo        Boolean  @default(true)
   criadoEm     DateTime @default(now()) @map("criado_em") @db.DateTime(3)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
@@ -142,12 +145,25 @@ model Ticket {
   relatorios Relatorio[]
   historico  HistoricoTicket[]
   equipesAlocadas TicketEquipe[]
+  alertasSla AlertaSla[]
 
   @@index([projetoId, status, prioridade, criadoEm], map: "ix_tickets_fila")
   @@index([status, slaEm], map: "ix_tickets_sla")
   @@index([abertoPorId], map: "ix_tickets_aberto_por")
   @@index([responsavelId], map: "ix_tickets_responsavel")
   @@map("tickets")
+}
+
+model AlertaSla {
+  id          String    @id @default(uuid()) @db.Char(36)
+  ticketId    String    @map("ticket_id") @db.Char(36)
+  ticket      Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  slaEm       DateTime  @map("sla_em") @db.DateTime(3)
+  reservadoEm DateTime  @default(now()) @map("reservado_em") @db.DateTime(3)
+  enviadoEm   DateTime? @map("enviado_em") @db.DateTime(3)
+
+  @@unique([ticketId, slaEm], map: "uq_alertas_sla_ticket_prazo")
+  @@map("alertas_sla")
 }
 
 model TicketEquipe {
@@ -213,6 +229,19 @@ model HistoricoTicket {
   @@index([equipeId], map: "ix_historico_equipe")
   @@index([inicioEquipeId], map: "ix_historico_inicio_equipe")
   @@map("historico_ticket")
+}
+
+model MensagemPadraoLog {
+  id           String   @id @default(uuid()) @db.Char(36)
+  mensagem     String   @db.Text
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.DateTime(3)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.DateTime(3)
+
+  usuarioId String  @map("usuario_id") @db.Char(36)
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, criadoEm], map: "ix_mensagens_padrao_log_usuario_data")
+  @@map("mensagens_padrao_log")
 }
 
 model AtividadeConta {

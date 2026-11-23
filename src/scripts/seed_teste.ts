@@ -8,7 +8,11 @@ async function main() {
   });
 
   const cliente = await prisma.cliente.create({
-    data: { nome: "Empresa Teste LTDA" },
+    data: {
+      nome: "Empresa Teste LTDA",
+      cnpj: "11444777000161",
+      localizacao: "São Paulo - SP",
+    },
   });
 
   const gestor = await prisma.usuario.create({

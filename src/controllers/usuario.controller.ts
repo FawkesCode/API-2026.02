@@ -2,10 +2,56 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { Cargo, Prisma } from "@/lib/generated/prisma/client";
 import { exigirCargo } from "@/auth/exigir-cargo";
-import { createUserSchema } from "@/schemas/user.schema";
-import { servicoUsuario } from "@/services/usuario.service";
+import {
+  createUserSchema,
+  updateUserSchema,
+  updateUserStatusSchema,
+} from "@/schemas/user.schema";
+import { resetUserPasswordSchema } from "@/schemas/change-password.schema";
+import {
+  ErroAlterarProprioCargo,
+  ErroAlterarProprioStatus,
+  ErroUsuarioInativo,
+  ErroUsuarioNaoTecnico,
+  ErroUsuarioNaoEncontrado,
+  servicoUsuario,
+} from "@/services/usuario.service";
 
 const CARGOS_VALIDOS = new Set<string>(Object.values(Cargo));
+
+function handleUpdateUserError(error: unknown) {
+  if (error instanceof ErroUsuarioNaoEncontrado) {
+    return NextResponse.json(
+      { erro: error.message, codigo: "USUARIO_NAO_ENCONTRADO" },
+      { status: 404 },
+    );
+  }
+  if (error instanceof ErroAlterarProprioCargo) {
+    return NextResponse.json(
+      { erro: error.message, codigo: "ALTERAR_PROPRIO_CARGO" },
+      { status: 400 },
+    );
+  }
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
+    return NextResponse.json(
+      {
+        erro: "Este e-mail já está cadastrado.",
+        codigo: "EMAIL_JA_CADASTRADO",
+        detalhes: { email: ["Este e-mail já está cadastrado."] },
+      },
+      { status: 400 },
+    );
+  }
+
+  console.error(error);
+  return NextResponse.json(
+    { erro: "Erro interno ao editar usuário.", codigo: "ERRO_INTERNO" },
+    { status: 500 },
+  );
+}
 
 export class ControladorUsuario {
   async createUser(request: Request) {
@@ -64,6 +110,234 @@ export class ControladorUsuario {
       return NextResponse.json(
         {
           erro: "Erro interno ao cadastrar usuário.",
+          codigo: "ERRO_INTERNO",
+        },
+        { status: 500 },
+      );
+    }
+  }
+
+  async updateUser(request: Request, userId: string) {
+    const validatedId = z.uuid().safeParse(userId);
+    if (!validatedId.success) {
+      return NextResponse.json(
+        { erro: "ID do usuário inválido.", codigo: "ID_INVALIDO" },
+        { status: 400 },
+      );
+    }
+
+    const acesso = await exigirCargo(request, Cargo.SUPORTE_INTERNO);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          erro: "Corpo da requisição precisa ser um JSON válido.",
+          codigo: "JSON_INVALIDO",
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = updateUserSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          erro: "Dados inválidos.",
+          codigo: "DADOS_INVALIDOS",
+          detalhes: z.flattenError(result.error).fieldErrors,
+        },
+        { status: 400 },
+      );
+    }
+
+    try {
+      const user = await servicoUsuario.updateUser(
+        validatedId.data,
+        acesso.usuario.id,
+        result.data,
+      );
+      return NextResponse.json(user, { status: 200 });
+    } catch (error) {
+      return handleUpdateUserError(error);
+    }
+  }
+
+  async resetUserPassword(request: Request, userId: string) {
+    const validatedId = z.uuid().safeParse(userId);
+    if (!validatedId.success) {
+      return NextResponse.json(
+        { erro: "ID do usuário inválido.", codigo: "ID_INVALIDO" },
+        { status: 400 },
+      );
+    }
+
+    const acesso = await exigirCargo(request, Cargo.SUPORTE_INTERNO);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          erro: "Corpo da requisição precisa ser um JSON válido.",
+          codigo: "JSON_INVALIDO",
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = resetUserPasswordSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          erro: "Dados inválidos.",
+          codigo: "DADOS_INVALIDOS",
+          detalhes: z.flattenError(result.error).fieldErrors,
+        },
+        { status: 400 },
+      );
+    }
+
+    try {
+      await servicoUsuario.redefinirSenhaDeTecnico(
+        validatedId.data,
+        result.data.novaSenha,
+      );
+      return NextResponse.json(
+        { mensagem: "Senha redefinida com sucesso." },
+        { status: 200 },
+      );
+    } catch (error) {
+      if (error instanceof ErroUsuarioNaoEncontrado) {
+        return NextResponse.json(
+          { erro: error.message, codigo: "USUARIO_NAO_ENCONTRADO" },
+          { status: 404 },
+        );
+      }
+      if (error instanceof ErroUsuarioInativo) {
+        return NextResponse.json(
+          { erro: error.message, codigo: "USUARIO_INATIVO" },
+          { status: 400 },
+        );
+      }
+      if (error instanceof ErroUsuarioNaoTecnico) {
+        return NextResponse.json(
+          { erro: error.message, codigo: "USUARIO_NAO_TECNICO" },
+          { status: 400 },
+        );
+      }
+
+      console.error(error);
+      return NextResponse.json(
+        {
+          erro: "Erro interno ao redefinir senha.",
+          codigo: "ERRO_INTERNO",
+        },
+        { status: 500 },
+      );
+    }
+  }
+
+  async getUser(request: Request, userId: string) {
+    const validatedId = z.uuid().safeParse(userId);
+    if (!validatedId.success) {
+      return NextResponse.json(
+        { erro: "ID do usuário inválido.", codigo: "ID_INVALIDO" },
+        { status: 400 },
+      );
+    }
+
+    const acesso = await exigirCargo(request, Cargo.SUPORTE_INTERNO);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    try {
+      const user = await servicoUsuario.buscarPorId(validatedId.data);
+      if (!user) {
+        return NextResponse.json(
+          {
+            erro: new ErroUsuarioNaoEncontrado().message,
+            codigo: "USUARIO_NAO_ENCONTRADO",
+          },
+          { status: 404 },
+        );
+      }
+      return NextResponse.json(user, { status: 200 });
+    } catch (error) {
+      console.error(error);
+      return NextResponse.json(
+        { erro: "Erro interno ao buscar usuário.", codigo: "ERRO_INTERNO" },
+        { status: 500 },
+      );
+    }
+  }
+
+  async updateUserStatus(request: Request, userId: string) {
+    const validatedId = z.uuid().safeParse(userId);
+    if (!validatedId.success) {
+      return NextResponse.json(
+        { erro: "ID do usuário inválido.", codigo: "ID_INVALIDO" },
+        { status: 400 },
+      );
+    }
+
+    const acesso = await exigirCargo(request, Cargo.SUPORTE_INTERNO);
+    if (!acesso.autorizado) return acesso.resposta;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        {
+          erro: "Corpo da requisição precisa ser um JSON válido.",
+          codigo: "JSON_INVALIDO",
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = updateUserStatusSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          erro: "Dados inválidos.",
+          codigo: "DADOS_INVALIDOS",
+          detalhes: z.flattenError(result.error).fieldErrors,
+        },
+        { status: 400 },
+      );
+    }
+
+    try {
+      const user = await servicoUsuario.updateUserStatus(
+        validatedId.data,
+        acesso.usuario.id,
+        result.data.ativo,
+      );
+      return NextResponse.json(user, { status: 200 });
+    } catch (error) {
+      if (error instanceof ErroUsuarioNaoEncontrado) {
+        return NextResponse.json(
+          { erro: error.message, codigo: "USUARIO_NAO_ENCONTRADO" },
+          { status: 404 },
+        );
+      }
+      if (error instanceof ErroAlterarProprioStatus) {
+        return NextResponse.json(
+          { erro: error.message, codigo: "ALTERAR_PROPRIO_STATUS" },
+          { status: 400 },
+        );
+      }
+
+      console.error(error);
+      return NextResponse.json(
+        {
+          erro: "Erro interno ao alterar status do usuário.",
           codigo: "ERRO_INTERNO",
         },
         { status: 500 },

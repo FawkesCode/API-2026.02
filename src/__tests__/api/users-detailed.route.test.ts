@@ -10,6 +10,7 @@ const sessionUser = {
   id: "550e8400-e29b-41d4-a716-446655440002",
   nome: "Analista",
   email: "analista@example.com",
+  criadoEm: new Date(),
   cargo: "SUPORTE_INTERNO" as const,
   ativo: true,
   equipeId: null,

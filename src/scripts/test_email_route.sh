@@ -1,84 +1,26 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# URL da rota da API
-API_URL="http://localhost:3000/api/email"
+# Smoke test for the current team-assignment flow. The former /api/email route
+# was retired; this endpoint requires a gestor session and a ticket the gestor
+# is authorized to manage.
+API_BASE_URL="${API_BASE_URL:-http://localhost:3000}"
+: "${TICKET_ID:?Set TICKET_ID to a ticket UUID}"
+: "${EQUIPE_ID:?Set EQUIPE_ID to a team UUID}"
+: "${SESSION_COOKIE:?Set SESSION_COOKIE to the authenticated Cookie header value}"
+RELATORIO="${RELATORIO:-Razão do acionamento para teste da notificação da equipe.}"
 
-# Configurações do Banco de Dados baseadas no .env.example
-DB_USER="root"
-DB_PASS="123456"
-DB_NAME="test"
-DB_HOST="127.0.0.1" # Usamos 127.0.0.1 no lugar de localhost para forçar a conexão via TCP para o Docker
-DB_PORT="3307"
-
-echo "Busca direta no banco de dados MySQL local na porta $DB_PORT..."
-
-# 1. Buscar o Gestor gerado pelo seed
-MANAGER_ID=$(mysql -u "$DB_USER" -p"$DB_PASS" -h "$DB_HOST" -P "$DB_PORT" -D "$DB_NAME" -sN -e "SELECT id FROM usuarios WHERE email='gestor.seed@example.com' LIMIT 1;")
-
-if [ -z "$MANAGER_ID" ]; then
-    echo "❌ Erro: Não foi possível encontrar o Gestor 'gestor.seed@example.com'."
-    echo "Verifique se o banco está rodando na porta $DB_PORT e se o seed foi executado."
-    exit 1
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq is required to build the JSON request body." >&2
+  exit 1
 fi
 
-echo "✅ Gestor encontrado: $MANAGER_ID"
+CORPO=$(jq -cn \
+  --arg equipeId "$EQUIPE_ID" \
+  --arg relatorio "$RELATORIO" \
+  '{equipeId: $equipeId, relatorio: $relatorio}')
 
-# 2. Buscar 10 UUIDs na tabela de tickets
-echo "Buscando 10 tickets no banco..."
-TICKET_LIST=$(mysql -u "$DB_USER" -p"$DB_PASS" -h "$DB_HOST" -P "$DB_PORT" -D "$DB_NAME" -sN -e "SELECT id FROM tickets LIMIT 10;")
-
-if [ -z "$TICKET_LIST" ]; then
-    echo "❌ Erro: Nenhum ticket encontrado no banco de dados."
-    exit 1
-fi
-
-TICKETS=($TICKET_LIST)
-echo "✅ Encontrados ${#TICKETS[@]} tickets."
-
-echo "=========================================="
-echo "Iniciando as requisições para $API_URL"
-echo "TESTES DE ERRO (Rejeições Esperadas)"
-echo "=========================================="
-
-echo "-> [ERRO ESPERADO 400] Testando JSON Inválido..."
-curl -s -k -X POST "$API_URL" \
-     -H "Content-Type: application/json" \
-     -d "{\"managerId\": \"$MANAGER_ID\", \"ticketId\":"
-echo -e "\n------------------------------------------"
-
-echo "-> [ERRO ESPERADO 400] Testando Erro de Zod (Faltando ticketId)..."
-curl -s -k -X POST "$API_URL" \
-     -H "Content-Type: application/json" \
-     -d "{\"managerId\": \"$MANAGER_ID\"}"
-echo -e "\n------------------------------------------"
-
-echo "-> [ERRO ESPERADO 404] Testando Perfil Inativo ou Não Encontrado (ID Fake)..."
-curl -s -k -X POST "$API_URL" \
-     -H "Content-Type: application/json" \
-     -d "{\"managerId\": \"00000000-0000-0000-0000-000000000000\", \"ticketId\": \"${TICKETS[0]}\"}"
-echo -e "\n------------------------------------------"
-
-echo "-> [ERRO ESPERADO 404] Testando Ticket Não Encontrado (ID Fake)..."
-curl -s -k -X POST "$API_URL" \
-     -H "Content-Type: application/json" \
-     -d "{\"managerId\": \"$MANAGER_ID\", \"ticketId\": \"00000000-0000-0000-0000-000000000000\"}"
-echo -e "\n------------------------------------------"
-
-echo "=========================================="
-echo "Iniciando as requisições de SUCESSO para $API_URL"
-echo "=========================================="
-
-for TICKET_ID in "${TICKETS[@]}"; do
-  echo "-> Enviando e-mail do Ticket: $TICKET_ID"
-  
-  curl -k -X POST "$API_URL" \
-       -H "Content-Type: application/json" \
-       -d "{\"managerId\": \"$MANAGER_ID\", \"ticketId\": \"$TICKET_ID\"}"
-       
-  echo -e "\n------------------------------------------"
-  
-  echo "Aguardando 5 minutos (300 segundos) até o próximo disparo..."
-  sleep 300
-done
-
-echo "Concluído!"
+curl -i -X POST "$API_BASE_URL/api/tickets/$TICKET_ID/equipes" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: $SESSION_COOKIE" \
+  --data "$CORPO"

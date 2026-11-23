@@ -23,6 +23,13 @@ export const criarTicketSchema = z.object({
 
 export const alocarEquipeTicketSchema = z.object({
   equipeId: z.uuid("equipeId deve ser um UUID válido."),
+  // Se omitido, a descrição do ticket serve como razão do acionamento.
+  relatorio: z
+    .string()
+    .trim()
+    .min(1, "Informe a razão do acionamento.")
+    .max(10_000, "Relatório excede o limite de 10.000 caracteres.")
+    .optional(),
 });
  
 export type AlocarEquipeTicketSchema = z.infer<typeof alocarEquipeTicketSchema>;

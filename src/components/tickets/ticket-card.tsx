@@ -94,7 +94,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
             </div>
           </CardTitle>
           <CardDescription className="border-b pb-4 text-foreground font-medium flex flex-col gap-2">
-            <div className="flex flex-col sm:flex-row items-start md:items-center gap-3">
+            <div className="flex flex-col mb-3 sm:mb-0 sm:flex-row items-start md:flex-col md:gap-0 md:mb-3 lg:mb-0 lg:flex-row lg:gap-3 lg:items-center sm:gap-3">
               <span className="text-accent">
                 Tempo restante: {curTicket.timeRemaining}
               </span>
@@ -104,7 +104,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
                 <span className=" italic"> {curTicket.createdBy}</span>
               </p>
             </div>
-            <div className="flex flex-col gap-2 sm:gap-0 sm:flex-row  justify-between">
+            <div className="flex flex-col gap-2 sm:gap-0 sm:flex-row md:flex-col lg:flex-row md:gap-2 lg:gap-0  justify-between">
               <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
                 {curTicket.teams && curTicket.teams.length > 0 ? (
                   curTicket.teams.map((team) => (
@@ -132,7 +132,7 @@ function TicketCard({ ticket, woLogs, ticketUrl }: TicketCardProps) {
                   </TeamAddButton>
                 ) : null}
               </div>
-              <div className="flex justify-between  items-center gap-2">
+              <div className="flex justify-start mt-4 sm:justify-between md:justify-start lg:justify-between  items-center gap-2">
                 <span className="underline text-muted-foreground text-xs">
                   {curTicket.status}
                 </span>
@@ -197,15 +197,15 @@ function TeamsBadge({ children }: { children: ReactNode }) {
 
 function TeamLog({ title, sentBy, sentAt }: TeamLogView) {
   return (
-    <div className=" flex flex-col sm:flex-row gap-3 items-center">
-      <div className="flex flex-col sm:flex-row p-2 rounded-full pl-4 pr-4 bg-[#E6E7F2]  w-full xl:w-[50%] justify-between text-[#ACADC0]">
+    <div className=" flex flex-col sm:flex-row md:flex-col lg:flex-row gap-3 items-center">
+      <div className="flex flex-col items-center md:items-center lg:items-stretch sm:flex-row md:flex-col lg:flex-row p-2 rounded-xl md:rounded-xl lg:rounded-full sm:rounded-full pl-4 pr-4 bg-[#E6E7F2]  w-full xl:w-[75%] 2xl:w-[50%] justify-between text-[#ACADC0]">
         <p className="font-medium">{title}</p>
         <p>
           <i>Enviado por {sentBy}</i>
         </p>
       </div>
       <span className="flex gap-1 items-center text-[#ACADC0]">
-        <ChevronsLeft />
+        <ChevronsLeft className="hidden lg:block" />
         {sentAt.toLocaleTimeString("pt-BR", { timeStyle: "short" })}
       </span>
     </div>

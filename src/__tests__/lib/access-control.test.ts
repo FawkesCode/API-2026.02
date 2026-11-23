@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { podeVerMinhaEquipe, podeVerUsuarios } from "@/lib/access-control";
+import {
+  podeCadastrarMensagensLog,
+  podeVerMinhaEquipe,
+  podeVerUsuarios,
+} from "@/lib/access-control";
 import { Cargo } from "@/types/ticket-enums";
 
 const todosOsCargos = Object.values(Cargo);
@@ -30,4 +34,16 @@ describe("podeVerMinhaEquipe", () => {
       expect(podeVerMinhaEquipe(cargo)).toBe(false);
     },
   );
+});
+
+describe("podeCadastrarMensagensLog", () => {
+  it("libera para os mesmos cargos que o endpoint de mensagens aceita", () => {
+    const liberados = todosOsCargos.filter((cargo) => podeCadastrarMensagensLog(cargo));
+
+    expect(liberados.sort()).toEqual([Cargo.GESTOR, Cargo.SUPORTE, Cargo.TECNICO].sort());
+  });
+
+  it("nega quando não há usuário", () => {
+    expect(podeCadastrarMensagensLog(null)).toBe(false);
+  });
 });

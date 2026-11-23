@@ -1,20 +1,20 @@
 import { notFound } from "next/navigation";
 import { toTicketDTO } from "@/lib/mappers/ticket.mapper";
-import { servicoTicket } from "../../services/ticket.service";
+import { FiltrosTicket, servicoTicket } from "../../services/ticket.service";
 
-export async function getTeamsTickets(usuarioId: string) {
+export async function getTeamsTickets(
+  usuarioId: string,
+  filtros?: Pick<FiltrosTicket, "pagina" | "itensPorPagina">,
+) {
   if (!usuarioId) {
     notFound();
   }
 
-  try {
-    const { equipe, tickets } =
-      await servicoTicket.buscarTicketsDaEquipeDoUsuario(usuarioId);
+  let equipe, itens, total, pagina, totalPaginas, itensPorPagina;
 
-    return {
-      equipeNome: equipe?.nome ?? "Sem equipe",
-      tickets: tickets.map(toTicketDTO),
-    };
+  try {
+    ({ equipe, itens, total, pagina, totalPaginas, itensPorPagina } =
+      await servicoTicket.buscarTicketsDaEquipeDoUsuario(usuarioId, filtros));
   } catch (error) {
     console.error(
       "[getTeamsTickets] Erro ao buscar os tickets da equipe:",
@@ -22,6 +22,15 @@ export async function getTeamsTickets(usuarioId: string) {
     );
     throw new Error("Não foi possível carregar os tickets da sua equipe.");
   }
+
+  return {
+    equipeNome: equipe?.nome ?? "Sem equipe",
+    itens: itens.map(toTicketDTO),
+    total,
+    pagina,
+    totalPaginas,
+    itensPorPagina,
+  };
 }
 
 export async function addMyTeam(ticketId: string, equipeId?: string) {

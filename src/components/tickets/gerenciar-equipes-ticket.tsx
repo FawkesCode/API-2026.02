@@ -7,6 +7,7 @@ import { useEquipes } from "@/hooks/use-equipes";
 
 interface Props {
   ticketId: string;
+  relatorio: string;
   equipesDoTicket: { id: string; nome: string }[];
   equipeDoUsuarioId?: string | null;
 }
@@ -15,6 +16,7 @@ type Modo = "atribuir" | "desatribuir";
 
 export function GerenciarEquipesTicket({
   ticketId,
+  relatorio,
   equipesDoTicket,
   equipeDoUsuarioId,
 }: Props) {
@@ -44,11 +46,17 @@ export function GerenciarEquipesTicket({
       const res = await fetch(`/api/tickets/${ticketId}/equipes`, {
         method: modo === "atribuir" ? "POST" : "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ equipeId: equipe.id }),
+        body: JSON.stringify(
+          modo === "atribuir"
+            ? { equipeId: equipe.id, relatorio }
+            : { equipeId: equipe.id },
+        ),
       });
       if (!res.ok) {
         const corpo = await res.json().catch(() => null);
-        throw new Error(corpo?.erro ?? "Não foi possível atualizar as equipes.");
+        throw new Error(
+          corpo?.erro ?? "Não foi possível atualizar as equipes.",
+        );
       }
       setAberto(null);
       router.refresh();
@@ -60,7 +68,7 @@ export function GerenciarEquipesTicket({
   }
 
   const botao =
-    "inline-flex items-center gap-1 rounded-md border border-input bg-white px-2 py-1 text-xs text-muted-foreground hover:bg-sky-50 disabled:opacity-50";
+    "inline-flex items-center gap-1 rounded-md border border-input bg-white px-2 py-1 text-xs text-muted-foreground hover:bg-sky-50 disabled:opacity-50 rounded-xl";
 
   return (
     <div className="relative flex flex-col items-end gap-1">
@@ -86,7 +94,9 @@ export function GerenciarEquipesTicket({
       {aberto && (
         <ul className="absolute right-0 top-full z-20 mt-1 min-w-48 rounded-md border border-input bg-white shadow-md">
           {aberto === "atribuir" && carregando && (
-            <li className="px-3 py-2 text-xs text-muted-foreground">Carregando...</li>
+            <li className="px-3 py-2 text-xs text-muted-foreground">
+              Carregando...
+            </li>
           )}
           {aberto === "atribuir" && indisponivel && (
             <li className="px-3 py-2 text-xs text-muted-foreground">

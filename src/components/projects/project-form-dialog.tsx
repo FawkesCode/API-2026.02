@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, type Control } from "react-hook-form";
+import { useClientes } from "@/hooks/use-clientes";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,7 @@ import {
   FormTextarea,
 } from "@/components/form/form-field";
 import { Plus } from "lucide-react";
-import { SelectInterface } from "@/lib/data/dropdown";
+import type { SelectInterface } from "@/lib/data/dropdown";
 
 export interface ProjectFormValues {
   nomeProjeto: string;
@@ -44,7 +45,6 @@ interface ProjectFormDialogBaseProps {
   /** Esconde o botão de gatilho interno quando o dialog é aberto de fora. */
   hideTrigger?: boolean;
   onSuccess: () => void;
-  clientsData: SelectInterface[];
   supervisorsData: SelectInterface[];
 }
 
@@ -60,12 +60,41 @@ type ProjectFormDialogProps =
       onOpenChange?: undefined;
     });
 
+// Montado a cada abertura: consulta clientes ativos sem reutilizar os dados
+// de uma navegação anterior para /projetos.
+function ClienteProjetoField({ control, error }: { control: Control<ProjectFormValues>; error?: string }) {
+  const { clientes, carregando, indisponivel } = useClientes();
+  const opcoes = clientes.map(({ id, nome }) => ({ value: id, label: nome }));
+
+  return (
+    <Controller
+      control={control}
+      name="cliente"
+      rules={{ required: "Informe o cliente." }}
+      render={({ field }) => (
+        <FormSelect
+          label="Cliente:"
+          options={opcoes}
+          required
+          disabled={carregando || indisponivel}
+          placeholder={carregando ? "Carregando clientes..." : "Selecione um cliente"}
+          error={indisponivel
+            ? "Não foi possível carregar os clientes. Reabra o formulário para tentar novamente."
+            : !carregando && opcoes.length === 0 ? "Nenhum cliente ativo cadastrado." : error}
+          value={field.value}
+          onChange={field.onChange}
+          ref={field.ref}
+        />
+      )}
+    />
+  );
+}
+
 export function ProjectFormDialog({
   open,
   onOpenChange,
   hideTrigger,
   onSuccess,
-  clientsData,
   supervisorsData,
 }: ProjectFormDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
@@ -127,7 +156,7 @@ export function ProjectFormDialog({
       reset();
       setDialogOpen(false);
       onSuccess?.();
-    } catch (error) {
+    } catch {
       setSubmitError("Não foi possível cadastrar o projeto. Tente novamente.");
     }
   }
@@ -205,22 +234,7 @@ export function ProjectFormDialog({
             />
 
             <div className="flex gap-2 w-full">
-              <Controller
-                control={control}
-                name="cliente"
-                rules={{ required: "Informe o cliente." }}
-                render={({ field }) => (
-                  <FormSelect
-                    label="Cliente:"
-                    options={clientsData}
-                    required
-                    error={errors.cliente?.message}
-                    value={field.value}
-                    onChange={field.onChange}
-                    ref={field.ref}
-                  />
-                )}
-              />
+              {dialogOpen && <ClienteProjetoField control={control} error={errors.cliente?.message} />}
 
               <FormInput
                 label="Local de Instalação:"
