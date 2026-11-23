@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { endOfDay, parseISO, startOfDay } from "date-fns";
 import { Categoria, Prioridade } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { servicoProjeto } from "@/services/projeto.service";
@@ -54,11 +55,34 @@ describe("ServicoProjeto.listarTicketsDoProjeto", () => {
 
     expect(prisma.ticket.findMany).toHaveBeenCalledWith({
       where: { projetoId },
-      orderBy: [{ prioridade: "desc" }, { criadoEm: "desc" }, { id: "desc" }],
+      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
       skip: 0,
       take: 5,
       include: RELACOES_TICKET,
     });
+  });
+
+  it("aplica o período inclusivo sem perder o escopo do projeto", async () => {
+    const count = vi.spyOn(prisma.ticket, "count").mockResolvedValue(6);
+    const findMany = vi.spyOn(prisma.ticket, "findMany").mockResolvedValue([]);
+    await servicoProjeto.listarTicketsDoProjeto(projetoId, {
+      dataInicio: "2026-09-24",
+      dataFim: "2026-09-25",
+      pagina: 2,
+      itensPorPagina: 5,
+    });
+
+    const where = {
+      projetoId,
+      criadoEm: { gte: startOfDay(parseISO("2026-09-24")), lte: endOfDay(parseISO("2026-09-25")) },
+    };
+    expect(count).toHaveBeenCalledWith({ where });
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where,
+      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
+      skip: 5,
+      take: 5,
+    }));
   });
 
   it("retorna os itens paginados fornecidos pelo banco", async () => {

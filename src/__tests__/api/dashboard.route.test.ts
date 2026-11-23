@@ -21,6 +21,9 @@ const aggregations: AgregacoesVolumeStatusUrgenciaDashboard = {
   porStatus: { total: 0, abertos: 0, encerramentoSolicitado: 0, itens: [] },
   abertosPorEquipe: { totalAbertos: 0, equipes: [] },
   porUrgencia: { total: 0, itens: [] },
+  porSla: { total: 0, itens: [] },
+  resumoSla: { foraDoSla: 0, proximoDoSla: 0 },
+  slaEstimadoVsReal: { totalDentroDoSla: 0, totalAtrasado: 0, itens: [] },
 };
 
 function createRequest(query = "", authenticated = true) {

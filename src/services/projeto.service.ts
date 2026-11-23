@@ -6,8 +6,12 @@ import {
   Prisma,
 } from "@/lib/generated/prisma/client";
 import type { CriarProjetoSchema } from "@/schemas/projeto.schema";
-import { RELACOES_TICKET } from "@/services/ticket.service";
-import { ordenarTicketsPorPrioridade } from "@/services/ticket-order";
+import {
+  filtroDataCriacaoTicket,
+  ORDEM_RECENTES_TICKET,
+  RELACOES_TICKET,
+  type FiltrosDataTicket,
+} from "@/services/ticket.service";
 import { normalizedPagination, PAGINATION_CONFIGS } from "@/lib/pagination";
 
 const DIAS_SLA_INSTALACAO_PADRAO = 7;
@@ -179,11 +183,10 @@ export class ServicoProjeto {
    */
   async listarTicketsDoProjeto(
     projetoId: string,
-    filtros?: {
+    filtros?: FiltrosDataTicket & {
       prioridade?: Prioridade;
       status?: StatusTicket;
       titulo?: string;
-      data?: string;
       pagina?: number;
       itensPorPagina?: number;
     },
@@ -206,15 +209,8 @@ export class ServicoProjeto {
       };
     }
 
-    if (filtros?.data) {
-      const inicio = new Date(`${filtros.data}T00:00:00`);
-      const fim = new Date(`${filtros.data}T23:59:59.999`);
-
-      where.criadoEm = {
-        gte: inicio,
-        lte: fim,
-      };
-    }
+    const criadoEm = filtroDataCriacaoTicket(filtros);
+    if (criadoEm) where.criadoEm = criadoEm;
 
     const { pagina: paginaPedida, itensPorPagina } = normalizedPagination(
       filtros?.pagina,
@@ -227,13 +223,12 @@ export class ServicoProjeto {
 
     const itens = await prisma.ticket.findMany({
       where,
-      orderBy: [{ prioridade: "desc" }, { criadoEm: "desc" }, { id: "desc" }],
+      orderBy: ORDEM_RECENTES_TICKET,
       skip: (pagina - 1) * itensPorPagina,
       take: itensPorPagina,
       include: RELACOES_TICKET,
     });
 
-    // Tirei a função de ordenar ticket, pq a principio o prioridade: desc faz o trabalho, mas aconselho revisitar isso para ter certeza
     return { itens, total, pagina, totalPaginas, itensPorPagina };
   }
 

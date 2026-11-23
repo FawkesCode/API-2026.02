@@ -1,3 +1,4 @@
+import { endOfDay, isValid, parseISO, startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import EmailManagerService from "./email.service";
 import { travarStatusDoTicket } from "./ticket-trava";
@@ -13,7 +14,6 @@ import type {
   CriarTicketSchema,
   AtualizarPrioridadeComAutor,
 } from "@/schemas/ticket.schema";
-import { ordenarTicketsPorPrioridade } from "@/services/ticket-order";
 import { normalizedPagination } from "@/lib/pagination";
 
 export class ErroConflitoPrioridade extends Error {
@@ -50,17 +50,47 @@ export class ErroNaoAutorizadoParaAlterarPrioridade extends Error {
   }
 }
 
-export interface FiltrosTicket {
+export interface FiltrosDataTicket {
+  data?: string;
+  dataInicio?: string;
+  dataFim?: string;
+}
+
+export interface FiltrosTicket extends FiltrosDataTicket {
   prioridade?: Prioridade;
   status?: StatusTicket;
   titulo?: string;
-  data?: string;
   categoria?: Categoria;
   projetoId?: string;
   equipeId?: string;
   localInstalacao?: string;
   pagina: number;
   itensPorPagina: number;
+}
+
+export const ORDEM_RECENTES_TICKET: Prisma.TicketOrderByWithRelationInput[] = [
+  { criadoEm: "desc" },
+  { id: "desc" },
+];
+
+export function filtroDataCriacaoTicket(filtros?: FiltrosDataTicket) {
+  const parseDia = (valor?: string) => {
+    if (!valor || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) return undefined;
+    const dia = parseISO(valor);
+    return isValid(dia) ? dia : undefined;
+  };
+
+  const diaUnico = parseDia(filtros?.data);
+  const inicio = parseDia(filtros?.dataInicio);
+  const fim = parseDia(filtros?.dataFim);
+  if (inicio || fim) {
+    return {
+      ...(inicio ? { gte: startOfDay(inicio) } : {}),
+      ...(fim ? { lte: endOfDay(fim) } : {}),
+    };
+  }
+  if (diaUnico) return { gte: startOfDay(diaUnico), lte: endOfDay(diaUnico) };
+  return undefined;
 }
 
 function montarWhere(
@@ -111,15 +141,8 @@ function montarWhere(
     };
   }
 
-  if (filtros.data) {
-    const inicio = new Date(`${filtros.data}T00:00:00.000`);
-    const fim = new Date(`${filtros.data}T23:59:59.999`);
-
-    where.criadoEm = {
-      gte: inicio,
-      lte: fim,
-    };
-  }
+  const criadoEm = filtroDataCriacaoTicket(filtros);
+  if (criadoEm) where.criadoEm = criadoEm;
 
   return where;
 }
@@ -179,13 +202,6 @@ export const RELACOES_TICKET = {
 export type TicketComRelacoes = Prisma.TicketGetPayload<{
   include: typeof RELACOES_TICKET;
 }>;
-
-const RANKING_PRIORIDADE: Record<Prioridade, number> = {
-  [Prioridade.CRITICA]: 0,
-  [Prioridade.ALTA]: 1,
-  [Prioridade.MEDIA]: 2,
-  [Prioridade.BAIXA]: 3,
-};
 
 const includeListagem = {
   abertoPor: {
@@ -342,7 +358,7 @@ export class ServicoTicket {
     const itens = await this.db.ticket.findMany({
       where,
       include: includeListagem,
-      orderBy: [{ criadoEm: "desc" }],
+      orderBy: ORDEM_RECENTES_TICKET,
       skip: (pagina - 1) * itensPorPagina,
       take: Number(itensPorPagina),
     });
@@ -431,24 +447,27 @@ export class ServicoTicket {
     });
   }
 
-  async listarTodos(filtros?: FiltrosTicket) {
-    const where: Prisma.TicketWhereInput = montarWhere(filtros);
+  async listarTodos(filtros?: FiltrosTicket, extraWhere?: Prisma.TicketWhereInput) {
+    const filtrosWhere = montarWhere(filtros);
+    const where: Prisma.TicketWhereInput = extraWhere
+      ? { AND: [filtrosWhere, extraWhere] }
+      : filtrosWhere;
 
     const { pagina: paginaPedida, itensPorPagina } = normalizedPagination(
       filtros?.pagina,
       filtros?.itensPorPagina,
     );
 
-    const total = await prisma.ticket.count({ where });
+    const total = await this.db.ticket.count({ where });
 
     const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
 
     const pagina = Math.min(paginaPedida, totalPaginas);
 
-    const itens = await prisma.ticket.findMany({
+    const itens = await this.db.ticket.findMany({
       where,
       include: includeListagem,
-      orderBy: [{ criadoEm: "desc" }],
+      orderBy: ORDEM_RECENTES_TICKET,
       skip: (pagina - 1) * itensPorPagina,
       take: Number(itensPorPagina),
     });
@@ -471,9 +490,7 @@ export class ServicoTicket {
         projetoId,
       },
       include: RELACOES_TICKET,
-      orderBy: {
-        criadoEm: "desc",
-      },
+      orderBy: ORDEM_RECENTES_TICKET,
     });
   }
 

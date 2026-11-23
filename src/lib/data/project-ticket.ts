@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { servicoProjeto } from "../../services/projeto.service";
-import { servicoTicket } from "../../services/ticket.service";
+import { servicoTicket, type FiltrosDataTicket } from "../../services/ticket.service";
 import { toTicketDTO } from "../mappers/ticket.mapper";
 import type { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 
@@ -29,11 +29,10 @@ export async function getProjectById(id: string) {
   };
 }
 
-export interface FiltrosTicket {
+export interface FiltrosTicket extends FiltrosDataTicket {
   prioridade?: Prioridade;
   status?: StatusTicket;
   titulo?: string;
-  data?: string;
   pagina?: number;
   itensPorPagina?: number;
 }

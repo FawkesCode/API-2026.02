@@ -73,6 +73,9 @@ O objetivo é padronizar o processo, eliminar a necessidade de vários softwares
 |  22  |   Media    | Como TÉCNICO, quero que, ao adicionar algum time num ticket, eles recebam um email para que, quando eu necessitar de suporte de outro time, eles sejam notificados e possam me auxiliar.                         |     8      |   3    |
 |  23  |   Media    | Como ANALISTA DE SUPORTE INTERNO, quero poder desativar/ativar todos os perfis da empresa, para que eu possa gerenciar os perfis da plataforma.                                                                  |     5      |   3    |
 |  24  |   Media    | Como ANALISTA DE SUPORTE INTERNO, quero poder editar todos os perfis da empresa, para que eu possa manter a gerência dos perfis da plataforma.                                                                   |     5      |   3    |
+|  25  |   Media    | Como GESTOR, desejo ter uma tela de dashboards, com informações como quantidade de chamados criados, quantidade de chamados fechados, quantidade de chamados por SLA, quantidade de chamados pela duração real dele (do momento que foi aberto até encerrar), quantidade de chamados que passou do SLA, quantidade de chamados por ugência, para que eu possa ter ciência do estado da operação.|     8      |   3    |
+|  26  |   Media    | Como analista comercial, quero poder cadastrar clientes na plataforma, para que os clientes da empresa estejam cadastrados e seja possível atribuir projetos a eles.                                                           |     8      |   3    |
+|  27  |   Media    | Como técnico, quero poder adicionar mensagens padrões personalizadas, para que o meu trabalho nos Logs seja facilitado.|     8      |   3    |
 
 ---
 
@@ -101,8 +104,8 @@ O objetivo é padronizar o processo, eliminar a necessidade de vários softwares
 
 | Sprint          |    Período    |                    Documentação                     | Incremento |
 | --------------- | :-----------: | :-------------------------------------------------: | :--------: |
-| 🏃🏻 **Sprint 1** | 07/09 – 27/09 | [Sprint 1 docs](./docs/sprints/sprint-backlog-1.md) |      [Vídeo do Incremento entregue](https://youtu.be/NIUIERW4_Vs)      |
-| 🏃🏻 **Sprint 2** | 05/10 – 25/10 | [Sprint 2 docs](./docs/sprints/sprint-backlog-2.md) |            |
+| 🏃🏻 **Sprint 1** | 07/09 – 27/09 | [Sprint 1 docs](./docs/sprints/sprint-backlog-1.md) |[Vídeo do Incremento entregue](https://youtu.be/NIUIERW4_Vs)|
+| 🏃🏻 **Sprint 2** | 05/10 – 25/10 | [Sprint 2 docs](./docs/sprints/sprint-backlog-2.md) |[Vídeo do Incremento entregue](https://youtu.be/xr9Kutc1KDg)|
 | 🏃🏻 **Sprint 3** | 02/11 – 22/11 | [Sprint 3 docs](./docs/sprints/sprint-backlog-3.md) |            |
 
 <br>
