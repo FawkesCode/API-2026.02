@@ -10,6 +10,8 @@ import TicketsPerStatus from "./tickets-per-status";
 import EstimatedReal from "./estimated-real";
 import {
   mapEquipesParaGrafico,
+  mapSlaEstimadoVsRealParaGrafico,
+  mapSlaParaGrafico,
   mapStatusParaGrafico,
   mapUrgenciaParaGrafico,
 } from "@/lib/mappers/dashboard.mapper";
@@ -20,7 +22,15 @@ interface DashboardViewProps {
 }
 
 function DashboardView({ dados }: DashboardViewProps) {
-  const { volume, porStatus, abertosPorEquipe, porUrgencia } = dados;
+  const {
+    volume,
+    porStatus,
+    abertosPorEquipe,
+    porUrgencia,
+    porSla,
+    resumoSla,
+    slaEstimadoVsReal,
+  } = dados;
 
   return (
     <div className="flex flex-col gap-6">
@@ -37,10 +47,16 @@ function DashboardView({ dados }: DashboardViewProps) {
             icon={Hourglass}
             url="?status=SOLICITACAO_ENCERRAMENTO"
           />
-          {/* Acredito que para esses dois, precisa-se de um novo filtro na página de tickets. (Assim como é feito acima, o clique de "ver todos" é feito utilizando os próprios filtros de url da aba ticket) */}
-          {/* SLA: valores ainda mockados, falta agregação no back */}
-          <KpiCard title="Fora do SLA" qtd={30} icon={TriangleAlert} />
-          <KpiCard title="Próximo do SLA" qtd={50} icon={Clock8} />
+          <KpiCard
+            title="Fora do SLA"
+            qtd={resumoSla.foraDoSla}
+            icon={TriangleAlert}
+          />
+          <KpiCard
+            title="Próximo do SLA"
+            qtd={resumoSla.proximoDoSla}
+            icon={Clock8}
+          />
         </div>
         <TicketsPerUrgency data={mapUrgenciaParaGrafico(porUrgencia)} />
       </section>
@@ -61,12 +77,11 @@ function DashboardView({ dados }: DashboardViewProps) {
           <TicketsPerTeam data={mapEquipesParaGrafico(abertosPorEquipe)} />
         </ChartsCardContainer>
 
-        {/* SLA: ainda mockado */}
         <ChartsCardContainer
           title="Tickets por SLA"
           className=" justify-between lg:w-[50%] lg:ml-2 2xl:w-auto"
         >
-          <TicketsPerSla />
+          <TicketsPerSla data={mapSlaParaGrafico(porSla)} />
         </ChartsCardContainer>
 
         <ChartsCardContainer
@@ -81,12 +96,13 @@ function DashboardView({ dados }: DashboardViewProps) {
       </section>
 
       <section className="pb-8">
-        {/* SLA: ainda mockado */}
         <ChartsCardContainer
           title="SLA Estimado vs. Tempo Real"
           className="w-full 2xl:w-[50%]"
         >
-          <EstimatedReal />
+          <EstimatedReal
+            data={mapSlaEstimadoVsRealParaGrafico(slaEstimadoVsReal)}
+          />
         </ChartsCardContainer>
       </section>
     </div>

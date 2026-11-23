@@ -1,10 +1,13 @@
 import { servicoDashboard } from "@/services/dashboard.service";
 import type {
   AgregacaoAbertosPorEquipeDashboard,
+  AgregacaoSlaDashboard,
+  AgregacaoSlaEstimadoVsRealDashboard,
   AgregacaoStatusDashboard,
   AgregacaoUrgenciaDashboard,
   AgregacoesVolumeStatusUrgenciaDashboard,
   FiltrosDashboard,
+  ResumoSlaDashboard,
 } from "@/types/dashboard";
 
 export type { FiltrosDashboard };
@@ -92,5 +95,46 @@ export async function getTicketsPorUrgencia(
       erro,
     );
     throw new Error("Não foi possível carregar os chamados por urgência.");
+  }
+}
+
+export async function getTicketsPorSla(
+  filtros?: FiltrosDashboard,
+): Promise<AgregacaoSlaDashboard> {
+  try {
+    return await servicoDashboard.agruparPorSla(filtros);
+  } catch (erro) {
+    console.error(
+      "[getTicketsPorSla] Erro ao agrupar chamados por SLA:",
+      erro,
+    );
+    throw new Error("Não foi possível carregar os chamados por SLA.");
+  }
+}
+
+export async function getResumoSla(
+  filtros?: FiltrosDashboard,
+): Promise<ResumoSlaDashboard> {
+  try {
+    return await servicoDashboard.contarResumoSla(filtros);
+  } catch (erro) {
+    console.error("[getResumoSla] Erro ao calcular resumo de SLA:", erro);
+    throw new Error("Não foi possível carregar o resumo de SLA.");
+  }
+}
+
+export async function getSlaEstimadoVsReal(
+  filtros?: FiltrosDashboard,
+): Promise<AgregacaoSlaEstimadoVsRealDashboard> {
+  try {
+    return await servicoDashboard.agruparSlaEstimadoVsReal(filtros);
+  } catch (erro) {
+    console.error(
+      "[getSlaEstimadoVsReal] Erro ao agrupar SLA estimado vs tempo real:",
+      erro,
+    );
+    throw new Error(
+      "Não foi possível carregar o comparativo de SLA estimado vs tempo real.",
+    );
   }
 }
