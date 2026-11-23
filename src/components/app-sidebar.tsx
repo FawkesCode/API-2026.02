@@ -17,10 +17,12 @@ import {
   House,
   LogOut,
   LucideIcon,
+  MessageSquareText,
   Ticket,
   UserCog,
   UserRound,
   Users,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,7 +31,12 @@ import LogoSidebar from "./logo-sidebar";
 import { cn } from "cn";
 import LogoFawkes from "./logo-fawkes";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { podeVerMinhaEquipe, podeVerUsuarios } from "@/lib/access-control";
+import {
+  podeCadastrarMensagensLog,
+  podeGerenciarClientes,
+  podeVerMinhaEquipe,
+  podeVerUsuarios,
+} from "@/lib/access-control";
 import { useState } from "react";
 
 interface NavItem {
@@ -49,12 +56,24 @@ export function AppSidebar() {
   const items: NavItem[] = [
     { title: "Dashboard", url: "/dashboard", icon: House },
     { title: "Projetos", url: "/projetos", icon: ClipboardList },
+    ...(podeGerenciarClientes(loggedUser?.cargo)
+      ? [{ title: "Clientes", url: "/clientes", icon: Building2 }]
+      : []),
     { title: "Tickets", url: "/tickets", icon: Ticket },
     ...(podeVerMinhaEquipe(loggedUser?.cargo)
       ? [{ title: "Minha Equipe", url: "/equipe", icon: Users }]
       : []),
     ...(podeVerUsuarios(loggedUser?.cargo)
       ? [{ title: "Usuários", url: "/usuarios", icon: UserCog }]
+      : []),
+    ...(podeCadastrarMensagensLog(loggedUser?.cargo)
+      ? [
+          {
+            title: "Mensagens Padrão",
+            url: "/mensagens-log",
+            icon: MessageSquareText,
+          },
+        ]
       : []),
     { title: "Perfil", url: "/perfil", icon: UserRound },
   ];

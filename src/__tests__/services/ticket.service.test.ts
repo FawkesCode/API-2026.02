@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import {
   ErroConflitoPrioridade,
   ErroNaoAutorizadoParaAlterarPrioridade,
+  ErroNaoAutorizadoParaGerenciarEquipes,
+  ErroRelatorioEquipeInvalido,
   ErroTicketEncerrado,
   ServicoTicket,
 } from "@/services/ticket.service";
@@ -389,6 +391,75 @@ describe("ordenação das listas de tickets", () => {
       "media",
       "baixa",
     ]);
+  });
+});
+
+describe("menção de equipe por técnico", () => {
+  const tecnico = { ativo: true, cargo: Cargo.TECNICO, equipeId };
+  const destinoId = "outra-equipe";
+
+  function setup(usuario = tecnico, jaAssociada = false) {
+    const ticket = {
+      id: ticketId,
+      titulo: "Falha no equipamento",
+      descricao: "Descrição do ticket",
+      status: StatusTicket.EM_ANDAMENTO,
+      equipesAlocadas: [{ equipeId }, ...(jaAssociada ? [{ equipeId: destinoId }] : [])],
+    };
+    const { banco, transacao } = criarBanco(usuario);
+    transacao.ticket.findUnique.mockResolvedValue(ticket);
+    const create = vi.fn();
+    const deleteMany = vi.fn();
+    const db = {
+      ...banco,
+      ticket: { ...banco.ticket, findUniqueOrThrow: vi.fn().mockResolvedValue(ticket) },
+      $transaction: vi.fn(async (callback) => callback({
+        ...transacao,
+        equipe: { findUnique: vi.fn().mockResolvedValue({ ativo: true, nome: "Suporte" }) },
+        ticketEquipe: { create, deleteMany },
+        atividadeConta: { create: vi.fn() },
+      })),
+    };
+    return { servico: new ServicoTicket(db as unknown as BancoTicket), create, deleteMany };
+  }
+
+  it("vincula a equipe e encaminha o motivo informado para a notificação existente", async () => {
+    const { servico, create } = setup();
+
+    await expect(servico.atribuirEquipe(ticketId, destinoId, gestorId, "  Precisamos de apoio.  "))
+      .resolves.toMatchObject({ jaAlocada: false, notificarEmail: true, relatorio: "Precisamos de apoio." });
+    expect(create).toHaveBeenCalledExactlyOnceWith({ data: { ticketId, equipeId: destinoId } });
+  });
+
+  it("não volta a vincular ou notificar uma equipe já associada", async () => {
+    const { servico, create } = setup(tecnico, true);
+    await expect(servico.atribuirEquipe(ticketId, destinoId, gestorId, "Apoio"))
+      .resolves.toMatchObject({ jaAlocada: true, notificarEmail: false });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("exige o relatório do técnico mesmo quando o ticket tem descrição", async () => {
+    const { servico, create } = setup();
+    await expect(servico.atribuirEquipe(ticketId, destinoId, gestorId))
+      .rejects.toBeInstanceOf(ErroRelatorioEquipeInvalido);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it.each([{ ...tecnico, equipeId: "equipe-externa" }, { ...tecnico, ativo: false }])(
+    "rejeita técnico inativo ou de fora do ticket (%#)",
+    async (usuario) => {
+      const { servico, create } = setup(usuario);
+      await expect(servico.atribuirEquipe(ticketId, destinoId, gestorId, "Apoio"))
+        .rejects.toBeInstanceOf(ErroNaoAutorizadoParaGerenciarEquipes);
+      expect(create).not.toHaveBeenCalled();
+    },
+  );
+
+  it("mantém a remoção de equipes restrita a gestores", async () => {
+    const { servico, deleteMany } = setup(tecnico, true);
+    await expect(servico.desatribuirEquipe(ticketId, destinoId, gestorId))
+      .rejects.toBeInstanceOf(ErroNaoAutorizadoParaGerenciarEquipes);
+    expect(deleteMany).not.toHaveBeenCalled();
   });
 });
 

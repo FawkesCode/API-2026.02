@@ -37,7 +37,7 @@ export default async function Page({ searchParams }: PageProps) {
   return (
     <>
       <PageHeader>Dashboard</PageHeader>
-      <section className="flex flex-col gap-6">
+      <section className="flex flex-col gap-6 ">
         {/* Filtros desejados pelo cliente: cada equipe (todas como padrão), por usuário, por projeto, por cliente e por data (padrão: mês vigente). OBS: o DashboardFilter nasceu de uma refatoração rápida do TicketFilter. */}
         <Suspense fallback={null}>
           <DashboardFilter />

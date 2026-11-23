@@ -226,20 +226,27 @@ const includeListagem = {
   },
 } satisfies Prisma.TicketInclude;
 
-async function exigirGestorDoTicket(
+async function exigirMembroDoTicket(
   tx: Prisma.TransactionClient,
   equipesDoTicket: { equipeId: string }[],
   usuarioId: string,
+  acao: "atribuir" | "desatribuir",
 ) {
-  const gestor = await tx.usuario.findUnique({ where: { id: usuarioId } });
+  const usuario = await tx.usuario.findUnique({ where: { id: usuarioId } });
   if (
-    !gestor?.ativo ||
-    gestor.cargo !== Cargo.GESTOR ||
-    !gestor.equipeId ||
-    !equipesDoTicket.some((e) => e.equipeId === gestor.equipeId)
+    !usuario?.ativo ||
+    (usuario.cargo !== Cargo.GESTOR &&
+      !(acao === "atribuir" && usuario.cargo === Cargo.TECNICO)) ||
+    !usuario.equipeId ||
+    !equipesDoTicket.some((e) => e.equipeId === usuario.equipeId)
   ) {
-    throw new ErroNaoAutorizadoParaGerenciarEquipes();
+    throw new ErroNaoAutorizadoParaGerenciarEquipes(
+      acao === "atribuir"
+        ? "Apenas técnicos ou gestores de uma equipe do ticket podem atribuir equipes."
+        : "Apenas o gestor de uma equipe do ticket pode desatribuir equipes.",
+    );
   }
+  return usuario;
 }
 
 export class ServicoTicket {
@@ -284,7 +291,15 @@ export class ServicoTicket {
     });
   }
 
-  async buscarTicketsDaEquipeDoUsuario(usuarioId: string) {
+  async buscarTicketsDaEquipeDoUsuario(
+    usuarioId: string,
+    filtros?: Pick<FiltrosTicket, "pagina" | "itensPorPagina">,
+  ) {
+    const { pagina: paginaPedida, itensPorPagina } = normalizedPagination(
+      filtros?.pagina,
+      filtros?.itensPorPagina,
+    );
+
     const usuario = await this.db.usuario.findUnique({
       where: { id: usuarioId },
       select: {
@@ -300,30 +315,51 @@ export class ServicoTicket {
     });
 
     if (!usuario?.ativo || !usuario.equipe?.ativo) {
-      return { equipe: null, tickets: [] };
+      return {
+        equipe: null,
+        itens: [],
+        total: 0,
+        pagina: 1,
+        totalPaginas: 1,
+        itensPorPagina,
+      };
     }
 
-    const tickets = await this.db.ticket.findMany({
-      // Um ticket pode estar alocado a equipes diferentes da equipe do projeto.
-      // A listagem deve considerar a alocação do ticket, não a equipe do projeto.
-      where: {
-        equipesAlocadas: {
-          some: { equipeId: usuario.equipe.id },
+    const where: Prisma.TicketWhereInput = {
+      equipesAlocadas: {
+        some: {
+          equipeId: usuario.equipe.id,
         },
       },
-      orderBy: { criadoEm: "desc" },
-      include: RELACOES_TICKET,
+    };
+
+    const total = await this.db.ticket.count({ where });
+
+    const totalPaginas = Math.max(1, Math.ceil(total / itensPorPagina));
+
+    const pagina = Math.min(paginaPedida, totalPaginas);
+
+    const itens = await this.db.ticket.findMany({
+      where,
+      include: includeListagem,
+      orderBy: [{ criadoEm: "desc" }],
+      skip: (pagina - 1) * itensPorPagina,
+      take: Number(itensPorPagina),
     });
 
     return {
       equipe: usuario.equipe,
-      tickets: ordenarTicketsPorPrioridade(tickets),
+      itens,
+      total,
+      pagina,
+      totalPaginas,
+      itensPorPagina,
     };
   }
 
   async listarPorEquipeDoUsuario(usuarioId: string) {
-    const { tickets } = await this.buscarTicketsDaEquipeDoUsuario(usuarioId);
-    return tickets;
+    const { itens } = await this.buscarTicketsDaEquipeDoUsuario(usuarioId);
+    return itens;
   }
 
   async atualizarPrioridade(
@@ -542,11 +578,12 @@ export class ServicoTicket {
         });
         if (!ticket) return null;
 
-        await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+        const autor = await exigirMembroDoTicket(tx, ticket.equipesAlocadas, usuarioId, "atribuir");
         if (ticket.status === StatusTicket.ENCERRADO)
           throw new ErroTicketEncerrado();
 
-        const relatorioEfetivo = relatorio?.trim() || ticket.descricao?.trim();
+        const relatorioEfetivo = relatorio?.trim() ||
+          (autor.cargo === Cargo.GESTOR ? ticket.descricao?.trim() : undefined);
         if (!relatorioEfetivo) throw new ErroRelatorioEquipeInvalido();
 
         const equipe = await tx.equipe.findUnique({
@@ -677,7 +714,7 @@ export class ServicoTicket {
       });
       if (!ticket) return null;
 
-      await exigirGestorDoTicket(tx, ticket.equipesAlocadas, usuarioId);
+      await exigirMembroDoTicket(tx, ticket.equipesAlocadas, usuarioId, "desatribuir");
       if (ticket.status === StatusTicket.ENCERRADO)
         throw new ErroTicketEncerrado();
 
@@ -712,9 +749,7 @@ export class ServicoTicket {
 }
 
 export class ErroNaoAutorizadoParaGerenciarEquipes extends Error {
-  constructor(
-    message = "Apenas o gestor de uma equipe do ticket pode atribuir ou desatribuir equipes.",
-  ) {
+  constructor(message: string) {
     super(message);
     this.name = "ErroNaoAutorizadoParaGerenciarEquipes";
   }

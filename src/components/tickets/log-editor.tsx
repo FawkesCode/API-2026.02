@@ -20,6 +20,8 @@ import {
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MensagensPadraoLog } from "@/components/tickets/mensagens-padrao-log";
+import { textoParaParagrafos } from "@/lib/mensagens-padrao-log-client";
 
 interface LogEditorProps {
   onEnviar?: (log: {
@@ -27,6 +29,8 @@ interface LogEditorProps {
     conteudo: string;
   }) => Promise<void> | void;
   className?: string;
+  /** Mostra o atalho de mensagens padrão (só para cargos aceitos pela API). */
+  mostrarMensagensPadrao?: boolean;
 }
 
 interface ErrosLog {
@@ -52,7 +56,11 @@ function validarLog(titulo: string, editor: Editor): ErrosLog {
   return erros;
 }
 
-function LogEditor({ onEnviar, className }: LogEditorProps) {
+function LogEditor({
+  onEnviar,
+  className,
+  mostrarMensagensPadrao = false,
+}: LogEditorProps) {
   const [titulo, setTitulo] = useState("");
   const [erros, setErros] = useState<ErrosLog>({});
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
@@ -80,6 +88,12 @@ function LogEditor({ onEnviar, className }: LogEditorProps) {
           : anteriores,
       ),
   });
+
+  // Mensagem padrão entra no ponto do cursor; o técnico revisa e envia.
+  function inserirMensagemPadrao(mensagem: string) {
+    if (!editor) return;
+    editor.chain().focus().insertContent(textoParaParagrafos(mensagem)).run();
+  }
 
   async function enviar() {
     if (!editor) return;
@@ -166,23 +180,31 @@ function LogEditor({ onEnviar, className }: LogEditorProps) {
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-3 z-10">
-        {erroEnvio && (
-          <p
-            role="alert"
-            className="mr-auto text-sm font-medium text-destructive"
-          >
-            {erroEnvio}
-          </p>
+      <div className="flex flex-wrap items-center gap-3 z-10">
+        {mostrarMensagensPadrao && (
+          <MensagensPadraoLog
+            onInserir={inserirMensagemPadrao}
+            disabled={!editor || enviando}
+          />
         )}
-        <Button
-          type="button"
-          onClick={enviar}
-          disabled={!editor || enviando}
-          className="bg-cyan-400 text-white hover:bg-cyan-500 cursor-pointer"
-        >
-          {enviando ? "Enviando..." : "Enviar"}
-        </Button>
+        <div className="ml-auto flex items-center gap-3">
+          {erroEnvio && (
+            <p
+              role="alert"
+              className="text-sm font-medium text-destructive"
+            >
+              {erroEnvio}
+            </p>
+          )}
+          <Button
+            type="button"
+            onClick={enviar}
+            disabled={!editor || enviando}
+            className="bg-cyan-400 text-white hover:bg-cyan-500 cursor-pointer"
+          >
+            {enviando ? "Enviando..." : "Enviar"}
+          </Button>
+        </div>
       </div>
     </div>
   );

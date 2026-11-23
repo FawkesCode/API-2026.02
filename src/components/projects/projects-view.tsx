@@ -20,7 +20,6 @@ export interface ProjectInfo {
 
 interface ProjectsClientProps {
   projects: ProjectInfo[];
-  clients: SelectInterface[];
   supervisors: SelectInterface[];
   podeCriar: boolean;
   page: number;
@@ -32,7 +31,6 @@ interface ProjectsClientProps {
 
 function ProjectsView({
   projects,
-  clients,
   supervisors,
   podeCriar,
   page,
@@ -54,7 +52,6 @@ function ProjectsView({
             <div className="justify-self-end">
               <ProjectFormDialog
                 onSuccess={handleSuccess}
-                clientsData={clients}
                 supervisorsData={supervisors}
               />
             </div>

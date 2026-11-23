@@ -20,9 +20,11 @@ export function proxy(requisicao: NextRequest) {
 export const config = {
   matcher: [
     "/projetos/:path*",
+    "/clientes/:path*",
     "/tickets/:path*",
     "/equipe/:path*",
     "/usuarios/:path*",
     "/perfil/:path*",
+    "/mensagens-log/:path*",
   ],
 };

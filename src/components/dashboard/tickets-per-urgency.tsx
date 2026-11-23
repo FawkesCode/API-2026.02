@@ -32,7 +32,7 @@ function TicketsPerUrgency({
   data?: TicketsPerUrgencyData[];
 }) {
   return (
-    <Card className="flex-1 flex flex-col gap-2 pt-4">
+    <Card className="xl:flex-1 flex flex-col gap-2 pt-4 min-h-75  xl:min-h-50">
       <CardTitle className="px-6 ">
         <h3 className="text-accent font-bold">Tickets por urgência</h3>
         <div className="my-2 h-px w-full bg-linear-to-r from-accent to-cyan-300/10" />

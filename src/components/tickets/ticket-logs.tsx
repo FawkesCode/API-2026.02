@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "cn";
 import { LogEditor } from "@/components/tickets/log-editor";
+import { MencionarEquipeTicket } from "@/components/tickets/mencionar-equipe-ticket";
 import { LogState } from "@/components/tickets/log-states";
 import { LogSuggestion } from "@/components/tickets/log-suggestions";
 import UserMessages from "@/components/tickets/user-messages";
@@ -77,6 +78,10 @@ interface TicketLogsProps {
   status: string;
   podeRegistrar: boolean;
   podeDecidir: boolean;
+  podeMencionarEquipe: boolean;
+  /** Cargo aceito por /api/mensagens-log; sem ele o botão nem aparece. */
+  podeUsarMensagensPadrao: boolean;
+  equipesAssociadas: string[];
   /** Se a equipe do usuário já enviou "começou a trabalhar" neste ticket. */
   equipeIniciou: boolean;
   className?: string;
@@ -90,6 +95,9 @@ function TicketLogs({
   status,
   podeRegistrar,
   podeDecidir,
+  podeMencionarEquipe,
+  podeUsarMensagensPadrao,
+  equipesAssociadas,
   equipeIniciou,
 }: TicketLogsProps) {
   const router = useRouter();
@@ -142,11 +150,7 @@ function TicketLogs({
 
     const primeiraRenderizacao = !jaRenderizou.current;
 
-    if (
-      primeiraRenderizacao ||
-      forcarRolagem.current ||
-      pertoDoFim.current
-    ) {
+    if (primeiraRenderizacao || forcarRolagem.current || pertoDoFim.current) {
       rolagemDoCodigo.current = true;
       pertoDoFim.current = true;
       lista.scrollTo({
@@ -222,18 +226,16 @@ function TicketLogs({
   }
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
+    <div className={cn("flex min-h-0 flex-1 flex-col ", className)}>
       <section
         ref={listaRef}
         onScroll={aoRolar}
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto scrollbar-none border-x border-gray-200 bg-slate-100 p-6",
+          "flex lg:min-h-0 flex-1 flex-col gap-4 overflow-y-auto min-h-96! scrollbar-none border-x border-gray-200 bg-slate-100 p-6",
           !mostrarAreaDeEnvio && "rounded-b-md border-b",
         )}
       >
-        <h3 className="font-bold text-card-foreground">
-          LOGS DE ATIVIDADE
-        </h3>
+        <h3 className="font-bold text-card-foreground">LOGS DE ATIVIDADE</h3>
 
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -273,7 +275,10 @@ function TicketLogs({
 
       {mostrarAreaDeEnvio && autor && (
         <section className="shrink-0 rounded-b-md border border-gray-200 bg-white p-6">
-          {(podeIniciar || podeSolicitarEncerramento || podeDecidirAgora) && (
+          {(podeIniciar ||
+            podeSolicitarEncerramento ||
+            podeDecidirAgora ||
+            podeMencionarEquipe) && (
             <div className="flex flex-wrap gap-2 pb-4">
               {podeIniciar && (
                 <LogSuggestion
@@ -301,6 +306,13 @@ function TicketLogs({
                 >
                   Enviar &quot;Solicito encerramento do ticket&quot;
                 </LogSuggestion>
+              )}
+
+              {podeMencionarEquipe && (
+                <MencionarEquipeTicket
+                  ticketId={ticketId}
+                  equipesAssociadas={equipesAssociadas}
+                />
               )}
 
               {podeDecidirAgora && (
@@ -382,7 +394,10 @@ function TicketLogs({
             </p>
           )}
 
-          <LogEditor onEnviar={enviarLogManual} />
+          <LogEditor
+            onEnviar={enviarLogManual}
+            mostrarMensagensPadrao={podeUsarMensagensPadrao}
+          />
         </section>
       )}
     </div>
