@@ -82,11 +82,9 @@ function extrairProjectId(info: TicketRes): string | undefined {
 export function toTicketDTO(info: TicketRes): TicketView {
   const ticketComRelacoes = "abertoPor" in info && "equipesAlocadas" in info;
 
-  const teamsArray = [];
-  if (ticketComRelacoes)
-    for (const [key, equipes] of Object.entries(info.equipesAlocadas)) {
-      teamsArray.push({ id: equipes.equipe.id, nome: equipes.equipe.nome });
-    }
+  const teamsArray = ticketComRelacoes
+    ? info.equipesAlocadas.map(({ equipe }) => ({ id: equipe.id, nome: equipe.nome }))
+    : [];
 
   return {
     id: info.id,
@@ -114,7 +112,7 @@ export function toTicketDTO(info: TicketRes): TicketView {
 
     createdById: ticketComRelacoes ? info.abertoPorId : "",
 
-    teams: ticketComRelacoes ? teamsArray : [],
+    teams: teamsArray,
 
     status:
       TicketStatusLabel[info.status as keyof typeof TicketStatusLabel] ??
@@ -126,13 +124,17 @@ export function toTicketDTO(info: TicketRes): TicketView {
       ] ?? "Não definido",
 
     description: info.descricao,
-    recentLogs: "historico" in info && Array.isArray(info.historico)
-      ? info.historico.map((log: any) => toLogItem(log)).slice(0, 2).map((log: any) => ({
-          title: log.titulo,
-          sentBy: log.tipo === "manual" ? log.autorNome : "Sistema",
-          sentAt: log.criadoEm,
-        }))
-      : [],
+    recentLogs:
+      "historico" in info && Array.isArray(info.historico)
+        ? info.historico
+            .slice(0, 2)
+            .map((log) => toLogItem({ equipe: null, ...log }))
+            .map((log) => ({
+              title: log.titulo,
+              sentBy: log.tipo === "manual" ? log.autorNome : "Sistema",
+              sentAt: log.criadoEm,
+            }))
+        : [],
     projectId: extrairProjectId(info),
   };
 }

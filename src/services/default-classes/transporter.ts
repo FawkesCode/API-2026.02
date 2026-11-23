@@ -29,7 +29,6 @@ export default class CreateTransporter {
           },
         }
       : {}),
-    family: 4,
     connectionTimeout: 5000,
   });
 }

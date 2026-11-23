@@ -8,6 +8,7 @@ import {
   startOfMonth,
 } from "date-fns";
 import { prisma } from "@/lib/prisma";
+import type { IndicadorTickets } from "@/lib/dashboard-ticket-link";
 import { janelaAlertaSlaMs } from "@/lib/sla-alert-window";
 import {
   Prioridade,
@@ -263,34 +264,28 @@ interface TicketDadosSla {
   encerradoEm: Date | null;
 }
 
-function montarResumoSla(
-  tickets: TicketDadosSla[],
+function classificarResumoSla(
+  ticket: TicketDadosSla,
   agora: Date,
-): ResumoSlaDashboard {
-  const agoraMs = agora.getTime();
-  let foraDoSla = 0;
-  let proximoDoSla = 0;
-
-  for (const ticket of tickets) {
-    if (ticket.status === StatusTicket.ENCERRADO) {
-      if (ticket.encerradoEm && ticket.encerradoEm.getTime() > ticket.slaEm.getTime()) {
-        foraDoSla++;
-      }
-      continue;
-    }
-
-    const tempoRestanteMs = ticket.slaEm.getTime() - agoraMs;
-    if (tempoRestanteMs <= 0) {
-      foraDoSla++;
-    } else if (tempoRestanteMs <= janelaAlertaSlaMs(ticket.criadoEm, ticket.slaEm)) {
-      proximoDoSla++;
-    }
+): "foraDoSla" | "proximoDoSla" | undefined {
+  if (ticket.status === StatusTicket.ENCERRADO) {
+    return ticket.encerradoEm && ticket.encerradoEm.getTime() > ticket.slaEm.getTime()
+      ? "foraDoSla"
+      : undefined;
   }
 
-  return {
-    foraDoSla,
-    proximoDoSla,
-  };
+  const tempoRestanteMs = ticket.slaEm.getTime() - agora.getTime();
+  if (tempoRestanteMs <= 0) return "foraDoSla";
+  if (tempoRestanteMs <= janelaAlertaSlaMs(ticket.criadoEm, ticket.slaEm)) return "proximoDoSla";
+}
+
+function montarResumoSla(tickets: TicketDadosSla[], agora: Date): ResumoSlaDashboard {
+  const resultado = { foraDoSla: 0, proximoDoSla: 0 };
+  for (const ticket of tickets) {
+    const classificacao = classificarResumoSla(ticket, agora);
+    if (classificacao) resultado[classificacao]++;
+  }
+  return resultado;
 }
 
 function montarSlaEstimadoVsReal(
@@ -404,6 +399,26 @@ export class ServicoDashboard {
     });
 
     return montarAgregacaoSla(tickets);
+  }
+
+  async whereTicketsDoIndicador(
+    indicador: IndicadorTickets,
+    filtros: FiltrosDashboard,
+    agora: Date = new Date(),
+  ): Promise<Prisma.TicketWhereInput> {
+    const where = montarWhereDashboard(filtros);
+    if (indicador === "total") return where;
+    if (indicador === "encerramento") {
+      return { ...where, status: StatusTicket.SOLICITACAO_ENCERRAMENTO };
+    }
+
+    const tickets = await this.db.ticket.findMany({
+      where,
+      select: { id: true, status: true, criadoEm: true, slaEm: true, encerradoEm: true },
+    });
+    const ids = tickets.filter((ticket) => classificarResumoSla(ticket, agora) === indicador)
+      .map((ticket) => ticket.id);
+    return { ...where, id: { in: ids } };
   }
 
   async contarResumoSla(

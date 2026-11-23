@@ -5,8 +5,6 @@ import TicketFilter from "@/components/tickets/ticket-filter";
 import { getProjectById, getProjectTickets } from "@/lib/data/project-ticket";
 import type { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 import DefaultPagination from "@/components/default-pagination";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export interface PageProps {
   params: Promise<{ id: string }>;
@@ -15,6 +13,8 @@ export interface PageProps {
     status?: string;
     titulo?: string;
     data?: string;
+    dataInicio?: string;
+    dataFim?: string;
     pagina: number;
     itensPorPagina: number;
   }>;
@@ -31,6 +31,8 @@ async function page({ params, searchParams }: PageProps) {
       status: filtros.status as StatusTicket | undefined,
       titulo: filtros.titulo,
       data: filtros.data,
+      dataInicio: filtros.dataInicio,
+      dataFim: filtros.dataFim,
       pagina: filtros.pagina,
       itensPorPagina: filtros.itensPorPagina,
     });
@@ -55,7 +57,7 @@ async function page({ params, searchParams }: PageProps) {
             ))
           ) : (
             <p className="col-span-full pl-2 text-sm text-muted-foreground">
-              Nenhum ticket cadastrado para o projeto {title} ainda!
+              Nenhum ticket encontrado para o projeto {title}.
             </p>
           )}
         </section>

@@ -46,6 +46,7 @@ interface TicketFilterProps {
    * (rotas que começam com /tickets usam "tickets", o resto usa "projetos").
    */
   variant?: "tickets" | "projetos";
+  indicadorDashboard?: string;
 }
 
 interface ProjetoFilterComboboxProps {
@@ -66,15 +67,12 @@ export function ProjetoFilterCombobox({
   onSelect,
   onClear,
 }: ProjetoFilterComboboxProps) {
-  const [busca, setBusca] = useState("");
+  const [rascunhoBusca, setBusca] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const projetoSelecionado = projetos.find((projeto) => projeto.id === value);
 
-  useEffect(() => {
-    setBusca(projetoSelecionado ? projetoSelecionado.nome : "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  const busca = (aberto ? rascunhoBusca : null) ?? projetoSelecionado?.nome ?? "";
 
   useEffect(() => {
     function aoClicarFora(evento: MouseEvent) {
@@ -108,7 +106,7 @@ export function ProjetoFilterCombobox({
         className="rounded-xl peer pl-5 placeholder-transparent! min-h-11 p-3 pr-8"
         placeholder="Projeto"
         value={busca}
-        onFocus={() => setAberto(true)}
+        onFocus={() => { setBusca(null); setAberto(true); }}
         onChange={(evento) => {
           setBusca(evento.target.value);
           setAberto(true);
@@ -172,7 +170,7 @@ export function ProjetoFilterCombobox({
   );
 }
 
-export default function TicketFilter({ variant }: TicketFilterProps = {}) {
+export default function TicketFilter({ variant, indicadorDashboard }: TicketFilterProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -220,13 +218,13 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
   const [tituloInput, setTituloInput] = useState(titulo);
   const [localInput, setLocalInput] = useState(localInstalacao);
 
-  useEffect(() => {
-    setTituloInput(titulo);
-  }, [titulo]);
-
-  useEffect(() => {
-    setLocalInput(localInstalacao);
-  }, [localInstalacao]);
+  // Ajusta o rascunho quando a URL muda externamente (ex.: voltar no navegador).
+  const [filtrosTexto, setFiltrosTexto] = useState({ titulo, localInstalacao });
+  if (filtrosTexto.titulo !== titulo || filtrosTexto.localInstalacao !== localInstalacao) {
+    setFiltrosTexto({ titulo, localInstalacao });
+    if (filtrosTexto.titulo !== titulo) setTituloInput(titulo);
+    if (filtrosTexto.localInstalacao !== localInstalacao) setLocalInput(localInstalacao);
+  }
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -298,6 +296,7 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
   }
 
   const algumFiltroAtivo = !!(
+    indicadorDashboard ||
     prioridade ||
     status ||
     titulo ||
@@ -358,6 +357,13 @@ export default function TicketFilter({ variant }: TicketFilterProps = {}) {
       </CardHeader>
       {mostrarFiltrosDeTicket ? (
         <CardContent className="flex flex-col gap-5">
+          {indicadorDashboard && (
+            <p className="text-sm text-muted-foreground">
+              Recorte do Dashboard: <strong>{indicadorDashboard}</strong>
+              {searchParams.get("clienteId") && " · Cliente selecionado"}
+              {searchParams.get("usuarioId") && " · Usuário selecionado"}
+            </p>
+          )}
           <Collapsible open={aberto} onOpenChange={setAberto}>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-5">
               <FilterInput

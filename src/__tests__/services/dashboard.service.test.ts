@@ -4,6 +4,7 @@ import { Prioridade, StatusTicket } from "@/lib/generated/prisma/client";
 import { FAIXA_SLA_DASHBOARD } from "@/types/dashboard";
 import {
   applyDefaultDashboardFilters,
+  classificarFaixaSla,
   montarWhereDashboard,
   resolverIntervaloDatasDashboard,
   ServicoDashboard,

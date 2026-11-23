@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format, isValid } from "date-fns";
 import { X } from "lucide-react";
@@ -46,32 +46,37 @@ export default function UsuariosFilter() {
     : { inicio: paraData(dataParam) };
 
   const [buscaInput, setBuscaInput] = useState(busca);
-
-  useEffect(() => {
+  const [buscaAnterior, setBuscaAnterior] = useState(busca);
+  if (busca !== buscaAnterior) {
+    setBuscaAnterior(busca);
     setBuscaInput(busca);
-  }, [busca]);
+  }
+
+  const queryAtual = searchParams.toString();
+  // Qualquer mudança de filtro volta para a página 1.
+  const updateParams = useCallback(
+    (alteracoes: Record<string, string | undefined>) => {
+      const params = new URLSearchParams(queryAtual);
+      Object.entries(alteracoes).forEach(([chave, valor]) => {
+        if (valor) params.set(chave, valor);
+        else params.delete(chave);
+      });
+      params.delete("pagina");
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, {
+        scroll: false,
+      });
+    },
+    [pathname, queryAtual, router],
+  );
 
   useEffect(() => {
+    if (buscaInput === busca) return;
     const timeout = setTimeout(() => {
-      if (buscaInput !== busca) updateParam("busca", buscaInput || undefined);
+      updateParams({ busca: buscaInput || undefined });
     }, 400);
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buscaInput]);
-
-  // Qualquer mudança de filtro volta para a página 1.
-  function updateParams(alteracoes: Record<string, string | undefined>) {
-    const params = new URLSearchParams(searchParams.toString());
-    Object.entries(alteracoes).forEach(([chave, valor]) => {
-      if (valor) params.set(chave, valor);
-      else params.delete(chave);
-    });
-    params.delete("pagina");
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, {
-      scroll: false,
-    });
-  }
+  }, [busca, buscaInput, updateParams]);
 
   function updateParam(chave: string, valor: string | undefined) {
     updateParams({ [chave]: valor });
