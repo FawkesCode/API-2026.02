@@ -4,7 +4,6 @@ import { Cargo } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   ErroUsuarioInativo,
-  ErroUsuarioNaoTecnico,
   servicoUsuario,
 } from "@/services/usuario.service";
 
@@ -25,19 +24,15 @@ function mockDatabase(user: { ativo: boolean; cargo: Cargo }) {
   } as never);
 }
 
-describe("ServicoUsuario.redefinirSenhaDeTecnico", () => {
+describe("ServicoUsuario.redefinirSenhaDeUsuario", () => {
   it("salva o hash e marca a senha como provisória", async () => {
     const update = mockDatabase({ ativo: true, cargo: Cargo.TECNICO });
 
-    await servicoUsuario.redefinirSenhaDeTecnico(userId, "NovaSenha@123");
+    await servicoUsuario.redefinirSenhaDeUsuario(userId, "NovaSenha@123");
 
     const args = update.mock.calls[0][0];
     const data = args.data as { senhaHash: string; senhaProvisoria: boolean };
-    expect(args.where).toEqual({
-      id: userId,
-      ativo: true,
-      cargo: Cargo.TECNICO,
-    });
+    expect(args.where).toEqual({ id: userId, ativo: true });
     expect(data.senhaHash).not.toBe("NovaSenha@123");
     expect(await compare("NovaSenha@123", data.senhaHash)).toBe(true);
     expect(data.senhaProvisoria).toBe(true);
@@ -47,18 +42,24 @@ describe("ServicoUsuario.redefinirSenhaDeTecnico", () => {
     const update = mockDatabase({ ativo: false, cargo: Cargo.TECNICO });
 
     await expect(
-      servicoUsuario.redefinirSenhaDeTecnico(userId, "NovaSenha@123"),
+      servicoUsuario.redefinirSenhaDeUsuario(userId, "NovaSenha@123"),
     ).rejects.toBeInstanceOf(ErroUsuarioInativo);
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("restringe a redefinição a técnicos", async () => {
-    const update = mockDatabase({ ativo: true, cargo: Cargo.GESTOR });
+  it.each([
+    Cargo.TECNICO,
+    Cargo.GESTOR,
+    Cargo.SUPORTE,
+    Cargo.SUPORTE_INTERNO,
+    Cargo.COMERCIAL,
+  ])("redefine a senha de um usuário com cargo %s", async (cargo) => {
+    const update = mockDatabase({ ativo: true, cargo });
 
     await expect(
-      servicoUsuario.redefinirSenhaDeTecnico(userId, "NovaSenha@123"),
-    ).rejects.toBeInstanceOf(ErroUsuarioNaoTecnico);
-    expect(update).not.toHaveBeenCalled();
+      servicoUsuario.redefinirSenhaDeUsuario(userId, "NovaSenha@123"),
+    ).resolves.toEqual({ id: userId });
+    expect(update).toHaveBeenCalledTimes(1);
   });
 
   it("não altera a senha se o usuário for inativado durante a transação", async () => {
@@ -80,11 +81,11 @@ describe("ServicoUsuario.redefinirSenhaDeTecnico", () => {
     } as never);
 
     await expect(
-      servicoUsuario.redefinirSenhaDeTecnico(userId, "NovaSenha@123"),
+      servicoUsuario.redefinirSenhaDeUsuario(userId, "NovaSenha@123"),
     ).rejects.toBeInstanceOf(ErroUsuarioInativo);
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: userId, ativo: true, cargo: Cargo.TECNICO },
+        where: { id: userId, ativo: true },
       }),
     );
   });
