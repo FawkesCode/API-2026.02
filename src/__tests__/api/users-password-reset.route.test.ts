@@ -44,9 +44,9 @@ beforeEach(() => mockSupportUser());
 afterEach(() => vi.restoreAllMocks());
 
 describe("PATCH /api/usuarios/:id/senha", () => {
-  it("redefine a senha de um técnico ativo", async () => {
+  it("redefine a senha de um usuário ativo", async () => {
     const resetPassword = vi
-      .spyOn(servicoUsuario, "redefinirSenhaDeTecnico")
+      .spyOn(servicoUsuario, "redefinirSenhaDeUsuario")
       .mockResolvedValue({ id: userId });
 
     const response = await PATCH(request({ novaSenha: "NovaSenha@123" }), {
@@ -63,7 +63,7 @@ describe("PATCH /api/usuarios/:id/senha", () => {
   it("bloqueia usuários sem o cargo de suporte interno", async () => {
     vi.restoreAllMocks();
     mockSupportUser("GESTOR");
-    const resetPassword = vi.spyOn(servicoUsuario, "redefinirSenhaDeTecnico");
+    const resetPassword = vi.spyOn(servicoUsuario, "redefinirSenhaDeUsuario");
 
     const response = await PATCH(request({ novaSenha: "NovaSenha@123" }), {
       params: Promise.resolve({ id: userId }),
@@ -74,7 +74,7 @@ describe("PATCH /api/usuarios/:id/senha", () => {
   });
 
   it("não altera a senha de usuário inativo", async () => {
-    vi.spyOn(servicoUsuario, "redefinirSenhaDeTecnico").mockRejectedValue(
+    vi.spyOn(servicoUsuario, "redefinirSenhaDeUsuario").mockRejectedValue(
       new ErroUsuarioInativo(),
     );
 
@@ -87,7 +87,7 @@ describe("PATCH /api/usuarios/:id/senha", () => {
   });
 
   it("valida a nova senha antes de tentar alterá-la", async () => {
-    const resetPassword = vi.spyOn(servicoUsuario, "redefinirSenhaDeTecnico");
+    const resetPassword = vi.spyOn(servicoUsuario, "redefinirSenhaDeUsuario");
 
     const response = await PATCH(request({ novaSenha: "fraca" }), {
       params: Promise.resolve({ id: userId }),

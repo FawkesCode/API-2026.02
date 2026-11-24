@@ -34,13 +34,6 @@ export class ErroUsuarioInativo extends Error {
   }
 }
 
-export class ErroUsuarioNaoTecnico extends Error {
-  constructor(message = "A redefinição de senha está disponível apenas para técnicos.") {
-    super(message);
-    this.name = "ErroUsuarioNaoTecnico";
-  }
-}
-
 export interface DadosAtualizarUsuario {
   nome: string;
   email: string;
@@ -426,22 +419,20 @@ export class ServicoUsuario {
     });
   }
 
-  async redefinirSenhaDeTecnico(usuarioId: string, senha: string) {
+  async redefinirSenhaDeUsuario(usuarioId: string, senha: string) {
     return prisma.$transaction(async (tx) => {
       const usuario = await tx.usuario.findUnique({
         where: { id: usuarioId },
-        select: { id: true, ativo: true, cargo: true },
+        select: { id: true, ativo: true },
       });
 
       if (!usuario) throw new ErroUsuarioNaoEncontrado();
       if (!usuario.ativo) throw new ErroUsuarioInativo();
-      if (usuario.cargo !== Cargo.TECNICO) throw new ErroUsuarioNaoTecnico();
 
       const resultado = await tx.usuario.updateMany({
         where: {
           id: usuarioId,
           ativo: true,
-          cargo: Cargo.TECNICO,
         },
         data: {
           senhaHash: await hash(senha, 12),
@@ -452,12 +443,11 @@ export class ServicoUsuario {
       if (resultado.count === 0) {
         const atual = await tx.usuario.findUnique({
           where: { id: usuarioId },
-          select: { ativo: true, cargo: true },
+          select: { ativo: true },
         });
 
         if (!atual) throw new ErroUsuarioNaoEncontrado();
-        if (!atual.ativo) throw new ErroUsuarioInativo();
-        throw new ErroUsuarioNaoTecnico();
+        throw new ErroUsuarioInativo();
       }
 
       return { id: usuarioId };

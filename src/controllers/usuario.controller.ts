@@ -12,7 +12,6 @@ import {
   ErroAlterarProprioCargo,
   ErroAlterarProprioStatus,
   ErroUsuarioInativo,
-  ErroUsuarioNaoTecnico,
   ErroUsuarioNaoEncontrado,
   servicoUsuario,
 } from "@/services/usuario.service";
@@ -204,7 +203,7 @@ export class ControladorUsuario {
     }
 
     try {
-      await servicoUsuario.redefinirSenhaDeTecnico(
+      await servicoUsuario.redefinirSenhaDeUsuario(
         validatedId.data,
         result.data.novaSenha,
       );
@@ -222,12 +221,6 @@ export class ControladorUsuario {
       if (error instanceof ErroUsuarioInativo) {
         return NextResponse.json(
           { erro: error.message, codigo: "USUARIO_INATIVO" },
-          { status: 400 },
-        );
-      }
-      if (error instanceof ErroUsuarioNaoTecnico) {
-        return NextResponse.json(
-          { erro: error.message, codigo: "USUARIO_NAO_TECNICO" },
           { status: 400 },
         );
       }

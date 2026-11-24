@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import {
-  redefinirSenhaTecnico,
+  redefinirSenhaUsuario,
   validarRedefinicaoSenha,
   type ErrosRedefinicaoSenha,
 } from "@/lib/redefinicao-senha-client";
@@ -64,7 +64,7 @@ export function RedefinirSenhaDialog({
     pendente.current = true;
     setEnviando(true);
     try {
-      const resultado = await redefinirSenhaTecnico(usuario.id, novaSenha);
+      const resultado = await redefinirSenhaUsuario(usuario.id, novaSenha);
       if (!resultado.sucesso) {
         if (resultado.erroSenha) {
           setErros({ novaSenha: resultado.erroSenha });
@@ -98,7 +98,7 @@ export function RedefinirSenhaDialog({
             <strong className="break-words font-medium text-foreground">
               {usuario.nome}
             </strong>
-            . O técnico deverá alterá-la no próximo acesso.
+            . O usuário deverá alterá-la no próximo acesso.
           </DialogDescription>
         </DialogHeader>
 
