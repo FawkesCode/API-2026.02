@@ -210,17 +210,17 @@ export class ServicoUsuario {
     const busca = filtros.busca;
 
     const where: Prisma.UsuarioWhereInput = {
-      ativo: filtros.status !== "inativo",
+      ...(filtros.status ? { ativo: filtros.status === "ativo" } : {}),
       ...(filtros.cargo ? { cargo: filtros.cargo } : {}),
       ...(criadoEm ? { criadoEm } : {}),
       ...(busca
         ? {
-            OR: [
-              { nome: { contains: busca } },
-              { email: { contains: busca } },
-              { id: { contains: busca } },
-            ],
-          }
+          OR: [
+            { nome: { contains: busca } },
+            { email: { contains: busca } },
+            { id: { contains: busca } },
+          ],
+        }
         : {}),
     };
 

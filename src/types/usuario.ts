@@ -91,3 +91,13 @@ export type CriarUsuarioResultado =
     };
 
 export type AtualizarUsuarioResultado = CriarUsuarioResultado;
+
+/** Inativação/reativação (PATCH): só o status muda. */
+export type AlterarStatusUsuarioResultado =
+  | { sucesso: true; usuario: UsuarioCriadoDTO | null }
+  | {
+      sucesso: false;
+      erro: string;
+      /** Ex.: ALTERAR_PROPRIO_STATUS, USUARIO_NAO_ENCONTRADO. */
+      codigo?: string;
+    };
