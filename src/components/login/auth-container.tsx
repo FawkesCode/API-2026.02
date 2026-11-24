@@ -82,11 +82,6 @@ function AuthContainer() {
             <SvgContainer />
           </div>
         </div>
-        {!alterPass && (
-          <p className="text-xs text-[#C4D6E5]">
-            Não lembra a sua senha? Redefinir
-          </p>
-        )}
       </section>
 
       <section
