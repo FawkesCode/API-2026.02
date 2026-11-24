@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, KeyRound, Pencil } from "lucide-react";
+import {
+  Check,
+  Copy,
+  KeyRound,
+  Pencil,
+  UserCheck,
+  UserX,
+} from "lucide-react";
 import type { UsuarioListaItem } from "@/types/usuario";
 import {
   Accordion,
@@ -11,6 +18,7 @@ import {
 } from "../ui/accordion";
 import { UsuarioFormDialog } from "./usuario-form-dialog";
 import { RedefinirSenhaDialog } from "./redefinir-senha-dialog";
+import { AlterarStatusUsuarioDialog } from "./alterar-status-usuario-dialog";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Cargo } from "@/types/ticket-enums";
 
@@ -27,8 +35,13 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
     useState<UsuarioListaItem | null>(null);
   const [usuarioParaRedefinirSenha, setUsuarioParaRedefinirSenha] =
     useState<UsuarioListaItem | null>(null);
+  const [usuarioStatus, setUsuarioStatus] = useState<UsuarioListaItem | null>(
+    null,
+  );
   const usuarioAtual = useCurrentUser();
   const podeRedefinirSenha = usuarioAtual?.cargo === Cargo.SUPORTE_INTERNO;
+  // O PATCH de status também exige SUPORTE_INTERNO no backend.
+  const podeAlterarStatus = usuarioAtual?.cargo === Cargo.SUPORTE_INTERNO;
 
   if (usuarios.length === 0) {
     return (
@@ -73,6 +86,12 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                 ? () => setUsuarioParaRedefinirSenha(usuario)
                 : undefined
             }
+            // Sem o botão na própria conta: o backend não permite inativá-la.
+            onAlterarStatus={
+              podeAlterarStatus && usuario.id !== usuarioAtual?.id
+                ? () => setUsuarioStatus(usuario)
+                : undefined
+            }
           />
         ))}
       </Accordion>
@@ -97,6 +116,16 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
           }}
         />
       )}
+      {usuarioStatus && (
+        <AlterarStatusUsuarioDialog
+          key={usuarioStatus.id}
+          usuario={usuarioStatus}
+          aberto
+          onAbertoChange={(aberto) => {
+            if (!aberto) setUsuarioStatus(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -107,6 +136,7 @@ interface UsuarioRowProps {
   onToggle: () => void;
   onEditar: () => void;
   onRedefinirSenha?: () => void;
+  onAlterarStatus?: () => void;
 }
 
 function UsuarioRow({
@@ -115,6 +145,7 @@ function UsuarioRow({
   onToggle,
   onEditar,
   onRedefinirSenha,
+  onAlterarStatus,
 }: UsuarioRowProps) {
   const [copiado, setCopiado] = useState(false);
 
@@ -204,6 +235,22 @@ function UsuarioRow({
               {usuario.adicionadoPor ?? "Sistema"}
             </p>
             <div className="flex justify-end gap-4 sm:col-span-2">
+              {onAlterarStatus && (
+                <button
+                  type="button"
+                  onClick={onAlterarStatus}
+                  className={`flex cursor-pointer items-center gap-1.5 text-sm font-medium hover:underline ${
+                    usuario.ativo ? "text-destructive" : "text-accent"
+                  }`}
+                >
+                  {usuario.ativo ? (
+                    <UserX className="size-3.5" />
+                  ) : (
+                    <UserCheck className="size-3.5" />
+                  )}
+                  {usuario.ativo ? "Inativar" : "Reativar"}
+                </button>
+              )}
               {onRedefinirSenha && (
                 <button
                   type="button"
