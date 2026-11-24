@@ -25,7 +25,7 @@ export type ResultadoRedefinicaoSenha =
   | { sucesso: true; mensagem: string }
   | { sucesso: false; erro: string; erroSenha?: string };
 
-export async function redefinirSenhaTecnico(
+export async function redefinirSenhaUsuario(
   usuarioId: string,
   novaSenha: string,
   fetchFn: typeof fetch = fetch,

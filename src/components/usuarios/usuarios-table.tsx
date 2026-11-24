@@ -82,7 +82,7 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
             }
             onEditar={() => setUsuarioEmEdicao(usuario)}
             onRedefinirSenha={
-              podeRedefinirSenha && usuario.cargo === Cargo.TECNICO
+              podeRedefinirSenha
                 ? () => setUsuarioParaRedefinirSenha(usuario)
                 : undefined
             }
